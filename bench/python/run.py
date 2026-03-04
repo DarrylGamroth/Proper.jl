@@ -1,32 +1,33 @@
 #!/usr/bin/env python3
+import cmath
 import json
 import os
 import statistics
 import time
 from pathlib import Path
 
-import numpy as np
 
-
-def workload(n=512):
-    a = np.ones((n, n), dtype=np.complex128)
-    x = np.linspace(-1.0, 1.0, n)
-    xx, yy = np.meshgrid(x, x)
-    phase = np.exp(1j * np.pi * (xx * xx + yy * yy))
-    a *= phase
-    psf = np.abs(a) ** 2
-    return psf
+def workload(n=256):
+    # Pure-stdlib CPU workload to avoid optional dependencies in CI/dev environments.
+    total = 0.0
+    half = n / 2.0
+    for i in range(n):
+        y = (i - half) / half
+        for j in range(n):
+            x = (j - half) / half
+            phase = cmath.exp(1j * 3.141592653589793 * (x * x + y * y))
+            total += (phase.real * phase.real + phase.imag * phase.imag)
+    return total
 
 
 def main() -> None:
     outdir = Path(__file__).resolve().parents[1] / "reports"
     outdir.mkdir(parents=True, exist_ok=True)
 
-    # Warmup for fair steady-state timings.
     workload()
 
     samples_ns = []
-    for _ in range(50):
+    for _ in range(20):
         t0 = time.perf_counter_ns()
         workload()
         samples_ns.append(time.perf_counter_ns() - t0)

@@ -1,4 +1,4 @@
 [deps]
-BenchmarkTools = "6e4b80f9-93f8-5d43-8e09-9a0f6407b0a7"
-JSON3 = "0f8b85d8-7281-11e9-16c8-39a750af9c0a"
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 proper = "0686a737-3bdd-44da-9bf7-6692cf630078"

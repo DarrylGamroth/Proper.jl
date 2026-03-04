@@ -1,5 +1,6 @@
 using DelimitedFiles
 using JSON3
+using LinearAlgebra
 using proper
 
 function run_simple_case()

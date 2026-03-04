@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.11'
+      - name: Instantiate
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+      - name: Test
+        run: julia --project=. -e 'using Pkg; Pkg.test()'
+
+  benchmark-and-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.11'
+      - name: Python baseline
+        run: python3 test/parity/generate_python_baseline.py
+      - name: Parity compare
+        run: julia --project=. test/parity/compare.jl
+      - name: Benchmarks
+        run: ./scripts/benchmark_all.sh
+      - name: Upload benchmark/parity artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-parity-artifacts
+          path: |
+            bench/reports/*.json
+            test/parity/reports/*.json

@@ -1,0 +1,7 @@
+# Generated benchmark artifacts
+bench/reports/*.json
+
+# Generated parity artifacts
+test/parity/baseline/python334/*.csv
+test/parity/baseline/python334/*.json
+test/parity/reports/*.json
