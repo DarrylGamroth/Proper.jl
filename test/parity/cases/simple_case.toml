@@ -1,0 +1,6 @@
+name = "simple_case"
+lambda_um = 0.55
+gridsize = 256
+diam = 2.4
+beam_frac = 0.5
+compat_mode = "python334"

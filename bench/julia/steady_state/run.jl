@@ -1,7 +1,40 @@
 using BenchmarkTools
+using JSON3
 using proper
 include(joinpath(@__DIR__, "..", "..", "common", "workloads.jl"))
+include(joinpath(@__DIR__, "..", "..", "common", "metadata.jl"))
 using .Workloads
+using .BenchMetadata
 
-println("steady_state benchmark harness placeholder")
-println(workload_matrix())
+function workload()
+    wf = prop_begin(2.4, 0.55e-6, 512; beam_diam_fraction=0.5)
+    prop_circular_aperture(wf, 0.6)
+    prop_lens(wf, 20.0)
+    prop_propagate(wf, 20.0)
+    prop_end(wf)
+end
+
+# Warmup: exclude compilation from steady-state timings.
+workload()
+
+b = @benchmark workload()
+stats = Dict(
+    "median_ns" => median(b).time,
+    "mean_ns" => mean(b).time,
+    "min_ns" => minimum(b).time,
+    "max_ns" => maximum(b).time,
+    "samples" => length(b.times),
+)
+
+report = Dict(
+    "meta" => benchmark_metadata(run_tag="steady_state"),
+    "policy" => "TTFx excluded from these timings",
+    "stats" => stats,
+)
+
+mkpath(joinpath(@__DIR__, "..", "..", "reports"))
+out = joinpath(@__DIR__, "..", "..", "reports", "julia_steady_state.json")
+open(out, "w") do io
+    JSON3.write(io, report)
+end
+println(report)

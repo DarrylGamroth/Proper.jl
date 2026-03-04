@@ -1,3 +1,1 @@
-using proper
-
-error("Example testmulti1.jl not ported yet")
+include(joinpath(@__DIR__, "multi_example.jl"))

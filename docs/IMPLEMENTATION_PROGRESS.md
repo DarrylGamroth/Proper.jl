@@ -11,8 +11,8 @@
 - [ ] Phase 3: I/O and state systems
 - [ ] Phase 4: Apertures/masks/shapes
 - [ ] Phase 5: Advanced propagation/DM/maps
-- [ ] Phase 6: Parity harness and examples
-- [ ] Phase 7: Benchmarks, CI, release prep
+- [~] Phase 6: Parity harness and examples (in progress)
+- [~] Phase 7: Benchmarks, CI, release prep (in progress)
 
 ## Current Workstream (Phase 1)
 - [x] Core policy/trait/context types created.
@@ -29,6 +29,14 @@
 - [x] Implemented first-pass map transforms: `prop_magnify`, `prop_rotate`, `prop_resamplemap`.
 - [x] Implemented FITS/map baseline wrappers: `prop_fits_read`, `prop_fits_write`, `prop_readmap`, `prop_writemap`, `prop_errormap`.
 - [ ] Port remaining core modules from placeholder status.
+
+## Current Workstream (Phase 6/7)
+- [x] Replaced all example placeholders with runnable Julia scripts (one-to-one filenames).
+- [x] Added parity harness skeleton under `test/parity/`.
+- [x] Added benchmark scripts for Python steady-state, Julia steady-state, and Julia cold-start.
+- [x] Added benchmark summarization script and driver shell script.
+- [ ] Port example internals to fully match upstream Python physics.
+- [ ] Wire benchmark/parity scripts into CI and publish artifacts.
 
 ## Notes
 - `compat_mode` is constructor-only and resolves once to a policy type (`D-0017`).

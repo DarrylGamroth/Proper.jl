@@ -1,3 +1,7 @@
 using proper
+using Plots
+include(joinpath(@__DIR__, "_shared.jl"))
 
-error("Example example_system.jl not ported yet")
+psf, sampling = run_simple_case()
+println("example_system: sampling = ", sampling)
+plot_psf(psf; title="example_system")
