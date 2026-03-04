@@ -1,3 +1,4 @@
+"""Compatibility alias for `prop_run_multi`."""
 function prop_execute_multi(args...; kwargs...)
-    return _not_implemented(:prop_execute_multi)
+    return prop_run_multi(args...; kwargs...)
 end

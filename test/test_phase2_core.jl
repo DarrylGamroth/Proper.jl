@@ -49,3 +49,28 @@ end
         @test size(r2) == size(dmap)
     end
 end
+
+@testset "Phase 4 state and compatibility helpers" begin
+    wf = prop_begin(1.0, 500e-9, 16)
+    wf.field .*= 2
+    wf.z_m = 0.123
+
+    mktempdir() do d
+        sfile = joinpath(d, "wf.state")
+        @test !prop_is_statesaved(sfile)
+        prop_savestate(wf, sfile)
+        @test prop_is_statesaved(sfile)
+
+        wf2 = prop_begin(1.0, 500e-9, 16)
+        prop_state(wf2, sfile)
+        @test isapprox(prop_get_z(wf2), 0.123; atol=1e-12)
+        @test all(isapprox.(wf2.field, wf.field))
+
+        out, _ = prop_end_savestate(wf2, joinpath(d, "wf2.state"))
+        @test size(out) == (16, 16)
+    end
+
+    @test prop_use_fftw() == true
+    @test prop_use_ffti() == false
+    @test prop_set_antialiasing(3) == 3.0
+end

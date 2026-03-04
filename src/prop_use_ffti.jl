@@ -1,3 +1,2 @@
-function prop_use_ffti(args...; kwargs...)
-    return _not_implemented(:prop_use_ffti)
-end
+"""Compatibility stub: FFTI backend not currently implemented."""
+prop_use_ffti() = false

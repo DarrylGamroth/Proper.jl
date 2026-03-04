@@ -1,3 +1,5 @@
-function prop_init_savestate(args...; kwargs...)
-    return _not_implemented(:prop_init_savestate)
+"""Initialize save-state directory (creates it if needed)."""
+function prop_init_savestate(path::AbstractString)
+    mkpath(path)
+    return path
 end

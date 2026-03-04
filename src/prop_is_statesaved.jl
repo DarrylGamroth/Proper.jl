@@ -1,3 +1,2 @@
-function prop_is_statesaved(args...; kwargs...)
-    return _not_implemented(:prop_is_statesaved)
-end
+"""Check whether a serialized wavefront state file exists."""
+prop_is_statesaved(path::AbstractString) = isfile(path)
