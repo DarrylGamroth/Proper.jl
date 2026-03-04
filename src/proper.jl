@@ -7,6 +7,8 @@ include("core/traits.jl")
 include("core/types.jl")
 include("core/context.jl")
 include("core/keywords.jl")
+include("core/grid.jl")
+include("core/resample.jl")
 include("internal/unimplemented.jl")
 
 include("libcconv.jl")
@@ -102,11 +104,20 @@ export InterpStyle, GenericInterpStyle, RNGStyle, GenericRNGStyle
 export RunContext, ProperConfig, ProperRuntime, WaveFront
 export prop_wavefront, prop_begin, prop_end, prop_add_phase, prop_add_wavefront
 export prop_multiply, prop_divide, prop_shift_center
+export prop_radius, prop_ellipse, prop_rectangle
+export prop_circular_aperture, prop_circular_obscuration
+export prop_elliptical_aperture, prop_elliptical_obscuration
+export prop_rectangular_aperture, prop_rectangular_obscuration
+export prop_qphase, prop_lens, prop_ptp, prop_wts, prop_stw, prop_propagate
+export prop_magnify, prop_rotate, prop_resamplemap, prop_select_propagator
+export prop_fits_read, prop_fits_write, prop_readmap, prop_writemap
+export prop_errormap, prop_psd_errormap
 export prop_get_wavefront, prop_get_amplitude, prop_get_phase
 export prop_get_sampling, prop_get_sampling_radians, prop_get_sampling_arcsec
 export prop_get_wavelength, prop_get_z, prop_get_gridsize
 export prop_get_beamradius, prop_get_distancetofocus, prop_get_fratio
 export prop_get_nyquistsampling, prop_get_refradius
 export prop_run, prop_run_multi
+export switch_set
 
 end # module proper

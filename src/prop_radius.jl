@@ -1,3 +1,5 @@
-function prop_radius(args...; kwargs...)
-    return _not_implemented(:prop_radius)
+"""Return radial coordinate map (meters) at current sampling."""
+function prop_radius(wf::WaveFront; kwargs...)
+    ny, nx = size(wf.field)
+    return radius_map(ny, nx, wf.sampling_m)
 end

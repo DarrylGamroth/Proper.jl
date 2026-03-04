@@ -3,13 +3,13 @@ Base.@kwdef struct ProperConfig{P<:CompatPolicy}
     verbose::Bool = false
 end
 
-struct ProperRuntime
+mutable struct ProperRuntime
     run_id::Int
 end
 
 ProperRuntime() = ProperRuntime(0)
 
-struct WaveFront{T,A<:AbstractMatrix{Complex{T}}}
+mutable struct WaveFront{T,A<:AbstractMatrix{Complex{T}}}
     field::A
     wavelength_m::T
     sampling_m::T

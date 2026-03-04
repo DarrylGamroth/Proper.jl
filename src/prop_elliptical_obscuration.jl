@@ -1,3 +1,5 @@
-function prop_elliptical_obscuration(args...; kwargs...)
-    return _not_implemented(:prop_elliptical_obscuration)
+function prop_elliptical_obscuration(wf::WaveFront, xradius::Real, yradius::Real, xc::Real=0.0, yc::Real=0.0; kwargs...)
+    m = prop_ellipse(wf, xradius, yradius, xc, yc; kwargs...)
+    wf.field .*= (1 .- m)
+    return wf
 end

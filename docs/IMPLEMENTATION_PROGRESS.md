@@ -7,7 +7,7 @@
 ## Phase Checklist
 - [x] Phase 0: Preflight decisions and contracts accepted
 - [~] Phase 1: Foundation and infrastructure (in progress)
-- [ ] Phase 2: Core wavefront/math kernels
+- [~] Phase 2: Core wavefront/math kernels (in progress)
 - [ ] Phase 3: I/O and state systems
 - [ ] Phase 4: Apertures/masks/shapes
 - [ ] Phase 5: Advanced propagation/DM/maps
@@ -20,7 +20,15 @@
 - [x] One-to-one example file skeleton generated from Python examples.
 - [x] Baseline tests added for context and file mapping.
 - [ ] Implement `prop_run`/`prop_run_multi` dispatch scaffolding.
-- [ ] Add benchmark harness skeleton scripts.
+- [x] Implement `prop_run`/`prop_run_multi` dispatch scaffolding.
+- [x] Add benchmark harness skeleton scripts.
+
+## Current Workstream (Phase 2/3)
+- [x] Implemented first-pass optics kernels: `prop_qphase`, `prop_lens`, `prop_propagate`, `prop_ptp`, `prop_wts`, `prop_stw`.
+- [x] Implemented first-pass geometry/mask kernels and obscurations.
+- [x] Implemented first-pass map transforms: `prop_magnify`, `prop_rotate`, `prop_resamplemap`.
+- [x] Implemented FITS/map baseline wrappers: `prop_fits_read`, `prop_fits_write`, `prop_readmap`, `prop_writemap`, `prop_errormap`.
+- [ ] Port remaining core modules from placeholder status.
 
 ## Notes
 - `compat_mode` is constructor-only and resolves once to a policy type (`D-0017`).

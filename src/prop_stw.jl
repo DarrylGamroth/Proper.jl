@@ -1,3 +1,6 @@
-function prop_stw(args...; kwargs...)
-    return _not_implemented(:prop_stw)
+"""Spherical-to-waist propagation placeholder."""
+function prop_stw(wf::WaveFront, dz::Real)
+    prop_qphase(wf, -float(dz))
+    wf.z_m += float(dz)
+    return wf
 end
