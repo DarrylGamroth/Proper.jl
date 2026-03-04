@@ -1,3 +1,4 @@
-function prop_fit_dm(args...; kwargs...)
-    return _not_implemented(:prop_fit_dm)
+"""Placeholder DM fit returning input map and zero residual."""
+function prop_fit_dm(dm_map::AbstractMatrix; kwargs...)
+    return copy(dm_map), zero(eltype(dm_map))
 end

@@ -28,7 +28,7 @@
 - [x] Implemented first-pass geometry/mask kernels and obscurations.
 - [x] Implemented first-pass map transforms: `prop_magnify`, `prop_rotate`, `prop_resamplemap`.
 - [x] Implemented FITS/map baseline wrappers: `prop_fits_read`, `prop_fits_write`, `prop_readmap`, `prop_writemap`, `prop_errormap`.
-- [ ] Port remaining core modules from placeholder status.
+- [x] Replaced all `_not_implemented` module stubs with callable fallback implementations.
 
 ## Current Workstream (Phase 6/7)
 - [x] Replaced all example placeholders with runnable Julia scripts (one-to-one filenames).

@@ -1,3 +1,4 @@
+"""Compatibility stub: C kernel compilation not required in Julia."""
 function prop_compile_c(args...; kwargs...)
-    return _not_implemented(:prop_compile_c)
+    return nothing
 end

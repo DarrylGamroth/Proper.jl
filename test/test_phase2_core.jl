@@ -74,3 +74,33 @@ end
     @test prop_use_ffti() == false
     @test prop_set_antialiasing(3) == 3.0
 end
+
+@testset "Phase 5 placeholder API coverage" begin
+    wf = prop_begin(1.0, 500e-9, 32)
+    dm = randn(32, 32) .* 1e-9
+    @test prop_dm(wf, dm) === wf
+
+    @test prop_sinc(0.0) == 1.0
+    @test length(prop_noll_zernikes(5)) == 5
+    @test size(prop_zernikes(wf, 3)) == (32, 32, 3)
+    @test length(prop_fit_zernikes(wf, 3)) == 3
+
+    pix = prop_pixellate(rand(32, 32), 2)
+    @test size(pix) == (16, 16)
+
+    m1 = prop_polygon(wf, 6, 0.2)
+    m2 = prop_irregular_polygon(wf, [-0.1, 0.1, 0.1, -0.1], [-0.1, -0.1, 0.1, 0.1])
+    m3 = prop_rounded_rectangle(wf, 0.2, 0.3)
+    @test size(m1) == size(wf.field)
+    @test size(m2) == size(wf.field)
+    @test size(m3) == size(wf.field)
+
+    @test prop_fftw() == true
+    @test prop_ffti() == false
+    @test prop_compile_c() === nothing
+    @test prop_dftidefs()[:DFTI_FORWARD_SCALE] == 1.0
+    @test libcconv(rand(8, 8), 4.2, 3.7) isa Real
+    @test libcconvthread(rand(8, 8), 4.2, 3.7) isa Real
+    @test size(libszoom(rand(8, 8), 2.0), 1) == 16
+    @test size(prop_szoom(rand(8, 8), 2.0), 1) == 16
+end

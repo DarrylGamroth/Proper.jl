@@ -115,6 +115,11 @@ export prop_errormap, prop_psd_errormap
 export prop_savestate, prop_state, prop_is_statesaved, prop_init_savestate, prop_end_savestate
 export prop_execute_multi, prop_use_fftw, prop_use_ffti, prop_fftw_wisdom, prop_load_fftw_wisdom
 export prop_set_antialiasing, prop_table
+export prop_dm, prop_sinc, prop_noll_zernikes, prop_zernikes, prop_fit_zernikes
+export prop_fit_dm, prop_pixellate, prop_polygon, prop_irregular_polygon, prop_rounded_rectangle
+export prop_compile_c, prop_dftidefs, prop_ffti, prop_fftw, prop_szoom
+export libcconv, libcconvthread, libszoom, prop_cubic_conv, prop_define_entrance
+export prop_hex_wavefront, prop_hex_zernikes, prop_8th_order_mask
 export prop_get_wavefront, prop_get_amplitude, prop_get_phase
 export prop_get_sampling, prop_get_sampling_radians, prop_get_sampling_arcsec
 export prop_get_wavelength, prop_get_z, prop_get_gridsize

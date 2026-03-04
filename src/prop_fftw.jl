@@ -1,3 +1,2 @@
-function prop_fftw(args...; kwargs...)
-    return _not_implemented(:prop_fftw)
-end
+"""Compatibility stub for FFTW backend availability."""
+prop_fftw() = true

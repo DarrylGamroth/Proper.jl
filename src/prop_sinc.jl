@@ -1,3 +1,4 @@
-function prop_sinc(args...; kwargs...)
-    return _not_implemented(:prop_sinc)
+"""Normalized sinc: sin(pi*x)/(pi*x)."""
+function prop_sinc(x)
+    return iszero(x) ? one(float(x)) : sinpi(float(x)) / (pi * float(x))
 end
