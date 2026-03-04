@@ -1,0 +1,76 @@
+# Parity Harness Contract
+
+## Purpose
+Define how Julia outputs are compared against Python 3.3.4 baselines and how artifacts/provenance are managed.
+
+## Decision Links
+- `D-0001` executable parity baseline
+- `D-0010` golden data workflow (accepted)
+- `D-0011` RNG determinism policy (accepted)
+- `D-0014` CI/support matrix (accepted)
+
+## Status
+- [x] Draft pre-filled from proposed defaults
+- [x] Baseline workflow accepted
+- [ ] CI jobs wired
+
+## 1. Baseline Source
+- Executable baseline: Python `../proper_v3.3.4_python`
+- Semantic tie-breakers: MATLAB 3.3.1 + PROPER manual
+
+## 2. Artifact Layout
+Recommended structure:
+- `test/parity/cases/` case definitions (params, mode, backend)
+- `test/parity/baseline/python334/` generated baseline arrays + metadata
+- `test/parity/reports/` comparison summaries
+
+## 3. Provenance Metadata Schema
+Each baseline artifact should capture:
+- python source snapshot identifier (commit/hash or equivalent)
+- script/example name
+- wavelength/grid/passvalue/config
+- RNG seed info (if applicable)
+- generation timestamp
+- target compat mode
+- backend label and numeric precision
+
+## 4. Metrics And Thresholds
+Default gating thresholds:
+- intensity: relative L2 <= `1e-8` CPU, `1e-6` GPU
+- complex/phase: relative L2 <= `1e-8` CPU, `1e-6` GPU
+
+Additional metrics:
+- max absolute error: <= `1e-8` CPU, <= `1e-6` GPU (unless case-specific override)
+- wrapped phase MAE: <= `1e-8` rad CPU, <= `1e-6` rad GPU (when phase comparisons apply)
+
+## 5. Case Matrix
+Minimum coverage:
+- all 23 examples
+- output mode (`NOABS=true/false`)
+- map pipeline cases (`psdtest`, errormap/resample/rotate)
+- multi-run ordering and shape semantics
+- compat-mode divergence cases
+
+## 6. Update Workflow
+- Trigger baseline regeneration when:
+  - accepted compatibility decision changes behavior
+  - numerics contract changes
+  - baseline generation scripts change
+- Require report diff review before accepting updated baselines.
+
+## 7. CI Contract
+Required jobs:
+- Linux + Julia 1.10 CPU unit tests
+- Linux + Julia 1.10 parity smoke
+Scheduled/extended jobs:
+- Linux + Julia 1.10 full CPU parity
+Optional jobs:
+- additional Julia version CPU smoke
+- macOS CPU smoke
+- nightly GPU parity
+
+## 8. Contract Tests
+- [ ] Baseline generation reproducibility test (seeded)
+- [ ] Artifact metadata completeness test
+- [ ] Threshold enforcement tests
+- [ ] CI job pass/fail integration test

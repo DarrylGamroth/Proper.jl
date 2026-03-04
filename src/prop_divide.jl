@@ -1,0 +1,10 @@
+function prop_divide(wf::WaveFront, d::Number)
+    wf.field ./= d
+    return wf
+end
+
+function prop_divide(wf::WaveFront, d::AbstractMatrix)
+    size(d) == size(wf.field) || throw(ArgumentError("divisor size must match wavefront"))
+    wf.field ./= d
+    return wf
+end
