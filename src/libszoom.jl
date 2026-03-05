@@ -4,18 +4,23 @@ function libszoom(a::AbstractMatrix, mag::Real, nout::Integer=0)
     ny == nx || throw(ArgumentError("libszoom currently requires square input"))
 
     out_n = nout > 0 ? Int(nout) : round(Int, ny * float(mag))
-    cy_in = (ny + 1) / 2
-    cx_in = (nx + 1) / 2
-    cy_out = (out_n + 1) / 2
-    cx_out = (out_n + 1) / 2
+    out_n > 0 || throw(ArgumentError("nout must be positive"))
+    Tin = typeof(real(zero(eltype(a))))
+    T = float(promote_type(typeof(mag), Tin))
 
-    xcoords = Vector{Float64}(undef, out_n)
-    ycoords = Vector{Float64}(undef, out_n)
+    cx_in = T(nx ÷ 2) + one(T)
+    cy_in = T(ny ÷ 2) + one(T)
+    cx_out = T(out_n ÷ 2)
+    cy_out = T(out_n ÷ 2)
+
+    xcoords = Vector{T}(undef, out_n)
+    ycoords = Vector{T}(undef, out_n)
+    invmag = inv(T(mag))
     @inbounds for j in eachindex(xcoords)
-        xcoords[j] = (j - cx_out) / mag + cx_in
+        xcoords[j] = (T(j - 1) - cx_out) * invmag + cx_in
     end
     @inbounds for i in eachindex(ycoords)
-        ycoords[i] = (i - cy_out) / mag + cy_in
+        ycoords[i] = (T(i - 1) - cy_out) * invmag + cy_in
     end
 
     return prop_cubic_conv(a, xcoords, ycoords; grid=true)

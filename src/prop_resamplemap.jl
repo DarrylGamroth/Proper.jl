@@ -1,23 +1,21 @@
-"""Resample map to wavefront grid with map-center and physical shifts."""
+"""Resample map to wavefront grid with cubic interpolation and physical shifts."""
 function prop_resamplemap(wf::WaveFront, dmap::AbstractMatrix, pixscale::Real, xc::Real, yc::Real, xshift::Real=0.0, yshift::Real=0.0)
     ny, nx = size(wf.field)
-    out = similar(dmap, ny, nx)
+    T = float(promote_type(typeof(pixscale), typeof(xc), typeof(yc), typeof(xshift), typeof(yshift), typeof(wf.sampling_m)))
 
-    map_pix_per_m = inv(float(pixscale))
-    dx_out = wf.sampling_m
+    scale = T(wf.sampling_m) / T(pixscale)
+    xoff = T(xc) - T(xshift) / T(pixscale)
+    yoff = T(yc) - T(yshift) / T(pixscale)
 
-    cx_out = (nx + 1) / 2
-    cy_out = (ny + 1) / 2
+    xcoords = Vector{T}(undef, nx)
+    ycoords = Vector{T}(undef, ny)
 
     @inbounds for j in 1:nx
-        x_m = (j - cx_out) * dx_out + float(xshift)
-        x_map = float(xc) + x_m * map_pix_per_m
-        for i in 1:ny
-            y_m = (i - cy_out) * dx_out + float(yshift)
-            y_map = float(yc) + y_m * map_pix_per_m
-            out[i, j] = bilinear_sample(dmap, y_map, x_map)
-        end
+        xcoords[j] = (T(j - 1 - (nx ÷ 2)) * scale) + xoff
+    end
+    @inbounds for i in 1:ny
+        ycoords[i] = (T(i - 1 - (ny ÷ 2)) * scale) + yoff
     end
 
-    return out
+    return prop_cubic_conv(dmap, xcoords, ycoords; grid=true)
 end
