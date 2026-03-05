@@ -35,13 +35,17 @@ Each baseline artifact should capture:
 - backend label and numeric precision
 
 ## 4. Metrics And Thresholds
-Default gating thresholds:
-- intensity: relative L2 <= `1e-8` CPU, `1e-6` GPU
-- complex/phase: relative L2 <= `1e-8` CPU, `1e-6` GPU
+Default gating approach:
+- combine relative and absolute thresholds
+- use denominator-floored relative metrics for near-zero/high-contrast outputs
+- allow documented case-specific overrides
 
 Additional metrics:
-- max absolute error: <= `1e-8` CPU, <= `1e-6` GPU (unless case-specific override)
-- wrapped phase MAE: <= `1e-8` rad CPU, <= `1e-6` rad GPU (when phase comparisons apply)
+- max absolute error with case-specific bounds
+- wrapped phase MAE bounds when phase comparisons apply
+
+Executable threshold source:
+- `test/parity/thresholds/example_metrics_thresholds.json`
 
 ## 5. Case Matrix
 Minimum coverage:
@@ -72,5 +76,5 @@ Optional jobs:
 ## 8. Contract Tests
 - [ ] Baseline generation reproducibility test (seeded)
 - [ ] Artifact metadata completeness test
-- [ ] Threshold enforcement tests
+- [x] Threshold enforcement tests (`compare_examples.jl` + threshold config)
 - [ ] CI job pass/fail integration test

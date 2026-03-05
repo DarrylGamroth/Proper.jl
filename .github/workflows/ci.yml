@@ -24,10 +24,19 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1.11'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Python parity deps
+        run: python3 -m pip install --upgrade pip numpy scipy astropy matplotlib
       - name: Python baseline
         run: python3 test/parity/generate_python_baseline.py
       - name: Parity compare
         run: julia --project=. test/parity/compare.jl
+      - name: Python example metrics baseline
+        run: python3 test/parity/generate_python_example_metrics.py
+      - name: Example parity compare + thresholds
+        run: julia --project=. test/parity/compare_examples.jl
       - name: Benchmarks
         run: ./scripts/benchmark_all.sh
       - name: Upload benchmark/parity artifacts

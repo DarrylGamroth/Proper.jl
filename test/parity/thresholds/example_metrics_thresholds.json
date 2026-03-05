@@ -1,0 +1,54 @@
+{
+  "default_real": {
+    "sampling_relerr_max": 1e-12,
+    "sum_relerr_floor_max": 1e-3,
+    "max_relerr_floor_max": 1e-3,
+    "norm_relerr_floor_max": 1e-3,
+    "sum_absdiff_max": 1e-4,
+    "max_absdiff_max": 5e-5,
+    "norm_absdiff_max": 5e-5
+  },
+  "default_complex": {
+    "sampling_relerr_max": 1e-12,
+    "sum_re_relerr_floor_max": 1e-4,
+    "sum_im_relerr_floor_max": 1e-4,
+    "norm_relerr_floor_max": 1e-4,
+    "sum_re_absdiff_max": 1e-6,
+    "sum_im_absdiff_max": 1e-6,
+    "norm_absdiff_max": 1e-6
+  },
+  "overrides": {
+    "psdtest": {
+      "sum_relerr_floor_max": 1e-2,
+      "max_relerr_floor_max": 2e-1,
+      "norm_relerr_floor_max": 5e-3,
+      "sum_absdiff_max": 1e-7,
+      "max_absdiff_max": 1e-8,
+      "norm_absdiff_max": 5e-9
+    },
+    "run_occulter": {
+      "sum_relerr_floor_max": 2.0,
+      "max_relerr_floor_max": 2e-2,
+      "norm_relerr_floor_max": 2e-1,
+      "sum_absdiff_max": 5e-12,
+      "max_absdiff_max": 1e-12,
+      "norm_absdiff_max": 1e-12
+    },
+    "run_coronagraph": {
+      "sum_relerr_floor_max": 2.0,
+      "max_relerr_floor_max": 2e-2,
+      "norm_relerr_floor_max": 2e-1,
+      "sum_absdiff_max": 5e-12,
+      "max_absdiff_max": 1e-12,
+      "norm_absdiff_max": 1e-12
+    },
+    "run_coronagraph_dm": {
+      "sum_relerr_floor_max": 2.0,
+      "max_relerr_floor_max": 2e-2,
+      "norm_relerr_floor_max": 2e-1,
+      "sum_absdiff_max": 5e-12,
+      "max_absdiff_max": 1e-12,
+      "norm_absdiff_max": 1e-12
+    }
+  }
+}

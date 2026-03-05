@@ -59,6 +59,7 @@
   - `FILE` read/reuse and FITS writeout header behavior.
 - [x] Added deterministic RNG seeding in parity metric generation scripts.
 - [x] Expanded parity reports to include absolute error fields and denominator-floored relative metrics for high-contrast null regions.
+- [x] Added executable parity threshold policy (`docs/parity_thresholds.md` + `test/parity/thresholds/example_metrics_thresholds.json`) and CI gating for multi-example parity checks.
 
 ## Notes
 - `compat_mode` is constructor-only and resolves once to a policy type (`D-0017`).

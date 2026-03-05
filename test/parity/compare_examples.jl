@@ -107,4 +107,54 @@ open(joinpath(@__DIR__, "reports", "example_metrics_report.json"), "w") do io
     JSON3.write(io, report)
 end
 
+thresholds = JSON3.read(read(joinpath(@__DIR__, "thresholds", "example_metrics_thresholds.json"), String))
+default_real = Dict{String,Float64}(String(k) => Float64(v) for (k, v) in pairs(thresholds["default_real"]))
+default_complex = Dict{String,Float64}(String(k) => Float64(v) for (k, v) in pairs(thresholds["default_complex"]))
+overrides = Dict{String,Dict{String,Float64}}()
+for (k, v) in pairs(thresholds["overrides"])
+    overrides[String(k)] = Dict{String,Float64}(String(kk) => Float64(vv) for (kk, vv) in pairs(v))
+end
+
+function merged_thresholds(name::String, is_complex::Bool)
+    base = is_complex ? copy(default_complex) : copy(default_real)
+    if haskey(overrides, name)
+        merge!(base, overrides[name])
+    end
+    return base
+end
+
+failures = Dict{String,Any}()
+for (name, m_any) in report
+    m = Dict{String,Float64}(String(k) => Float64(v) for (k, v) in m_any)
+    is_complex = haskey(m, "sum_re_relerr")
+    th = merged_thresholds(name, is_complex)
+    bad = String[]
+    for (kmax, vmax) in th
+        metric = endswith(kmax, "_max") ? kmax[1:(end - 4)] : kmax
+        if !haskey(m, metric)
+            push!(bad, "missing metric $metric")
+            continue
+        end
+        if m[metric] > vmax
+            push!(bad, "$metric=$(m[metric]) > $vmax")
+        end
+    end
+    if !isempty(bad)
+        failures[name] = bad
+    end
+end
+
+summary = Dict(
+    "pass" => isempty(failures),
+    "num_cases" => length(report),
+    "num_failed" => length(failures),
+    "failures" => failures,
+    "report_file" => joinpath(@__DIR__, "reports", "example_metrics_report.json"),
+)
+open(joinpath(@__DIR__, "reports", "example_metrics_threshold_summary.json"), "w") do io
+    JSON3.write(io, summary)
+end
+
 println(report)
+println(summary)
+isempty(failures) || error("Example parity threshold check failed for $(length(failures)) case(s).")

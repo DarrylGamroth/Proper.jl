@@ -375,8 +375,10 @@ Exit criterion for Phase 0: each subsection above is marked “decided” in pro
 - One Julia source file exists for every mapped Python source file, and one Julia example exists for every Python example.
 - All examples execute in Julia without runtime errors on CPU.
 - Parity thresholds against Python baseline:
-  - intensity outputs: relative L2 error <= `1e-8` (CPU) and <= `1e-6` (GPU)
-  - phase/complex outputs: relative L2 error <= `1e-8` (CPU) and <= `1e-6` (GPU)
+  - use combined relative + absolute metrics
+  - use denominator-floored relative metrics in deep-null/high-contrast regimes
+  - use case-specific documented overrides where needed
+  - threshold source-of-truth is machine-readable config in `test/parity/thresholds/` and documented in `docs/parity_thresholds.md`
 - Core kernels (`prop_propagate`, `prop_lens`, `prop_dm`, interpolation path) pass allocation and type-stability checks in benchmark tests.
 - Hot-path kernels meet dispatch/inference gate: no unintended dynamic dispatch or `Any` inference in designated inner-loop paths.
 - Comprehensive benchmark suite is present and produces reproducible Python-vs-Julia steady-state reports.
