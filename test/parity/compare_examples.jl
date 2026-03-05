@@ -1,0 +1,90 @@
+using JSON3
+using LinearAlgebra
+using proper
+
+include(joinpath(@__DIR__, "..", "..", "examples", "simple_prescription.jl"))
+include(joinpath(@__DIR__, "..", "..", "examples", "simple_telescope.jl"))
+include(joinpath(@__DIR__, "..", "..", "examples", "hubble_simple.jl"))
+include(joinpath(@__DIR__, "..", "..", "examples", "microscope.jl"))
+include(joinpath(@__DIR__, "..", "..", "examples", "example_system.jl"))
+include(joinpath(@__DIR__, "..", "..", "examples", "psdtest.jl"))
+include(joinpath(@__DIR__, "..", "..", "examples", "talbot.jl"))
+include(joinpath(@__DIR__, "..", "..", "examples", "talbot_correct.jl"))
+include(joinpath(@__DIR__, "..", "..", "examples", "run_occulter.jl"))
+include(joinpath(@__DIR__, "..", "..", "examples", "run_coronagraph.jl"))
+include(joinpath(@__DIR__, "..", "..", "examples", "run_coronagraph_dm.jl"))
+include(joinpath(@__DIR__, "..", "..", "examples", "multi_example.jl"))
+
+function summarize(a, sampling)
+    if eltype(a) <: Complex
+        c = a[size(a, 1) ÷ 2 + 1, size(a, 2) ÷ 2 + 1]
+        return Dict(
+            "shape" => [size(a, 1), size(a, 2)],
+            "sampling" => float(sampling),
+            "sum_re" => float(sum(real, a)),
+            "sum_im" => float(sum(imag, a)),
+            "norm" => float(norm(a)),
+            "center_re" => float(real(c)),
+            "center_im" => float(imag(c)),
+        )
+    else
+        c = a[size(a, 1) ÷ 2 + 1, size(a, 2) ÷ 2 + 1]
+        return Dict(
+            "shape" => [size(a, 1), size(a, 2)],
+            "sampling" => float(sampling),
+            "sum" => float(sum(a)),
+            "norm" => float(norm(a)),
+            "max" => float(maximum(a)),
+            "center" => float(c),
+        )
+    end
+end
+
+cases = Dict{String,Tuple{Any,Any}}(
+    "simple_prescription" => simple_prescription(0.55e-6, 256),
+    "simple_telescope" => simple_telescope(0.55e-6, 256),
+    "hubble_simple" => hubble_simple(0.55e-6, 256, Dict("delta_sec" => 0.0)),
+    "microscope" => microscope(0.55e-6, 256, Dict("focus_offset" => 0.0)),
+    "example_system" => example_system(0.55e-6, 256),
+    "psdtest" => psdtest(0.55e-6, 256, Dict("usepsdmap" => true)),
+    "talbot" => talbot(0.5e-6, 128, Dict("diam" => 0.1, "period" => 0.04, "dist" => 0.0)),
+    "talbot_correct" => talbot_correct(0.5e-6, 128, Dict("diam" => 0.1, "period" => 0.04, "dist" => 0.0)),
+    "run_occulter" => run_occulter(0.55e-6, 256, Dict("occulter_type" => "GAUSSIAN")),
+    "run_coronagraph" => run_coronagraph(0.55e-6, 256, Dict("use_errors" => false, "occulter_type" => "GAUSSIAN")),
+    "run_coronagraph_dm" => run_coronagraph_dm(0.55e-6, 256, Dict("use_errors" => false, "use_dm" => false, "occulter_type" => "GAUSSIAN")),
+    "multi_example" => multi_example(0.55e-6, 256, Dict("use_dm" => false, "dm" => zeros(48, 48))),
+)
+
+jl = Dict(name => summarize(psf, samp) for (name, (psf, samp)) in cases)
+
+base = joinpath(@__DIR__, "baseline", "python334")
+py = JSON3.read(read(joinpath(base, "example_metrics.json"), String))
+
+function relerr(a::Real, b::Real)
+    den = max(abs(b), eps())
+    return abs(a - b) / den
+end
+
+report = Dict{String,Any}()
+for (name, j) in jl
+    p = py[name]
+    m = Dict{String,Any}()
+    m["sampling_relerr"] = relerr(j["sampling"], Float64(p["sampling"]))
+    if haskey(j, "sum")
+        m["sum_relerr"] = relerr(j["sum"], Float64(p["sum"]))
+        m["max_relerr"] = relerr(j["max"], Float64(p["max"]))
+        m["norm_relerr"] = relerr(j["norm"], Float64(p["norm"]))
+    else
+        m["sum_re_relerr"] = relerr(j["sum_re"], Float64(p["sum_re"]))
+        m["sum_im_relerr"] = relerr(j["sum_im"], Float64(p["sum_im"]))
+        m["norm_relerr"] = relerr(j["norm"], Float64(p["norm"]))
+    end
+    report[name] = m
+end
+
+mkpath(joinpath(@__DIR__, "reports"))
+open(joinpath(@__DIR__, "reports", "example_metrics_report.json"), "w") do io
+    JSON3.write(io, report)
+end
+
+println(report)
