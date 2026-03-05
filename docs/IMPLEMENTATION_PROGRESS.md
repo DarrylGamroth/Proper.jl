@@ -41,7 +41,7 @@
 - [x] Added parity harness skeleton under `test/parity/`.
 - [x] Added benchmark scripts for Python steady-state, Julia steady-state, and Julia cold-start.
 - [x] Added benchmark summarization script and driver shell script.
-- [ ] Port example internals to fully match upstream Python physics.
+- [x] Port example internals to fully match upstream Python physics (all 23 example filenames now contain translated prescription/demo logic).
 - [x] Wire benchmark/parity scripts into CI and publish artifacts.
 
 ## Next Workstream (Phase 8/9)
