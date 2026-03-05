@@ -114,3 +114,10 @@ Status: Pending
     - `simple_prescription_256`: `7.00e6 ns`, `4,206,240 B`
     - `psdtest_128`: `4.05e6 ns`, `2,248,328 B`
     - `simple_telescope_256`: `1.60e7 ns`, `5,264,464 B`
+- 2026-03-05: benchmark harness corrected to use Python PROPER workload parity (same 512-grid propagation sequence as Julia benchmark).
+  - `bench/python/run.py` now imports `../proper_v3.3.4_python` and executes `prop_begin -> prop_circular_aperture -> prop_lens -> prop_propagate -> prop_end`.
+  - `scripts/benchmark_all.sh` now prefers `.venv-parity/bin/python` for baseline execution.
+  - updated steady-state comparison after harness fix:
+    - Python median: `8.6305942e7 ns`
+    - Julia median: `2.7026525e7 ns`
+    - Python/Julia ratio: `3.193`
