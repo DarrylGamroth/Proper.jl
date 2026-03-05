@@ -1,4 +1,4 @@
-using proper
+using Proper
 using Plots
 using Statistics
 

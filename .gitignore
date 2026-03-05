@@ -1,3 +1,4 @@
+Manifest.toml
 # Generated benchmark artifacts
 bench/reports/*.json
 

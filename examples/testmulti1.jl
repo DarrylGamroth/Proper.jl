@@ -1,4 +1,4 @@
-using proper
+using Proper
 using Statistics
 include(joinpath(@__DIR__, "multi_example.jl"))
 

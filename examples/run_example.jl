@@ -1,4 +1,4 @@
-using proper
+using Proper
 include(joinpath(@__DIR__, "example_system.jl"))
 
 function run_example(wavelength::Real, gridsize::Integer)

@@ -50,7 +50,7 @@
 ## Julia Target Architecture (Idiomatic + GPU-Capable)
 ### 1. Public API and Module Layout
 - Keep one Julia file per Python source file, same basename (except package entrypoint).
-- Top-level module file (`src/proper.jl`) includes and re-exports per-file functions.
+- Top-level module file (`src/Proper.jl`) includes and re-exports per-file functions.
 - Preserve PROPER function names (`prop_begin`, `prop_lens`, etc.) for compatibility.
 - Add optional higher-level idiomatic aliases later (non-breaking).
 - Use compatibility wrappers at file boundaries, with shared typed internals (not duplicated Python-structure logic in every file).
@@ -498,7 +498,7 @@ Note: mapping below guarantees file-level traceability; implementation may and s
 | Python file | Julia file | Port notes |
 | --- | --- | --- |
 | `proper/.use_ffti` | `data/.use_ffti` | Compatibility marker; reassess necessity |
-| `proper/__init__.py` | `src/proper.jl` | Package entrypoint and exports |
+| `proper/__init__.py` | `src/Proper.jl` | Package entrypoint and exports |
 | `proper/cubic_conv_c.c` | `deps/src/cubic_conv_c.c` | Optional native kernel (CPU fast path) |
 | `proper/cubic_conv_threaded_c.c` | `deps/src/cubic_conv_threaded_c.c` | Optional native kernel (CPU fast path) |
 | `proper/influence_dm5v2_1.fits` | `data/influence_dm5v2_1.fits` | Reference data asset |

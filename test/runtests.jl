@@ -1,5 +1,5 @@
 using Test
-using proper
+using Proper
 
 include("test_phase1_foundation.jl")
 include("test_file_mapping.jl")

@@ -1,6 +1,6 @@
 using BenchmarkTools
 using JSON3
-using proper
+using Proper
 include(joinpath(@__DIR__, "..", "..", "common", "workloads.jl"))
 include(joinpath(@__DIR__, "..", "..", "common", "metadata.jl"))
 using .Workloads

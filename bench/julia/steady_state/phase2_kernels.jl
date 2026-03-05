@@ -1,6 +1,6 @@
 using BenchmarkTools
 using JSON3
-using proper
+using Proper
 
 function bench_phase2_kernels()
     wf_q = prop_begin(2.4, 0.55e-6, 512; beam_diam_fraction=0.5)

@@ -1,4 +1,4 @@
-using proper
+using Proper
 
 function telescope(wfo::WaveFront, f_lens::Real, use_errors::Bool, use_dm::Bool=false)
     if use_errors

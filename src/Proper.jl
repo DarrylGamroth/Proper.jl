@@ -1,4 +1,4 @@
-module proper
+module Proper
 
 using LinearAlgebra
 using FFTW
@@ -130,4 +130,4 @@ export prop_get_nyquistsampling, prop_get_refradius
 export prop_run, prop_run_multi
 export switch_set
 
-end # module proper
+end # module Proper

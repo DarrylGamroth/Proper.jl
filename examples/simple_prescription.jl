@@ -1,4 +1,4 @@
-using proper
+using Proper
 using Plots
 include(joinpath(@__DIR__, "_shared.jl"))
 

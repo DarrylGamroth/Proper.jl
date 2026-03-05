@@ -1,4 +1,4 @@
-using proper
+using Proper
 include(joinpath(@__DIR__, "run_occulter.jl"))
 
 function occulter_demo()

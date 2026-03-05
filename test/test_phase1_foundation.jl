@@ -1,8 +1,8 @@
 @testset "Phase 1 foundation" begin
     ctx_default = RunContext()
 
-    @test proper.interp_style(Matrix{Float64}) isa CubicInterpStyle
-    @test proper.interp_style(AbstractMatrix{Float64}) isa GenericInterpStyle
+    @test Proper.interp_style(Matrix{Float64}) isa CubicInterpStyle
+    @test Proper.interp_style(AbstractMatrix{Float64}) isa GenericInterpStyle
     ctx_f32 = RunContext(Matrix{Float32})
     @test ctx_f32.interp isa CubicInterpStyle
 

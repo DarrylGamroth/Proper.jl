@@ -1,4 +1,4 @@
-using proper
+using Proper
 
 function telescope_dm(wfo::WaveFront, f_lens::Real, use_errors::Bool, use_dm::Bool)
     obj_map = nothing

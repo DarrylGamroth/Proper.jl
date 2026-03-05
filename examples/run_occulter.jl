@@ -1,4 +1,4 @@
-using proper
+using Proper
 include(joinpath(@__DIR__, "coronagraph.jl"))
 
 function run_occulter(wavelength::Real, grid_size::Integer, passvalue=Dict("occulter_type" => "GAUSSIAN"))

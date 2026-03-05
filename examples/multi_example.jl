@@ -1,4 +1,4 @@
-using proper
+using Proper
 using Plots
 
 function multi_example(lambda_m::Real, n::Integer, passvalue=Dict("use_dm" => false, "dm" => zeros(48, 48)); kwargs...)

@@ -1,4 +1,4 @@
-using proper
+using Proper
 include(joinpath(@__DIR__, "telescope.jl"))
 include(joinpath(@__DIR__, "coronagraph.jl"))
 

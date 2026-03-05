@@ -1,4 +1,4 @@
-using proper
+using Proper
 include(joinpath(@__DIR__, "multi_example.jl"))
 
 function testmulti2()

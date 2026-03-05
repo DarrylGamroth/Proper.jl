@@ -1,4 +1,4 @@
-using proper
+using Proper
 using Plots
 include(joinpath(@__DIR__, "_shared.jl"))
 include(joinpath(@__DIR__, "run_coronagraph_dm.jl"))

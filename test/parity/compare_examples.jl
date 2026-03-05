@@ -1,7 +1,7 @@
 using JSON3
 using LinearAlgebra
 using Random
-using proper
+using Proper
 
 include(joinpath(@__DIR__, "..", "..", "examples", "simple_prescription.jl"))
 include(joinpath(@__DIR__, "..", "..", "examples", "simple_telescope.jl"))

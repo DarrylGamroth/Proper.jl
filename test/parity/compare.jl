@@ -1,7 +1,7 @@
 using DelimitedFiles
 using JSON3
 using LinearAlgebra
-using proper
+using Proper
 
 function run_simple_case()
     wf = prop_begin(2.4, 0.55e-6, 256; beam_diam_fraction=0.5)

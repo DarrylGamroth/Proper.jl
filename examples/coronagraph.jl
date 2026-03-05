@@ -1,4 +1,4 @@
-using proper
+using Proper
 using Plots
 
 function coronagraph(wfo::WaveFront, f_lens::Real, occulter_type::AbstractString, diam::Real)

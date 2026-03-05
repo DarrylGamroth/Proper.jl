@@ -1,5 +1,5 @@
 using JSON3
-using proper
+using Proper
 include(joinpath(@__DIR__, "..", "..", "common", "metadata.jl"))
 using .BenchMetadata
 
