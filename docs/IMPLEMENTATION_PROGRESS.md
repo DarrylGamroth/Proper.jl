@@ -45,8 +45,8 @@
 - [x] Wire benchmark/parity scripts into CI and publish artifacts.
 
 ## Next Workstream (Phase 8/9)
-- [ ] Replace fallback propagation internals with parity implementations.
-- [ ] Replace fallback PSD/Zernike/polygon/segmented-optics implementations with parity implementations.
+- [x] Replace fallback propagation internals with parity implementations.
+- [~] Replace fallback PSD/Zernike/polygon/segmented-optics implementations with parity implementations (Zernike/polygon/PSD done; segmented optics still pending).
 - [ ] Run full 23-example parity report and close threshold gaps in `:python334`.
 - [ ] Perform MATLAB/manual semantic reconciliation on known disagreement hotspots.
 

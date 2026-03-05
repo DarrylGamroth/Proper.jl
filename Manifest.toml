@@ -2,7 +2,7 @@
 
 julia_version = "1.12.5"
 manifest_format = "2.0"
-project_hash = "0431177319eda6682dcdbed7f628be578a8886d1"
+project_hash = "daef7a9b0a4b91777acf9bae43b956409355a1bb"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -389,7 +389,7 @@ uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
 version = "17.7.0+0"
 
 [[deps.proper]]
-deps = ["BenchmarkTools", "FFTW", "FITSIO", "JSON3", "LinearAlgebra", "Random", "Serialization"]
+deps = ["BenchmarkTools", "FFTW", "FITSIO", "JSON3", "LinearAlgebra", "Random", "Serialization", "Statistics"]
 path = "."
 uuid = "0686a737-3bdd-44da-9bf7-6692cf630078"
 version = "0.1.0"

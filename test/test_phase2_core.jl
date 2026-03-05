@@ -1,4 +1,6 @@
 using Test
+using Random
+using Statistics
 
 @testset "Phase 2 core kernels" begin
     wf = prop_begin(1.0, 500e-9, 32)
@@ -99,7 +101,7 @@ end
 
     m1 = prop_polygon(wf, 6, 0.2)
     m2 = prop_irregular_polygon(wf, [-0.1, 0.1, 0.1, -0.1], [-0.1, -0.1, 0.1, 0.1])
-    m3 = prop_rounded_rectangle(wf, 0.2, 0.3)
+    m3 = prop_rounded_rectangle(wf, 0.05, 0.2, 0.3)
     @test size(m1) == size(wf.field)
     @test size(m2) == size(wf.field)
     @test size(m3) == size(wf.field)
@@ -112,4 +114,35 @@ end
     @test libcconvthread(rand(8, 8), 4.2, 3.7) isa Real
     @test size(libszoom(rand(8, 8), 2.0), 1) == 16
     @test size(prop_szoom(rand(8, 8), 2.0), 1) == 16
+end
+
+@testset "Phase 8 geometry and zernike parity groundwork" begin
+    wf = prop_begin(1.0, 500e-9, 64)
+
+    # Noll ordering sanity
+    desc = prop_noll_zernikes(6)
+    @test desc[1] == (n=0, m=0, trig=:none)
+    @test desc[2].n == 1 && desc[2].m == 1
+    @test desc[4] == (n=2, m=0, trig=:none)
+
+    # Zernike map generation and application
+    zmap = prop_zernikes(wf, [4, 5], [1e-9, 2e-9]; no_apply=true)
+    @test size(zmap) == size(wf.field)
+
+    coeff, fitmap = prop_fit_zernikes(zmap, ones(size(zmap)...), 32.0, 6; fit=true)
+    @test length(coeff) == 6
+    @test size(fitmap) == size(zmap)
+
+    # Polygon/irregular polygon/rounded rectangle masks should be non-trivial.
+    mpoly = prop_polygon(wf, 6, 0.2)
+    mirr = prop_irregular_polygon(wf, [-0.2, 0.2, 0.2, -0.2], [-0.2, -0.2, 0.2, 0.2])
+    mround = prop_rounded_rectangle(wf, 0.05, 0.3, 0.2)
+    @test 0.0 < mean(mpoly) < 1.0
+    @test 0.0 < mean(mirr) < 1.0
+    @test 0.0 < mean(mround) < 1.0
+
+    # PSD map generation should produce finite-valued map.
+    dmap = prop_psd_errormap(wf, 1e-18, 10.0, 3.0; no_apply=true, rng=MersenneTwister(1))
+    @test size(dmap) == size(wf.field)
+    @test all(isfinite, dmap)
 end

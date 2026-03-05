@@ -2,6 +2,7 @@ module proper
 
 using LinearAlgebra
 using FFTW
+using Statistics
 
 include("core/policy.jl")
 include("core/traits.jl")
