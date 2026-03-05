@@ -319,6 +319,47 @@ Exit criterion for Phase 0: each subsection above is marked “decided” in pro
   - Acceptance criteria section is fully satisfied.
   - Project is ready for tagged pre-release.
 
+### Phase 8: Full Parity Closure (Python 3.3.4 Baseline)
+- Goals:
+  - Eliminate placeholder/fallback behaviors in physics-critical modules.
+  - Achieve numerical parity against executable Python baseline across full example suite.
+- Work items:
+  - Replace fallback implementations with parity implementations for:
+    - propagation internals (`prop_propagate`, `prop_ptp`, `prop_stw`, `prop_wts`, `prop_select_propagator`)
+    - PSD/map synthesis and transforms (`prop_psd_errormap`, interpolation/cubic-conv paths)
+    - Zernike/fit stack (`prop_zernikes`, `prop_noll_zernikes`, `prop_fit_zernikes`, related helpers)
+    - polygon/segmented optics paths (`prop_polygon`, `prop_irregular_polygon`, `prop_hex_*`, rounded geometry)
+  - Run parity harness on all 23 examples for both `compat_mode=:python334` and `compat_mode=:corrected`.
+  - Add per-module parity fixtures and failure triage reports with decision-log links.
+  - Close parity gaps by updating implementation and/or explicitly documenting accepted divergence.
+- Deliverables:
+  - No physics-critical module relies on placeholder/fallback behavior.
+  - Full parity report for all examples with provenance and threshold outcomes.
+- Exit criteria:
+  - All example parity thresholds are met in `:python334` mode.
+  - Any remaining `:corrected` deltas are intentional and documented in `docs/compat_decisions.md`.
+  - No unresolved high-severity parity gaps remain.
+
+### Phase 9: MATLAB Semantic Reconciliation And Final Validation
+- Goals:
+  - Reconcile known Python translation defects using MATLAB/manual semantics where applicable.
+  - Prepare final release-quality validation matrix and migration notes.
+- Work items:
+  - Audit known disagreement hotspots against MATLAB source/manual intent:
+    - `prop_resamplemap` shift semantics
+    - `prop_end` extract indexing semantics
+    - `prop_state` restore semantics
+    - `prop_psd_errormap` backend-toggle/side-effect behavior
+  - Promote or retain corrected behavior per accepted decisions and compat-mode policy.
+  - Add explicit MATLAB-semantic regression tests (non-executable reference checks).
+  - Finalize migration guide for users moving from Python/MATLAB to Julia.
+- Deliverables:
+  - Final semantic reconciliation report (Python parity + MATLAB/manual rationale).
+  - Release checklist signed off with decision references.
+- Exit criteria:
+  - Python parity baseline is green and MATLAB/manual-backed corrections are documented and tested.
+  - Release notes clearly describe compatibility guarantees and corrected-mode behavior.
+
 ## Example Parity Config Matrix (Coverage Plan)
 | Area | Axis | Permutations | Evidence | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
@@ -607,3 +648,5 @@ Note: mapping below guarantees file-level traceability; implementation may and s
 4. Port map/PSD/interpolation stack and run `psdtest` parity.
 5. Port coronagraph and DM stack and run coronagraph + DM + multi-run examples.
 6. Enable and validate GPU backend for selected core examples, then expand to full suite.
+7. Execute full parity closure pass (replace all fallback physics paths and close Python parity gaps).
+8. Perform MATLAB/manual semantic reconciliation and finalize release validation.

@@ -6,13 +6,15 @@
 
 ## Phase Checklist
 - [x] Phase 0: Preflight decisions and contracts accepted
-- [~] Phase 1: Foundation and infrastructure (in progress)
+- [x] Phase 1: Foundation and infrastructure
 - [~] Phase 2: Core wavefront/math kernels (in progress)
-- [ ] Phase 3: I/O and state systems
-- [ ] Phase 4: Apertures/masks/shapes
-- [ ] Phase 5: Advanced propagation/DM/maps
+- [~] Phase 3: I/O and state systems (in progress)
+- [~] Phase 4: Apertures/masks/shapes (in progress)
+- [~] Phase 5: Advanced propagation/DM/maps (in progress)
 - [~] Phase 6: Parity harness and examples (in progress)
 - [~] Phase 7: Benchmarks, CI, release prep (in progress)
+- [ ] Phase 8: Full parity closure (Python baseline)
+- [ ] Phase 9: MATLAB semantic reconciliation and final validation
 
 ## Current Workstream (Phase 1)
 - [x] Core policy/trait/context types created.
@@ -36,7 +38,13 @@
 - [x] Added benchmark scripts for Python steady-state, Julia steady-state, and Julia cold-start.
 - [x] Added benchmark summarization script and driver shell script.
 - [ ] Port example internals to fully match upstream Python physics.
-- [ ] Wire benchmark/parity scripts into CI and publish artifacts.
+- [x] Wire benchmark/parity scripts into CI and publish artifacts.
+
+## Next Workstream (Phase 8/9)
+- [ ] Replace fallback propagation internals with parity implementations.
+- [ ] Replace fallback PSD/Zernike/polygon/segmented-optics implementations with parity implementations.
+- [ ] Run full 23-example parity report and close threshold gaps in `:python334`.
+- [ ] Perform MATLAB/manual semantic reconciliation on known disagreement hotspots.
 
 ## Notes
 - `compat_mode` is constructor-only and resolves once to a policy type (`D-0017`).
