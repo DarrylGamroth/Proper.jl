@@ -52,6 +52,16 @@ using Random
         @test pointer(fws.rho2) == rhoptr
         @test fws.forward_plan !== nothing
         @test fws.backward_plan !== nothing
+
+        # Wavefront-owned mask buffer is reused by aperture wrappers.
+        wfmask = prop_begin(1.0, 500e-9, 32)
+        Proper.prop_circular_aperture(wfmask, 0.2)
+        mws = wfmask.workspace.mask
+        mptr = pointer(mws.mask)
+        Proper.prop_circular_aperture(wfmask, 0.2)
+        @test pointer(mws.mask) == mptr
+        Proper.prop_circular_aperture(wfmask, 0.2) # warmup
+        @test (@allocated Proper.prop_circular_aperture(wfmask, 0.2)) < 50_000
     end
 
     @testset "Mutating wrapper parity" begin

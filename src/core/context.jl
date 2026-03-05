@@ -40,4 +40,5 @@ end
 @inline fft_style(ctx::RunContext) = ctx.fft
 @inline interp_style(ctx::RunContext) = ctx.interp
 @inline interp_workspace(ctx::RunContext) = ctx.workspace.interp
+@inline mask_workspace(ctx::RunContext) = ctx.workspace.mask
 @inline fft_workspace(ctx::RunContext) = ctx.workspace.fft
