@@ -313,9 +313,33 @@ function _build_psd_map_shifted!(
     return dmap
 end
 
+@inline function _build_psd_map_default!(
+    dmap::Matrix{T},
+    wf::WaveFront{T,<:StridedMatrix{Complex{T}}},
+    amp::Real,
+    b::Real,
+    c::Real,
+    opts::PSDErrorMapOptions{T},
+) where {T<:AbstractFloat}
+    _build_psd_map_shifted!(dmap, wf, amp, b, c, opts, wf.workspace.fft)
+    return true
+end
+
+@inline function _build_psd_map_default!(
+    dmap::Matrix{T},
+    wf::WaveFront{T},
+    amp::Real,
+    b::Real,
+    c::Real,
+    opts::PSDErrorMapOptions{T},
+) where {T<:AbstractFloat}
+    copyto!(dmap, _build_psd_map_unshifted(wf, amp, b, c, opts))
+    return false
+end
+
 function _prop_psd_errormap!(
     dmap::Matrix{T},
-    wf::WaveFront,
+    wf::WaveFront{T},
     amp::Real,
     b::Real,
     c::Real,
@@ -325,15 +349,10 @@ function _prop_psd_errormap!(
     size(dmap) == (n, n) || throw(ArgumentError("output size must match wavefront grid"))
     dx = wf.sampling_m
     fpath = opts.file !== nothing && isfile(opts.file) ? opts.file : nothing
-    map_is_shifted = false
+    map_is_shifted::Bool = false
 
     if fpath === nothing
-        if wf.field isa StridedMatrix
-            _build_psd_map_shifted!(dmap, wf, amp, b, c, opts, wf.workspace.fft)
-            map_is_shifted = true
-        else
-            copyto!(dmap, _build_psd_map_unshifted(wf, amp, b, c, opts))
-        end
+        map_is_shifted = _build_psd_map_default!(dmap, wf, amp, b, c, opts)
     else
         copyto!(dmap, _read_psd_map(wf, fpath, T))
     end
@@ -420,6 +439,8 @@ function prop_psd_errormap!(
     c::Real;
     kwargs...,
 ) where {T<:AbstractFloat}
+    Twf = real(eltype(wf.field))
+    T == Twf || throw(ArgumentError("output element type must match wavefront real type ($Twf)"))
     opts = PSDErrorMapOptions(T, kwargs)
     return _prop_psd_errormap!(dmap, wf, amp, b, c, opts)
 end

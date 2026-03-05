@@ -31,6 +31,17 @@ using Random
         prop_propagate(wf_prop, 0.01, ctx_prop) # warmup
         @test (@allocated prop_propagate(wf_prop, 0.01, ctx_prop)) < 2_000_000
 
+        wf_wts = prop_begin(1.0, 500e-9, 64)
+        @test (@inferred prop_wts(wf_wts, 0.01, ctx_prop)) === wf_wts
+        prop_wts(wf_wts, 0.01, ctx_prop) # warmup
+        @test (@allocated prop_wts(wf_wts, 0.01, ctx_prop)) < 2_000_000
+
+        wf_stw = prop_begin(1.0, 500e-9, 64)
+        wf_stw.reference_surface = Proper.SPHERICAL
+        @test (@inferred prop_stw(wf_stw, 0.01, ctx_prop)) === wf_stw
+        prop_stw(wf_stw, 0.01, ctx_prop) # warmup
+        @test (@allocated prop_stw(wf_stw, 0.01, ctx_prop)) < 2_000_000
+
         RT = typeof(abs2(zero(eltype(wf_prop.field))))
         iout = similar(wf_prop.field, RT, 64, 64)
         @test (@inferred Proper.prop_end!(iout, wf_prop)) === iout

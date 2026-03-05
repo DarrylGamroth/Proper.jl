@@ -104,6 +104,42 @@ end
     return out
 end
 
+@inline function _prop_end_copy_noabs!(
+    out::StridedMatrix{<:Complex},
+    field::StridedMatrix{<:Complex},
+    r0::Int,
+    c0::Int,
+)
+    return _copy_shifted_complex!(out, field, r0, c0)
+end
+
+@inline function _prop_end_copy_noabs!(
+    out::AbstractMatrix,
+    field::AbstractMatrix{<:Complex},
+    r0::Int,
+    c0::Int,
+)
+    return _copy_shifted_complex_generic!(out, field, r0, c0)
+end
+
+@inline function _prop_end_copy_intensity!(
+    out::StridedMatrix,
+    field::StridedMatrix{<:Complex},
+    r0::Int,
+    c0::Int,
+)
+    return _copy_shifted_intensity!(out, field, r0, c0)
+end
+
+@inline function _prop_end_copy_intensity!(
+    out::AbstractMatrix,
+    field::AbstractMatrix{<:Complex},
+    r0::Int,
+    c0::Int,
+)
+    return _copy_shifted_intensity_generic!(out, field, r0, c0)
+end
+
 """Finalize propagation into a preallocated output buffer."""
 function prop_end!(
     out::AbstractMatrix,
@@ -117,17 +153,11 @@ function prop_end!(
 
     if noabs
         eltype(out) <: Complex || throw(ArgumentError("output eltype must be complex when noabs=true"))
-        if out isa StridedMatrix && wf.field isa StridedMatrix
-            return _copy_shifted_complex!(out, wf.field, r0, c0)
-        end
-        return _copy_shifted_complex_generic!(out, wf.field, r0, c0)
+        return _prop_end_copy_noabs!(out, wf.field, r0, c0)
     end
 
     eltype(out) <: Number || throw(ArgumentError("output eltype must be numeric"))
-    if out isa StridedMatrix && wf.field isa StridedMatrix
-        return _copy_shifted_intensity!(out, wf.field, r0, c0)
-    end
-    return _copy_shifted_intensity_generic!(out, wf.field, r0, c0)
+    return _prop_end_copy_intensity!(out, wf.field, r0, c0)
 end
 
 """Finalize propagation into caller-provided buffer and return output plus sampling."""

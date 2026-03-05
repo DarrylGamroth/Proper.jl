@@ -63,14 +63,14 @@ Status: Completed
   - reduce repeated `prop_end` allocations in batched workflows.
 
 ### O4: Boundary Normalization and Function-Barrier Sweep
-Status: Pending
+Status: Completed
 - Audit remaining keyword-heavy wrappers and move option parsing out of hot kernels.
 - Add explicit function barriers where mixed-type inputs currently reach loops.
 - Targets:
   - eliminate residual `Any` paths in hot-stack `@code_warntype`.
 
 ### O5: Trait-Specialized Fast Paths
-Status: Pending
+Status: Completed
 - Convert runtime `isa` branches in hot kernels to method-level dispatch where practical.
 - Keep generic fallback methods for non-strided / non-FFTW backends.
 - Targets:
@@ -167,3 +167,12 @@ Status: Completed
     - wrapper allocation threshold: `< 100_000` bytes (64-grid test)
     - mutating allocation threshold: `< 10_000` bytes (64-grid test)
   - updated refactor benchmark report schema to include PSD wrapper/mutating pair + hotspot entries.
+- 2026-03-05: O4/O5 completed (first dispatch-focused pass).
+  - replaced runtime `isa` branching in `prop_wts`/`prop_stw` with FFT-style + field-type dispatch barriers.
+  - replaced runtime strided checks in `prop_end!` with dispatch-routed copy helpers (`noabs` and intensity paths).
+  - replaced runtime strided check in PSD map generation with dispatch (`_build_psd_map_default!`).
+  - added inference/allocation gates for `prop_wts` and `prop_stw` in `test/test_r5_performance_gates.jl`.
+  - post-pass benchmark snapshot (`scripts/benchmark_all.sh`):
+    - Python median: `8.4526305e7 ns`
+    - Julia median: `2.6214626e7 ns`
+    - Python/Julia ratio: `3.224`
