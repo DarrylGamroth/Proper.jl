@@ -48,9 +48,17 @@
 - [x] Replace fallback propagation internals with parity implementations.
 - [~] Replace fallback PSD/Zernike/polygon/segmented-optics implementations with parity implementations (Zernike/polygon/PSD/segmented optics implemented; parity validation pass still pending).
 - [x] Replace interpolation and zoom placeholders with cubic-convolution implementations (`libcconv`, `libcconvthread`, `libszoom`, `prop_cubic_conv`).
-- [~] Run full 23-example parity report and close threshold gaps in `:python334` (real Python baseline wiring enabled; `simple_case` currently at relative_l2 ≈ 4.2e-3 after `prop_end` centering fix).
-- [~] Run full 23-example parity report and close threshold gaps in `:python334` (multi-example metrics harness added; good agreement for `simple_prescription/simple_telescope/microscope/example_system/talbot/talbot_correct`; moderate gap remains for `hubble_simple`; large gaps remain for `psdtest` and `run_coronagraph*` family).
+- [~] Run full 23-example parity report and close threshold gaps in `:python334` (multi-example metrics harness now reports both relative and absolute deltas; most examples are tightly matched in relative terms, and residual `run_occulter/run_coronagraph*` mismatches are deep-null absolute deltas on the order of `1e-12` sum and `1e-14` peak intensity).
 - [ ] Perform MATLAB/manual semantic reconciliation on known disagreement hotspots.
+
+## Latest Pass (2026-03-04)
+- [x] Corrected `prop_sinc` to Python-compatible `sin(x)/x`.
+- [x] Upgraded `prop_psd_errormap` parity behavior:
+  - Python-compatible rotation/inclination quirk handling.
+  - Python-compatible `MAX_FREQUENCY` behavior.
+  - `FILE` read/reuse and FITS writeout header behavior.
+- [x] Added deterministic RNG seeding in parity metric generation scripts.
+- [x] Expanded parity reports to include absolute error fields and denominator-floored relative metrics for high-contrast null regions.
 
 ## Notes
 - `compat_mode` is constructor-only and resolves once to a policy type (`D-0017`).

@@ -56,6 +56,8 @@ def main():
     import run_coronagraph_dm
     import multi_example
 
+    np.random.seed(12345)
+
     cases = {
         "simple_prescription": simple_prescription.simple_prescription(0.55e-6, 256),
         "simple_telescope": simple_telescope.simple_telescope(0.55e-6, 256),

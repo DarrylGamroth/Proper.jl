@@ -1,5 +1,6 @@
 using JSON3
 using LinearAlgebra
+using Random
 using proper
 
 include(joinpath(@__DIR__, "..", "..", "examples", "simple_prescription.jl"))
@@ -40,6 +41,8 @@ function summarize(a, sampling)
     end
 end
 
+Random.seed!(12345)
+
 cases = Dict{String,Tuple{Any,Any}}(
     "simple_prescription" => simple_prescription(0.55e-6, 256),
     "simple_telescope" => simple_telescope(0.55e-6, 256),
@@ -65,6 +68,11 @@ function relerr(a::Real, b::Real)
     return abs(a - b) / den
 end
 
+function relerr_floor(a::Real, b::Real; floor::Float64=1e-12)
+    den = max(abs(b), floor)
+    return abs(a - b) / den
+end
+
 report = Dict{String,Any}()
 for (name, j) in jl
     p = py[name]
@@ -74,10 +82,22 @@ for (name, j) in jl
         m["sum_relerr"] = relerr(j["sum"], Float64(p["sum"]))
         m["max_relerr"] = relerr(j["max"], Float64(p["max"]))
         m["norm_relerr"] = relerr(j["norm"], Float64(p["norm"]))
+        m["sum_absdiff"] = abs(j["sum"] - Float64(p["sum"]))
+        m["max_absdiff"] = abs(j["max"] - Float64(p["max"]))
+        m["norm_absdiff"] = abs(j["norm"] - Float64(p["norm"]))
+        m["sum_relerr_floor"] = relerr_floor(j["sum"], Float64(p["sum"]))
+        m["max_relerr_floor"] = relerr_floor(j["max"], Float64(p["max"]))
+        m["norm_relerr_floor"] = relerr_floor(j["norm"], Float64(p["norm"]))
     else
         m["sum_re_relerr"] = relerr(j["sum_re"], Float64(p["sum_re"]))
         m["sum_im_relerr"] = relerr(j["sum_im"], Float64(p["sum_im"]))
         m["norm_relerr"] = relerr(j["norm"], Float64(p["norm"]))
+        m["sum_re_absdiff"] = abs(j["sum_re"] - Float64(p["sum_re"]))
+        m["sum_im_absdiff"] = abs(j["sum_im"] - Float64(p["sum_im"]))
+        m["norm_absdiff"] = abs(j["norm"] - Float64(p["norm"]))
+        m["sum_re_relerr_floor"] = relerr_floor(j["sum_re"], Float64(p["sum_re"]))
+        m["sum_im_relerr_floor"] = relerr_floor(j["sum_im"], Float64(p["sum_im"]))
+        m["norm_relerr_floor"] = relerr_floor(j["norm"], Float64(p["norm"]))
     end
     report[name] = m
 end

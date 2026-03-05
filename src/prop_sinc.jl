@@ -1,4 +1,5 @@
-"""Normalized sinc: sin(pi*x)/(pi*x)."""
+"""Sinc interpolation kernel: sin(x)/x with sinc(0)=1."""
 function prop_sinc(x)
-    return iszero(x) ? one(float(x)) : sinpi(float(x)) / (pi * float(x))
+    xf = float(x)
+    return iszero(xf) ? one(xf) : sin(xf) / xf
 end
