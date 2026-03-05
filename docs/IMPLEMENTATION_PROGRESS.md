@@ -48,7 +48,7 @@
 - [x] Replace fallback propagation internals with parity implementations.
 - [~] Replace fallback PSD/Zernike/polygon/segmented-optics implementations with parity implementations (Zernike/polygon/PSD/segmented optics implemented; parity validation pass still pending).
 - [x] Replace interpolation and zoom placeholders with cubic-convolution implementations (`libcconv`, `libcconvthread`, `libszoom`, `prop_cubic_conv`).
-- [~] Run full 23-example parity report and close threshold gaps in `:python334` (real Python baseline wiring enabled; `simple_case` currently at relative_l2 ≈ 1.41, investigation in progress).
+- [~] Run full 23-example parity report and close threshold gaps in `:python334` (real Python baseline wiring enabled; `simple_case` currently at relative_l2 ≈ 4.2e-3 after `prop_end` centering fix).
 - [ ] Perform MATLAB/manual semantic reconciliation on known disagreement hotspots.
 
 ## Notes

@@ -1,6 +1,6 @@
 """Finalize propagation and return either intensity or complex field plus sampling."""
 function prop_end(wf::WaveFront; noabs::Bool=false, extract::Union{Nothing,Int}=nothing)
-    out = noabs ? wf.field : abs2.(wf.field)
+    out = noabs ? prop_shift_center(wf.field) : prop_shift_center(abs2.(wf.field))
     if extract !== nothing
         n = extract
         ny, nx = size(out)
