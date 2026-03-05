@@ -59,7 +59,7 @@ using Random
         @test m isa AbstractMatrix
         @test size(m) == size(wf_psd.field)
         prop_psd_errormap(wf_psd, 3.29e-23, 212.26, 7.8; no_apply=true, rng=MersenneTwister(7)) # warmup
-        @test (@allocated prop_psd_errormap(wf_psd, 3.29e-23, 212.26, 7.8; no_apply=true, rng=MersenneTwister(7))) < 500_000_000
+        @test (@allocated prop_psd_errormap(wf_psd, 3.29e-23, 212.26, 7.8; no_apply=true, rng=MersenneTwister(7))) < 2_000_000
     end
 
     @testset "Geometry mask hotspots" begin

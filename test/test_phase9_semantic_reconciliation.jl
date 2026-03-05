@@ -79,6 +79,16 @@ using Random
         end
     end
 
+    @testset "prop_psd_errormap amplitude map is normalized even with NO_APPLY" begin
+        wf = prop_begin(1.0, 500e-9, 32)
+        field0 = copy(wf.field)
+        amp_target = 0.9
+        dmap = prop_psd_errormap(wf, 1e-18, 10.0, 3.0; AMPLITUDE=amp_target, no_apply=true, rng=MersenneTwister(9))
+
+        @test maximum(dmap) ≈ amp_target atol=1e-12 rtol=0
+        @test wf.field == field0
+    end
+
     @testset "DM correction behavior matches upstream trend" begin
         exdir = joinpath(@__DIR__, "..", "examples")
         include(joinpath(exdir, "telescope.jl"))

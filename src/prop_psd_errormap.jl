@@ -31,85 +31,147 @@ end
     return PSDErrorMapOptions{T,typeof(rng)}(rng, fv, inc, rot, tpfv, maxf, rmsv, noap, mir, atarget)
 end
 
-function _prop_psd_errormap!(wf::WaveFront, amp::Real, b::Real, c::Real, opts::PSDErrorMapOptions)
+@inline _psd_maptype(opts::PSDErrorMapOptions) =
+    opts.amplitude_target === nothing ? (opts.mirror ? :mirror_surface : :wavefront) : :amplitude
+
+@inline function _psd_maptype_string(maptype::Symbol)::String
+    maptype === :amplitude && return "amplitude"
+    maptype === :mirror_surface && return "mirror surface"
+    return "wavefront"
+end
+
+@inline function _phase_from_map!(wf::WaveFront, dmap::AbstractMatrix, scale::Real)
+    @inbounds @simd for idx in eachindex(wf.field, dmap)
+        wf.field[idx] *= cis(scale * dmap[idx])
+    end
+    return wf
+end
+
+@inline function _read_psd_map(wf::WaveFront, fpath::AbstractString, ::Type{T}) where {T<:AbstractFloat}
+    return Matrix{T}(prop_readmap(wf, fpath))
+end
+
+function _build_psd_map(
+    wf::WaveFront,
+    amp::Real,
+    b::Real,
+    c::Real,
+    opts::PSDErrorMapOptions{T},
+) where {T<:AbstractFloat}
+    n = size(wf.field, 1)
+    center = n ÷ 2
+    center_pix = center + 1
+
+    dx = T(wf.sampling_m)
+    dk = inv(T(n) * dx)
+    inv_dk = inv(dk)
+
+    ampT = T(amp)
+    inv_b = inv(T(b))
+    cT = T(c)
+    halfpow = (cT + one(T)) / T(2)
+
+    rotation = opts.rotation
+    inclination = opts.inclination
+    cr = cos(-rotation)
+    sr = sin(-rotation)
+    ci = cos(-inclination)
+
+    use_tpf = opts.tpf
+    maxfreq = opts.max_frequency
+    use_maxfreq = maxfreq !== nothing
+
+    two_pi = T(2pi)
+    piT = T(pi)
+
+    spectrum = Matrix{Complex{T}}(undef, n, n)
+    phase_u = rand(opts.rng, n, n)
+    sum_psd = zero(T)
+
+    @inbounds for j in 1:n
+        x0 = T(j - 1 - center)
+        for i in 1:n
+            y0 = T(i - 1 - center)
+
+            # Preserve upstream rotation-order quirk shared by Python and MATLAB.
+            x1 = x0 * cr - y0 * sr
+            y1 = (x1 * sr + y0 * cr) * ci
+            k = sqrt(x1 * x1 + y1 * y1) * dk
+
+            psd = if i == center_pix && j == center_pix
+                zero(T)
+            elseif use_tpf
+                ampT / (one(T) + (k * inv_b)^cT)
+            else
+                ampT / (one(T) + (k * inv_b)^2)^halfpow
+            end
+
+            if use_maxfreq
+                # Keep Python executable baseline behavior: multiply by zeroed k-grid.
+                k_eff = k > maxfreq ? zero(T) : k
+                psd *= k_eff
+            end
+
+            sum_psd += psd
+            phase = muladd(two_pi, T(phase_u[i, j]), -piT)
+            spectrum[i, j] = (sqrt(psd) * inv_dk) * cis(phase)
+        end
+    end
+
+    spectrum = prop_shift_center(spectrum)
+    FFTW.fft!(spectrum)
+    spectrum ./= length(spectrum)
+
+    inv_rx2 = inv(T(n * n) * dx * dx)
+    dmap = Matrix{T}(undef, n, n)
+    @inbounds @simd for idx in eachindex(dmap, spectrum)
+        dmap[idx] = real(spectrum[idx]) * inv_rx2
+    end
+
+    rms_map = T(std(dmap))
+    rms_psd = sqrt(sum_psd) * dk
+    denom = rms_map + eps(T)
+    scale = (!opts.rms && opts.amplitude_target === nothing) ? (rms_psd / denom) : (ampT / denom)
+    dmap .*= scale
+
+    return dmap
+end
+
+function _prop_psd_errormap!(wf::WaveFront, amp::Real, b::Real, c::Real, opts::PSDErrorMapOptions{T}) where {T<:AbstractFloat}
     n = size(wf.field, 1)
     dx = wf.sampling_m
     fpath = opts.file !== nothing && isfile(opts.file) ? opts.file : nothing
-    maptype = "wavefront"
 
-    dmap = if fpath === nothing
-        dk = 1 / (n * dx)
-        inclination = opts.inclination
-        rotation = opts.rotation
-
-        xk = repeat(collect(0:(n - 1))' .- (n ÷ 2), n, 1)
-        yk = transpose(xk)
-
-        # Python 3.3.4 behavior mutates xk before yk rotation and then reuses it.
-        xk = xk .* cos(-rotation) .- yk .* sin(-rotation)
-        yk = xk .* sin(-rotation) .+ yk .* cos(-rotation)
-        yk .*= cos(-inclination)
-        kpsd = sqrt.(xk .^ 2 .+ yk .^ 2) .* dk
-
-        tpf = opts.tpf
-        psd2d = if tpf
-            float(amp) ./ (1 .+ (kpsd ./ float(b)) .^ float(c))
-        else
-            float(amp) ./ (1 .+ (kpsd ./ float(b)) .^ 2) .^ ((float(c) + 1) / 2)
-        end
-        psd2d[n ÷ 2 + 1, n ÷ 2 + 1] = 0.0
-        rms_psd = sqrt(sum(psd2d)) * dk
-
-        maxfreq = opts.max_frequency
-        if maxfreq !== nothing
-            kpsd[kpsd .> maxfreq] .= 0.0
-            psd2d .*= kpsd
-        end
-
-        phase = 2pi .* rand(opts.rng, n, n) .- pi
-        dmap_fft = fft(prop_shift_center(sqrt.(psd2d) ./ dk .* cis.(phase))) ./ length(psd2d)
-        dmap_local = real(dmap_fft) ./ (n^2 * dx^2)
-        rms_map = std(dmap_local)
-
-        if !opts.rms && opts.amplitude_target === nothing
-            dmap_local .*= rms_psd / (rms_map + eps())
-        else
-            dmap_local .*= float(amp) / (rms_map + eps())
-        end
-        dmap_local
+    dmap::Matrix{T} = if fpath === nothing
+        _build_psd_map(wf, amp, b, c, opts)
     else
-        prop_readmap(wf, fpath)
+        _read_psd_map(wf, fpath, T)
     end
 
-    if !opts.no_apply
-        if opts.amplitude_target !== nothing
-            dmap .+= opts.amplitude_target - maximum(dmap)
-            wf.field .*= dmap
-            maptype = "amplitude"
-        elseif opts.mirror
-            wf.field .*= cis.((4pi / wf.wavelength_m) .* dmap)
-            maptype = "mirror surface"
-        else
-            wf.field .*= cis.((2pi / wf.wavelength_m) .* dmap)
-            maptype = "wavefront"
-        end
+    maptype = _psd_maptype(opts)
+    if opts.amplitude_target !== nothing
+        dmap .+= opts.amplitude_target - maximum(dmap)
+        !opts.no_apply && (wf.field .*= dmap)
+    elseif !opts.no_apply
+        scale = maptype === :mirror_surface ? 4pi / wf.wavelength_m : 2pi / wf.wavelength_m
+        _phase_from_map!(wf, dmap, scale)
     end
 
     dmap = prop_shift_center(dmap)
 
     if opts.file !== nothing && fpath === nothing
-        fname = opts.file
+        maptype_str = _psd_maptype_string(maptype)
         header = Dict{String,Any}(
-            "MAPTYPE" => (maptype, " error map type"),
+            "MAPTYPE" => (maptype_str, " error map type"),
             "X_UNIT" => ("meters", " X-Y units"),
             "PIXSIZE" => (dx, " spacing in meters"),
-            "PSD_AMP" => (amp, maptype == "amplitude" ? " PSD low frequency RMS amplitude (amp^2m^4)" : " PSD low frequency RMS amplitude (m^4)"),
+            "PSD_AMP" => (amp, maptype === :amplitude ? " PSD low frequency RMS amplitude (amp^2m^4)" : " PSD low frequency RMS amplitude (m^4)"),
             "PSD_B" => (b, " PSD correlation length (cycles/m)"),
             "PSD_C" => (c, " PSD high frequency power law"),
             "XC_PIX" => (n ÷ 2, " Center X pixel coordinate"),
             "YC_PIX" => (n ÷ 2, " Center Y pixel coordinate"),
         )
-        if maptype != "amplitude"
+        if maptype !== :amplitude
             header["Z_UNIT"] = ("meters", " Error units")
         end
         if opts.tpf
@@ -118,7 +180,7 @@ function _prop_psd_errormap!(wf::WaveFront, amp::Real, b::Real, c::Real, opts::P
         if opts.max_frequency !== nothing
             header["MAXFREQ"] = (opts.max_frequency, " Maximum spatial frequency in cycles/meter")
         end
-        prop_fits_write(fname, dmap; HEADER=header)
+        prop_fits_write(opts.file, dmap; HEADER=header)
     end
 
     return dmap

@@ -17,14 +17,12 @@ include("internal/unimplemented.jl")
 
 include("libcconv.jl")
 include("libcconvthread.jl")
-include("libszoom.jl")
 include("prop_8th_order_mask.jl")
 include("prop_add_phase.jl")
 include("prop_add_wavefront.jl")
 include("prop_begin.jl")
 include("prop_circular_aperture.jl")
 include("prop_circular_obscuration.jl")
-include("prop_compile_c.jl")
 include("prop_cubic_conv.jl")
 include("prop_define_entrance.jl")
 include("prop_dftidefs.jl")
@@ -122,9 +120,9 @@ export prop_set_antialiasing, prop_table
 export prop_dm, prop_sinc, prop_noll_zernikes, prop_zernikes, prop_fit_zernikes
 export prop_fit_dm, prop_pixellate, prop_polygon, prop_irregular_polygon, prop_rounded_rectangle
 export prop_polygon!, prop_irregular_polygon!, prop_ellipse!, prop_rectangle!
-export prop_compile_c, prop_dftidefs, prop_ffti, prop_fftw, prop_szoom
+export prop_dftidefs, prop_ffti, prop_fftw, prop_szoom
 export DftiErrorMessage
-export libcconv, libcconvthread, libszoom, prop_cubic_conv, prop_define_entrance
+export libcconv, libcconvthread, prop_cubic_conv, prop_define_entrance
 export prop_hex_wavefront, prop_hex_zernikes, prop_8th_order_mask
 export prop_get_wavefront, prop_get_amplitude, prop_get_phase
 export prop_get_sampling, prop_get_sampling_radians, prop_get_sampling_arcsec

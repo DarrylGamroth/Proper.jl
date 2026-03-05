@@ -109,15 +109,12 @@ end
 
     @test prop_fftw() == true
     @test prop_ffti() == false
-    @test prop_compile_c() === nothing
     defs = prop_dftidefs()
     @test defs[:DFTI_FORWARD_SCALE] == 4
     @test defs[:DFTI_BACKWARD_SCALE] == 5
     @test libcconv(rand(8, 8), 4.2, 3.7) isa Real
     @test libcconvthread(rand(8, 8), 4.2, 3.7) isa Real
-    @test size(libszoom(rand(8, 8), 2.0), 1) == 3
     @test size(prop_szoom(rand(8, 8), 2.0), 1) == 3
-    @test size(libszoom(rand(8, 8), 2.0, 16), 1) == 16
     @test size(prop_szoom(rand(8, 8), 2.0, 16), 1) == 16
 end
 
@@ -175,6 +172,5 @@ end
     @test prop_cubic_conv(a, 2.0, 2.0) ≈ a[3, 3] atol=1e-12
     out = prop_cubic_conv(a, [1.0, 2.0, 3.0], [1.0, 2.0]; grid=true)
     @test size(out) == (2, 3)
-    @test_throws ArgumentError libszoom(a, 2.0)
-    @test size(libszoom(a, 2.0, 8), 1) == 8
+    @test size(prop_szoom(a, 2.0, 8), 1) == 8
 end

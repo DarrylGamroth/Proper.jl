@@ -6,10 +6,12 @@ using Test
 
     py_files = sort(filter(f -> endswith(f, ".py"), readdir(py_root)))
     jl_files = Set(filter(f -> endswith(f, ".jl"), readdir(joinpath(@__DIR__, "..", "src"))))
+    intentionally_unmapped = Set(["libszoom.jl", "prop_compile_c.jl"])
 
     for py in py_files
         py == "__init__.py" && continue
         expected = replace(py, ".py" => ".jl")
+        expected in intentionally_unmapped && continue
         @test expected in jl_files
     end
 end
