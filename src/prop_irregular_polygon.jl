@@ -30,10 +30,11 @@ function prop_irregular_polygon(wf::WaveFront, xverts::AbstractVector, yverts::A
     x = coordinate_axis(nx, dx)
     y = coordinate_axis(ny, dx)
 
-    subs = 3
+    subs = antialias_subsampling()
     offs = ((collect(1:subs) .- (subs + 1) / 2) ./ subs) .* dx
 
-    image = zeros(Float64, ny, nx)
+    RT = real(eltype(wf.field))
+    image = zeros(RT, ny, nx)
     @inbounds for j in 1:nx
         x0 = x[j]
         for i in 1:ny

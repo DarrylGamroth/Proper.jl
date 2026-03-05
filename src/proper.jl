@@ -120,6 +120,7 @@ export prop_set_antialiasing, prop_table
 export prop_dm, prop_sinc, prop_noll_zernikes, prop_zernikes, prop_fit_zernikes
 export prop_fit_dm, prop_pixellate, prop_polygon, prop_irregular_polygon, prop_rounded_rectangle
 export prop_compile_c, prop_dftidefs, prop_ffti, prop_fftw, prop_szoom
+export DftiErrorMessage
 export libcconv, libcconvthread, libszoom, prop_cubic_conv, prop_define_entrance
 export prop_hex_wavefront, prop_hex_zernikes, prop_8th_order_mask
 export prop_get_wavefront, prop_get_amplitude, prop_get_phase

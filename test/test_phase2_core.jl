@@ -81,7 +81,8 @@ end
 
     @test prop_use_fftw() == true
     @test prop_use_ffti() == false
-    @test prop_set_antialiasing(3) == 3.0
+    @test prop_set_antialiasing(3) == 3
+    @test_throws ArgumentError prop_set_antialiasing(4)
 end
 
 @testset "Phase 5 placeholder API coverage" begin
@@ -109,7 +110,9 @@ end
     @test prop_fftw() == true
     @test prop_ffti() == false
     @test prop_compile_c() === nothing
-    @test prop_dftidefs()[:DFTI_FORWARD_SCALE] == 1.0
+    defs = prop_dftidefs()
+    @test defs[:DFTI_FORWARD_SCALE] == 4
+    @test defs[:DFTI_BACKWARD_SCALE] == 5
     @test libcconv(rand(8, 8), 4.2, 3.7) isa Real
     @test libcconvthread(rand(8, 8), 4.2, 3.7) isa Real
     @test size(libszoom(rand(8, 8), 2.0), 1) == 16
