@@ -326,10 +326,24 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Context:
   - Phase 9 requires explicit reconciliation of known Python translation defects using MATLAB/manual semantics where justified.
 - Decision:
-  - `prop_resamplemap`: keep independent `xshift`/`yshift` semantics (do not preserve Python's `yshift`/`xshift` coupling defect).
+  - `prop_resamplemap`: keep independent `xshift`/`yshift` semantics.
   - `prop_end`: keep integer-safe centered extraction semantics (do not preserve Python float-slice defect).
   - `prop_state`: restore full wavefront state fields in-place (do not preserve Python local-rebind defect).
   - `prop_psd_errormap`: keep explicit Julia FFT path without backend-toggle side effects; retain documented parity quirks only where needed for executable parity.
 - Consequences:
   - Reconciled behaviors are test-covered in `test/test_phase9_semantic_reconciliation.jl`.
   - Future changes to these hotspots require decision-log updates and parity evidence.
+
+## D-0034: Parity Baseline Patch For `prop_resamplemap`
+- Date: 2026-03-04
+- Status: Accepted
+- Context:
+  - Python 3.3.4 source included a `prop_resamplemap` Y-shift defect (`y += yc - xshift/pixscale`) that disagreed with MATLAB and intended semantics.
+  - Project direction is to match upstream behavior after applying this known fix, not preserve the historical defect.
+- Decision:
+  - Patch the local Python parity baseline to use `y += yc - yshift/pixscale`.
+  - Regenerate parity artifacts from the patched baseline and treat that output as canonical `:python334` executable reference in this repository.
+  - Keep Julia `prop_resamplemap` on independent `xshift`/`yshift` semantics with no compat-mode split for this case.
+- Consequences:
+  - Removes ambiguity around preserving the historical Y-shift coupling defect.
+  - Parity comparisons stay executable and reproducible while aligned with intended semantics.

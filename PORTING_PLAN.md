@@ -31,7 +31,7 @@
 ## Critical Findings In Upstream Python (Port Should Intentionally Address)
 1. `prop_psd_errormap.py` calls `proper.prop_use_fftw()` inside compute path and checks `== 1`, but `prop_use_fftw` returns `None`; FFTW branch is effectively unreachable and function has unwanted side effects. (`proper/prop_psd_errormap.py:185`)
 2. `prop_errormap.py` uses `proper_switch_set` (undefined symbol), causing runtime `NameError` in some keyword combinations. (`proper/prop_errormap.py:92`)
-3. `prop_resamplemap.py` applies `xshift` to both axes; `yshift` is ignored. (`proper/prop_resamplemap.py:67`)
+3. Historical Python 3.3.4 issue: `prop_resamplemap.py` used `xshift` for both axes. The local parity baseline now patches this to use `yshift` on the Y axis, matching MATLAB intent. (`proper/prop_resamplemap.py:67`)
 4. `prop_end.py` uses float slice indices for `EXTRACT` under Python 3 (`ny/2`, `nx/2`), which is invalid for slicing. (`proper/prop_end.py:52`)
 5. `prop_state.py` assigns loaded state to local `wf` only; caller's wavefront object is not updated. (`proper/prop_state.py:49`)
 
