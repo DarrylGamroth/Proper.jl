@@ -86,6 +86,9 @@ end
     wf = prop_begin(1.0, 500e-9, 32)
     dm = randn(32, 32) .* 1e-9
     @test prop_dm(wf, dm) === wf
+    @test prop_dm(wf, dm; mirror=true) === wf
+    @test prop_dm(wf, dm; MIRROR=1) === wf
+    @test_throws ArgumentError prop_dm(wf, dm; mirror=false, MIRROR=1)
 
     @test prop_sinc(0.0) == 1.0
     @test length(prop_noll_zernikes(5)) == 5
