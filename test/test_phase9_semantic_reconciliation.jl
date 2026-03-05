@@ -78,4 +78,21 @@ using Random
             @test maximum(abs.(m2 .- m1)) < 1e-6
         end
     end
+
+    @testset "DM correction behavior matches upstream trend" begin
+        exdir = joinpath(@__DIR__, "..", "examples")
+        include(joinpath(exdir, "telescope.jl"))
+        include(joinpath(exdir, "telescope_dm.jl"))
+        include(joinpath(exdir, "coronagraph.jl"))
+        include(joinpath(exdir, "run_coronagraph_dm.jl"))
+
+        mktempdir() do d
+            cp(joinpath(exdir, "telescope_obj.fits"), joinpath(d, "telescope_obj.fits"); force=true)
+            cd(d) do
+                psf_err, _ = run_coronagraph_dm(0.55e-6, 256, Dict("use_errors" => true, "use_dm" => false, "occulter_type" => "GAUSSIAN"))
+                psf_dm, _ = run_coronagraph_dm(0.55e-6, 256, Dict("use_errors" => true, "use_dm" => true, "occulter_type" => "GAUSSIAN"))
+                @test maximum(psf_dm) / maximum(psf_err) < 0.01
+            end
+        end
+    end
 end

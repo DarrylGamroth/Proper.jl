@@ -80,8 +80,9 @@ function prop_dm(
 
     ny_inf, nx_inf = size(inf)
     isodd(nx_inf) && isodd(ny_inf) || throw(ArgumentError("PROP_DM: Influence function width/height must be odd"))
-    xc_inf = nx_inf ÷ 2 + 1
-    yc_inf = ny_inf ÷ 2 + 1
+    # Upstream cubic-convolution coordinates are 0-based.
+    xc_inf = nx_inf ÷ 2
+    yc_inf = ny_inf ÷ 2
 
     if flip_lr
         dm_z = reverse(dm_z; dims=2)
@@ -115,8 +116,11 @@ function prop_dm(
     margin = 9 * inf_mag
     nx_grid = nx_dm * inf_mag + 2 * margin
     ny_grid = ny_dm * inf_mag + 2 * margin
-    xoff_grid = margin + (inf_mag ÷ 2) + 1
-    yoff_grid = xoff_grid
+    # Keep 0-based interpolation coordinates separate from 1-based Julia indices.
+    xoff_grid0 = margin + (inf_mag ÷ 2)
+    yoff_grid0 = xoff_grid0
+    xoff_grid = xoff_grid0 + 1
+    yoff_grid = yoff_grid0 + 1
 
     dm_grid = zeros(eltype(dm_cmd), ny_grid, nx_grid)
     @inbounds for iy in 1:ny_dm
@@ -173,8 +177,8 @@ function prop_dm(
     xs = (x ./ dx_dxs .- y .* dx_dys ./ (dx_dxs * dy_dys)) ./ denom
     ys = (y ./ dy_dys .- x .* dy_dxs ./ (dx_dxs * dy_dys)) ./ denom
 
-    xdm = (xs .+ float(dm_xc) * dx_dm) ./ dx_inf .+ xoff_grid
-    ydm = (ys .+ float(dm_yc) * dx_dm) ./ dx_inf .+ yoff_grid
+    xdm = (xs .+ float(dm_xc) * dx_dm) ./ dx_inf .+ xoff_grid0
+    ydm = (ys .+ float(dm_yc) * dx_dm) ./ dx_inf .+ yoff_grid0
 
     grid = prop_cubic_conv(transpose(dm_grid), xdm, ydm; grid=false)
     dmap = zeros(eltype(grid), n, n)
@@ -190,7 +194,8 @@ function prop_dm(
     @views dmap[ymin:ymax, xmin:xmax] .= grid
 
     if !switch_set(:NO_APPLY; kwargs...)
-        prop_add_phase(wf, 2 .* dmap)
+        # Internal wavefront orientation is transposed relative to exported map layout.
+        prop_add_phase(wf, 2 .* transpose(dmap))
     end
 
     return dmap

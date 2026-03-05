@@ -171,7 +171,8 @@ end
     @test any(!iszero, ap)
 
     a = reshape(collect(1.0:16.0), 4, 4)
-    @test prop_cubic_conv(a, 2.0, 2.0) ≈ a[2, 2] atol=1e-12
+    # Upstream cubic_conv uses 0-based coordinates and edge clamping.
+    @test prop_cubic_conv(a, 2.0, 2.0) ≈ a[3, 3] atol=1e-12
     out = prop_cubic_conv(a, [1.0, 2.0, 3.0], [1.0, 2.0]; grid=true)
     @test size(out) == (2, 3)
     @test_throws ArgumentError libszoom(a, 2.0)
