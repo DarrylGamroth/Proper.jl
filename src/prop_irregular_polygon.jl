@@ -27,6 +27,7 @@ end
 end
 
 function _prop_irregular_polygon(
+    image::AbstractMatrix,
     wf::WaveFront,
     xverts::AbstractVector,
     yverts::AbstractVector,
@@ -39,6 +40,7 @@ function _prop_irregular_polygon(
     yv = opts.norm ? float.(yverts) .* beamr : float.(yverts)
 
     ny, nx = size(wf.field)
+    size(image) == (ny, nx) || throw(ArgumentError("output size must match wavefront"))
     dx = wf.sampling_m
     x = coordinate_axis(nx, dx)
     y = coordinate_axis(ny, dx)
@@ -46,8 +48,7 @@ function _prop_irregular_polygon(
     subs = antialias_subsampling()
     offs = ((collect(1:subs) .- (subs + 1) / 2) ./ subs) .* dx
 
-    RT = real(eltype(wf.field))
-    image = zeros(RT, ny, nx)
+    fill!(image, zero(eltype(image)))
     @inbounds for j in 1:nx
         x0 = x[j]
         for i in 1:ny
@@ -60,7 +61,31 @@ function _prop_irregular_polygon(
         end
     end
 
-    return opts.dark ? (1 .- image) : image
+    if opts.dark
+        image .= 1 .- image
+    end
+    return image
+end
+
+function _prop_irregular_polygon(
+    wf::WaveFront,
+    xverts::AbstractVector,
+    yverts::AbstractVector,
+    opts::IrregularPolygonOptions,
+)
+    RT = real(eltype(wf.field))
+    image = zeros(RT, size(wf.field)...)
+    return _prop_irregular_polygon(image, wf, xverts, yverts, opts)
+end
+
+function prop_irregular_polygon!(
+    image::AbstractMatrix,
+    wf::WaveFront,
+    xverts::AbstractVector,
+    yverts::AbstractVector;
+    kwargs...,
+)
+    return _prop_irregular_polygon(image, wf, xverts, yverts, IrregularPolygonOptions(kwargs))
 end
 
 """Return antialiased filled convex/concave polygon mask."""

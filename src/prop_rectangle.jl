@@ -12,7 +12,8 @@ end
     )
 end
 
-function _prop_rectangle(
+function _prop_rectangle!(
+    image::AbstractMatrix,
     wf::WaveFront,
     xsize::Real,
     ysize::Real,
@@ -21,6 +22,7 @@ function _prop_rectangle(
     opts::RectangleOptions,
 )
     n = prop_get_gridsize(wf)
+    size(image) == (n, n) || throw(ArgumentError("output size must match wavefront grid"))
     dx = prop_get_sampling(wf)
     beamrad = prop_get_beamradius(wf)
     pr = beamrad / dx
@@ -34,8 +36,7 @@ function _prop_rectangle(
     xrp = (opts.norm ? float(xsize) * pr : float(xsize) / dx) / 2
     yrp = (opts.norm ? float(ysize) * pr : float(ysize) / dx) / 2
 
-    RT = real(eltype(wf.field))
-    image = zeros(RT, n, n)
+    fill!(image, zero(eltype(image)))
 
     # Bounding box from rotated corners.
     xp = (-xrp, -xrp, xrp, xrp)
@@ -74,6 +75,31 @@ function _prop_rectangle(
     end
 
     return image
+end
+
+function _prop_rectangle(
+    wf::WaveFront,
+    xsize::Real,
+    ysize::Real,
+    xc::Real,
+    yc::Real,
+    opts::RectangleOptions,
+)
+    RT = real(eltype(wf.field))
+    image = zeros(RT, prop_get_gridsize(wf), prop_get_gridsize(wf))
+    return _prop_rectangle!(image, wf, xsize, ysize, xc, yc, opts)
+end
+
+function prop_rectangle!(
+    image::AbstractMatrix,
+    wf::WaveFront,
+    xsize::Real,
+    ysize::Real,
+    xc::Real=0.0,
+    yc::Real=0.0;
+    kwargs...,
+)
+    return _prop_rectangle!(image, wf, xsize, ysize, xc, yc, RectangleOptions(kwargs))
 end
 
 """Return an antialiased filled rectangle mask."""

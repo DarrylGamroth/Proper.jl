@@ -19,7 +19,7 @@
 ## Refactor Track Status
 - [x] R1: Typed option boundaries (boundary normalization and typed option structs added for propagation/map/geometry families).
 - [x] R2: Trait-driven kernel routing (CPU/GPU-ready dispatch wiring, context-routed propagation/interpolation kernels, and optional CUDA smoke test coverage).
-- [ ] R3: Mutating kernels and workspace reuse across interpolation/geometry hot paths.
+- [x] R3: Mutating kernels and workspace reuse across interpolation/geometry hot paths (added `prop_rotate!`, `prop_magnify!`, `prop_cubic_conv_grid!`, geometry `*_!` variants, and reusable interpolation/FFT workspace caches in `RunContext`).
 - [ ] R4: WaveFront state typing and dispatch simplification (`Symbol` propagation-state replacement).
 - [ ] R5: Expanded inference/allocation gates and benchmark matrix updates.
 
@@ -71,6 +71,11 @@
 - [x] Added executable parity threshold policy (`docs/parity_thresholds.md` + `test/parity/thresholds/example_metrics_thresholds.json`) and CI gating for multi-example parity checks.
 - [x] Added hotspot reconciliation tests and completed full-state restore semantics in `prop_state`.
 - [x] Added Phase 9 semantic reconciliation report and migration guide.
+- [x] Completed R3 refactor scope:
+  - introduced `src/core/workspace.jl` and threaded reusable interpolation/FFT scratch through `RunContext`
+  - switched hot map kernels to mutating grid/interpolation pathways
+  - added mutating geometry mask builders and parity tests for non-mutating wrappers
+  - added R3 regression tests for workspace reuse and mutating-kernel parity (`test/test_r3_mutating_workspace.jl`)
 
 ## Notes
 - Runtime compatibility mode flags were removed; parity behavior is anchored to the patched Python baseline (`D-0035`).

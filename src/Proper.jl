@@ -7,6 +7,7 @@ using Statistics
 include("core/policy.jl")
 include("core/traits.jl")
 include("core/types.jl")
+include("core/workspace.jl")
 include("core/context.jl")
 include("core/keywords.jl")
 include("core/grid.jl")
@@ -112,6 +113,7 @@ export prop_elliptical_aperture, prop_elliptical_obscuration
 export prop_rectangular_aperture, prop_rectangular_obscuration
 export prop_qphase, prop_lens, prop_ptp, prop_wts, prop_stw, prop_propagate
 export prop_magnify, prop_rotate, prop_resamplemap, prop_select_propagator
+export prop_magnify!, prop_rotate!, prop_resamplemap!, prop_cubic_conv_grid!
 export prop_fits_read, prop_fits_write, prop_readmap, prop_writemap
 export prop_errormap, prop_psd_errormap
 export prop_savestate, prop_state, prop_is_statesaved, prop_init_savestate, prop_end_savestate
@@ -119,6 +121,7 @@ export prop_execute_multi, prop_use_fftw, prop_use_ffti, prop_fftw_wisdom, prop_
 export prop_set_antialiasing, prop_table
 export prop_dm, prop_sinc, prop_noll_zernikes, prop_zernikes, prop_fit_zernikes
 export prop_fit_dm, prop_pixellate, prop_polygon, prop_irregular_polygon, prop_rounded_rectangle
+export prop_polygon!, prop_irregular_polygon!, prop_ellipse!, prop_rectangle!
 export prop_compile_c, prop_dftidefs, prop_ffti, prop_fftw, prop_szoom
 export DftiErrorMessage
 export libcconv, libcconvthread, libszoom, prop_cubic_conv, prop_define_entrance

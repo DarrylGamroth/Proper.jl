@@ -25,17 +25,16 @@ function _prop_resamplemap!(
     wf::WaveFront,
     dmap::AbstractMatrix,
     opts::ResampleMapOptions,
+    ws::InterpWorkspace,
 )
     ny, nx = size(wf.field)
     size(out) == (ny, nx) || throw(ArgumentError("output size must match wavefront"))
 
-    T = typeof(opts.pixscale)
-    scale = T(wf.sampling_m) / opts.pixscale
-    xoff = opts.xc - opts.xshift / opts.pixscale
-    yoff = opts.yc - opts.yshift / opts.pixscale
-
-    xcoords = Vector{T}(undef, nx)
-    ycoords = Vector{T}(undef, ny)
+    xcoords, ycoords = ensure_interp_axes!(ws, nx, ny)
+    T = eltype(xcoords)
+    scale = T(wf.sampling_m) / T(opts.pixscale)
+    xoff = T(opts.xc) - T(opts.xshift) / T(opts.pixscale)
+    yoff = T(opts.yc) - T(opts.yshift) / T(opts.pixscale)
 
     @inbounds for j in 1:nx
         xcoords[j] = (T(j - 1 - (nx ÷ 2)) * scale) + xoff
@@ -44,9 +43,7 @@ function _prop_resamplemap!(
         ycoords[i] = (T(i - 1 - (ny ÷ 2)) * scale) + yoff
     end
 
-    sampled = prop_cubic_conv(sty, dmap, xcoords, ycoords; grid=true)
-    copyto!(out, sampled)
-    return out
+    return prop_cubic_conv_grid!(out, sty, dmap, xcoords, ycoords)
 end
 
 function prop_resamplemap!(
@@ -56,7 +53,7 @@ function prop_resamplemap!(
     opts::ResampleMapOptions,
     ctx::RunContext,
 )
-    return _prop_resamplemap!(interp_style(ctx), out, wf, dmap, opts)
+    return _prop_resamplemap!(interp_style(ctx), out, wf, dmap, opts, interp_workspace(ctx))
 end
 
 function prop_resamplemap!(
@@ -65,7 +62,14 @@ function prop_resamplemap!(
     dmap::AbstractMatrix,
     opts::ResampleMapOptions,
 )
-    return prop_resamplemap!(out, wf, dmap, opts, RunContext(typeof(out)))
+    return _prop_resamplemap!(
+        interp_style(typeof(out)),
+        out,
+        wf,
+        dmap,
+        opts,
+        InterpWorkspace(float(typeof(opts.pixscale))),
+    )
 end
 
 @inline function prop_resamplemap!(
@@ -104,7 +108,7 @@ end
 
 function prop_resamplemap(wf::WaveFront, dmap::AbstractMatrix, pixscale::Real, xc::Real, yc::Real, ctx::RunContext, xshift::Real=0.0, yshift::Real=0.0)
     ny, nx = size(wf.field)
-    Tout = float(promote_type(real(eltype(dmap)), typeof(wf.sampling_m), typeof(pixscale), typeof(xc), typeof(yshift), typeof(xshift)))
+    Tout = float(promote_type(real(eltype(dmap)), typeof(wf.sampling_m), typeof(pixscale), typeof(xc), typeof(yc), typeof(xshift), typeof(yshift)))
     out = similar(dmap, Tout, ny, nx)
     return prop_resamplemap!(out, wf, dmap, pixscale, xc, yc, ctx, xshift, yshift)
 end

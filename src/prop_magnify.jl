@@ -12,31 +12,7 @@ end
     )
 end
 
-@inline function _prop_magnify(sty::InterpStyle, image_in::AbstractMatrix, mag::Real, out_n::Int, opts::MagnifyOptions)
-    out = if opts.quick
-        Tin = typeof(real(zero(eltype(image_in))))
-        T = float(promote_type(typeof(mag), Tin))
-        ny, nx = size(image_in)
-        cx_in = T(nx ÷ 2)
-        cy_in = T(ny ÷ 2)
-        cx_out = T(out_n ÷ 2)
-        cy_out = T(out_n ÷ 2)
-
-        xcoords = Vector{T}(undef, out_n)
-        ycoords = Vector{T}(undef, out_n)
-        invmag = inv(T(mag))
-
-        @inbounds for j in 1:out_n
-            xcoords[j] = (T(j - 1) - cx_out) * invmag + cx_in
-        end
-        @inbounds for i in 1:out_n
-            ycoords[i] = (T(i - 1) - cy_out) * invmag + cy_in
-        end
-        prop_cubic_conv(sty, image_in, xcoords, ycoords; grid=true)
-    else
-        prop_szoom(image_in, mag, out_n)
-    end
-
+@inline function _apply_magnify_conserve!(out::AbstractMatrix, image_in::AbstractMatrix, mag::Real, opts::MagnifyOptions)
     if opts.conserve
         if eltype(image_in) <: Complex
             out ./= mag
@@ -50,12 +26,79 @@ end
     return out
 end
 
-@inline function _prop_magnify(image_in::AbstractMatrix, mag::Real, out_n::Int, opts::MagnifyOptions)
-    return _prop_magnify(interp_style(typeof(image_in)), image_in, mag, out_n, opts)
+@inline function _prop_magnify!(
+    out::AbstractMatrix,
+    sty::InterpStyle,
+    image_in::AbstractMatrix,
+    mag::Real,
+    opts::MagnifyOptions,
+    ws::InterpWorkspace,
+)
+    out_n = size(out, 1)
+    size(out, 2) == out_n || throw(ArgumentError("output must be square"))
+    if opts.quick
+        T = eltype(ws.xcoords)
+        ny, nx = size(image_in)
+        cx_in = T(nx ÷ 2)
+        cy_in = T(ny ÷ 2)
+        cx_out = T(out_n ÷ 2)
+        cy_out = T(out_n ÷ 2)
+
+        xcoords, ycoords = ensure_interp_axes!(ws, out_n, out_n)
+        invmag = inv(T(mag))
+
+        @inbounds for j in 1:out_n
+            xcoords[j] = (T(j - 1) - cx_out) * invmag + cx_in
+        end
+        @inbounds for i in 1:out_n
+            ycoords[i] = (T(i - 1) - cy_out) * invmag + cy_in
+        end
+        prop_cubic_conv_grid!(out, sty, image_in, xcoords, ycoords)
+    else
+        copyto!(out, prop_szoom(image_in, mag, out_n))
+    end
+
+    return _apply_magnify_conserve!(out, image_in, mag, opts)
 end
 
-@inline function _prop_magnify(image_in::AbstractMatrix, mag::Real, out_n::Int, opts::MagnifyOptions, ctx::RunContext)
-    return _prop_magnify(interp_style(ctx), image_in, mag, out_n, opts)
+@inline function prop_magnify!(
+    out::AbstractMatrix,
+    image_in::AbstractMatrix,
+    mag0::Real,
+    opts::MagnifyOptions,
+    ctx::RunContext,
+)
+    return _prop_magnify!(out, interp_style(ctx), image_in, float(mag0), opts, interp_workspace(ctx))
+end
+
+@inline function prop_magnify!(
+    out::AbstractMatrix,
+    image_in::AbstractMatrix,
+    mag0::Real,
+    opts::MagnifyOptions,
+)
+    Tin = typeof(real(zero(eltype(image_in))))
+    T = float(promote_type(typeof(mag0), Tin))
+    return _prop_magnify!(out, interp_style(typeof(image_in)), image_in, float(mag0), opts, InterpWorkspace(T))
+end
+
+function prop_magnify!(
+    out::AbstractMatrix,
+    image_in::AbstractMatrix,
+    mag0::Real;
+    kwargs...,
+)
+    return prop_magnify!(out, image_in, mag0, MagnifyOptions(kwargs))
+end
+
+function prop_magnify!(
+    out::AbstractMatrix,
+    image_in::AbstractMatrix,
+    mag0::Real,
+    ctx::RunContext;
+    kwargs...,
+)
+    return prop_magnify!(out, image_in, mag0, MagnifyOptions(kwargs), ctx)
 end
 
 """Magnify image using upstream PROPER behavior (`QUICK` cubic, default damped-sinc)."""
@@ -69,8 +112,8 @@ function prop_magnify(
     ny, _ = size(image_in)
     out_n = size_out0 > 0 ? Int(size_out0) : round(Int, ny * mag)
     out_n > 0 || throw(ArgumentError("size_out must be positive"))
-    opts = MagnifyOptions(kwargs)
-    return _prop_magnify(image_in, mag, out_n, opts)
+    out = similar(image_in, out_n, out_n)
+    return prop_magnify!(out, image_in, mag, MagnifyOptions(kwargs))
 end
 
 function prop_magnify(
@@ -84,6 +127,6 @@ function prop_magnify(
     ny, _ = size(image_in)
     out_n = size_out0 > 0 ? Int(size_out0) : round(Int, ny * mag)
     out_n > 0 || throw(ArgumentError("size_out must be positive"))
-    opts = MagnifyOptions(kwargs)
-    return _prop_magnify(image_in, mag, out_n, opts, ctx)
+    out = similar(image_in, out_n, out_n)
+    return prop_magnify!(out, image_in, mag, MagnifyOptions(kwargs), ctx)
 end

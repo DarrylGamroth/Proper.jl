@@ -22,8 +22,8 @@ function _prop_cubic_conv(sty::InterpStyle, ::PointwiseTopology, a::StridedMatri
     return out
 end
 
-function _prop_cubic_conv(sty::InterpStyle, ::GridTopology, a::StridedMatrix, xval::AbstractVector, yval::AbstractVector)
-    out = similar(a, length(yval), length(xval))
+function prop_cubic_conv_grid!(out::StridedMatrix, sty::InterpStyle, a::StridedMatrix, xval::AbstractVector, yval::AbstractVector)
+    size(out) == (length(yval), length(xval)) || throw(ArgumentError("output size mismatch for grid interpolation"))
     @inbounds for j in eachindex(xval)
         x = xval[j]
         for i in eachindex(yval)
@@ -31,6 +31,25 @@ function _prop_cubic_conv(sty::InterpStyle, ::GridTopology, a::StridedMatrix, xv
         end
     end
     return out
+end
+
+function prop_cubic_conv_grid!(out::AbstractMatrix, sty::InterpStyle, a::AbstractMatrix, xval::AbstractVector, yval::AbstractVector)
+    size(out) == (length(yval), length(xval)) || throw(ArgumentError("output size mismatch for grid interpolation"))
+    if out isa StridedMatrix && a isa StridedMatrix
+        return prop_cubic_conv_grid!(out, sty, a, xval, yval)
+    end
+    host_out = Matrix{eltype(out)}(undef, size(out)...)
+    prop_cubic_conv_grid!(host_out, sty, Matrix(a), xval, yval)
+    copyto!(out, host_out)
+    return out
+end
+
+@inline function prop_cubic_conv_grid!(out::AbstractMatrix, a::AbstractMatrix, xval::AbstractVector, yval::AbstractVector)
+    return prop_cubic_conv_grid!(out, _default_interp_style(a), a, xval, yval)
+end
+
+@inline function prop_cubic_conv_grid!(out::AbstractMatrix, ctx::RunContext, a::AbstractMatrix, xval::AbstractVector, yval::AbstractVector)
+    return prop_cubic_conv_grid!(out, interp_style(ctx), a, xval, yval)
 end
 
 function _prop_cubic_conv(sty::InterpStyle, ::PointwiseTopology, a::StridedMatrix, xgrid::AbstractMatrix, ygrid::AbstractMatrix)
@@ -57,11 +76,14 @@ function prop_cubic_conv(ctx::RunContext, a::AbstractMatrix, y::Real, x::Real)
 end
 
 function prop_cubic_conv(sty::InterpStyle, a::AbstractMatrix, xval::AbstractVector, yval::AbstractVector; threaded::Bool=true, grid::Bool=true)
-    topo = grid ? GridTopology() : PointwiseTopology()
-    if a isa StridedMatrix
-        return _prop_cubic_conv(sty, topo, a, xval, yval)
+    if grid
+        out = similar(a, length(yval), length(xval))
+        return prop_cubic_conv_grid!(out, sty, a, xval, yval)
     end
-    host_out = _prop_cubic_conv(sty, topo, Matrix(a), xval, yval)
+    if a isa StridedMatrix
+        return _prop_cubic_conv(sty, PointwiseTopology(), a, xval, yval)
+    end
+    host_out = _prop_cubic_conv(sty, PointwiseTopology(), Matrix(a), xval, yval)
     out = similar(a, eltype(host_out), size(host_out)...)
     copyto!(out, host_out)
     return out

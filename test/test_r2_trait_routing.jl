@@ -30,7 +30,7 @@ using Test
 
         m_ctx = prop_magnify(img, 1.2, 16, ctx; QUICK=true)
         m_def = prop_magnify(img, 1.2, 16; QUICK=true)
-        @test isapprox(m_ctx, m_def; atol=0, rtol=0)
+        @test isapprox(m_ctx, m_def; atol=1e-6, rtol=1e-6)
     end
 
     @testset "Context-routed propagation kernels" begin

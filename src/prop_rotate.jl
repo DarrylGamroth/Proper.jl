@@ -71,15 +71,21 @@ end
     return out
 end
 
-@inline function _prop_rotate(sty::InterpStyle, old_image::AbstractMatrix, theta::Real, opts::RotateOptions)
-    if !(old_image isa StridedMatrix)
-        host_out = _prop_rotate(sty, Matrix(old_image), theta, opts)
-        out = similar(old_image, eltype(host_out), size(host_out)...)
+@inline function _prop_rotate!(
+    sty::InterpStyle,
+    out::AbstractMatrix,
+    old_image::AbstractMatrix,
+    theta::Real,
+    opts::RotateOptions,
+)
+    size(out) == size(old_image) || throw(ArgumentError("output size must match input image"))
+    if !(old_image isa StridedMatrix && out isa StridedMatrix)
+        host_out = Matrix{eltype(out)}(undef, size(out)...)
+        _prop_rotate!(sty, host_out, Matrix(old_image), theta, opts)
         copyto!(out, host_out)
         return out
     end
 
-    out = similar(old_image)
     ang = deg2rad(-float(theta))
     c = cos(ang)
     s = sin(ang)
@@ -88,12 +94,30 @@ end
         _prop_rotate_cubic!(sty, out, old_image, c, s, opts)
 end
 
+@inline function prop_rotate!(out::AbstractMatrix, old_image::AbstractMatrix, theta::Real, opts::RotateOptions, ctx::RunContext)
+    return _prop_rotate!(interp_style(ctx), out, old_image, theta, opts)
+end
+
+@inline function prop_rotate!(out::AbstractMatrix, old_image::AbstractMatrix, theta::Real, opts::RotateOptions)
+    return _prop_rotate!(interp_style(typeof(old_image)), out, old_image, theta, opts)
+end
+
+@inline function prop_rotate!(out::AbstractMatrix, old_image::AbstractMatrix, theta::Real; kwargs...)
+    return prop_rotate!(out, old_image, theta, RotateOptions(old_image, kwargs))
+end
+
+@inline function prop_rotate!(out::AbstractMatrix, old_image::AbstractMatrix, theta::Real, ctx::RunContext; kwargs...)
+    return prop_rotate!(out, old_image, theta, RotateOptions(old_image, kwargs), ctx)
+end
+
 @inline function prop_rotate(old_image::AbstractMatrix, theta::Real, opts::RotateOptions, ctx::RunContext)
-    return _prop_rotate(interp_style(ctx), old_image, theta, opts)
+    out = similar(old_image)
+    return prop_rotate!(out, old_image, theta, opts, ctx)
 end
 
 @inline function prop_rotate(old_image::AbstractMatrix, theta::Real, opts::RotateOptions)
-    return prop_rotate(old_image, theta, opts, RunContext(typeof(old_image)))
+    out = similar(old_image)
+    return prop_rotate!(out, old_image, theta, opts)
 end
 
 """Rotate image by theta degrees around center (cubic by default)."""

@@ -12,7 +12,8 @@ end
     )
 end
 
-function _prop_ellipse(
+function _prop_ellipse!(
+    image::AbstractMatrix,
     wf::WaveFront,
     xradius::Real,
     yradius::Real,
@@ -22,6 +23,8 @@ function _prop_ellipse(
 )
     nsub = antialias_subsampling()
     n = prop_get_gridsize(wf)
+    size(image) == (n, n) || throw(ArgumentError("output size must match wavefront grid"))
+
     dx = prop_get_sampling(wf)
     beamrad_pix = prop_get_beamradius(wf) / dx
     norm = opts.norm
@@ -58,24 +61,8 @@ function _prop_ellipse(
 
     minx_pix = clamp(round(Int, minimum(xbox)) - 1, 0, n - 1)
     maxx_pix = clamp(round(Int, maximum(xbox)) + 1, 0, n - 1)
-    nx = maxx_pix - minx_pix + 1
     miny_pix = clamp(round(Int, minimum(ybox)) - 1, 0, n - 1)
     maxy_pix = clamp(round(Int, maximum(ybox)) + 1, 0, n - 1)
-    ny = maxy_pix - miny_pix + 1
-
-    x_local = Matrix{RT}(undef, ny, nx)
-    y_local = Matrix{RT}(undef, ny, nx)
-    @inbounds for j in 1:ny
-        yv = xf(j - 1 + miny_pix) - ycenter_pix
-        for i in 1:nx
-            x_local[j, i] = xf(i - 1 + minx_pix) - xcenter_pix
-            y_local[j, i] = yv
-        end
-    end
-
-    xr = @. (x_local * cost - y_local * sint) / xrad_pix
-    yr = @. (x_local * sint + y_local * cost) / yrad_pix
-    r = @. sqrt(xr * xr + yr * yr)
 
     delx = inv(xrad_pix)
     dely = inv(yrad_pix)
@@ -83,53 +70,81 @@ function _prop_ellipse(
     dry = delx * sint + dely * cost
     dr = max(abs(drx), abs(dry))
 
-    mask = fill(xf(-1), ny, nx)
-    @inbounds for j in 1:ny, i in 1:nx
-        rv = r[j, i]
-        if rv > (1 + dr)
-            mask[j, i] = zero(RT)
-        elseif rv <= (1 - dr)
-            mask[j, i] = one(RT)
-        end
-    end
-
-    edge_idx = findall(==(-one(RT)), mask)
-    nsubpix = xf(nsub * nsub)
-    subpix_x = Matrix{RT}(undef, nsub, nsub)
-    subpix_y = Matrix{RT}(undef, nsub, nsub)
-    @inbounds for j in 1:nsub
-        for i in 1:nsub
-            subpix_x[j, i] = (xf(i - 1 - (nsub ÷ 2)) / xf(nsub)) + xf(minx_pix) - xcenter_pix
-            subpix_y[j, i] = (xf(j - 1 - (nsub ÷ 2)) / xf(nsub)) + xf(miny_pix) - ycenter_pix
-        end
-    end
-
-    limit = xf(1 + 1e-10)
-    @inbounds for ci in eachindex(edge_idx)
-        I = edge_idx[ci]
-        jy = I[1] - 1
-        ix = I[2] - 1
-        cnt = 0
-        for sj in 1:nsub
-            for si in 1:nsub
-                xs = subpix_x[sj, si] + xf(ix)
-                ys = subpix_y[sj, si] + xf(jy)
-                xsv = (xs * cost - ys * sint) / xrad_pix
-                ysv = (xs * sint + ys * cost) / yrad_pix
-                cnt += ((xsv * xsv + ysv * ysv) <= limit)
-            end
-        end
-        mask[I] = xf(cnt) / nsubpix
-    end
-
     if dark
-        image = ones(RT, n, n)
-        @views image[(miny_pix + 1):(miny_pix + ny), (minx_pix + 1):(minx_pix + nx)] .= 1 .- mask
-        return image
+        fill!(image, one(eltype(image)))
+    else
+        fill!(image, zero(eltype(image)))
     end
-    image = zeros(RT, n, n)
-    @views image[(miny_pix + 1):(miny_pix + ny), (minx_pix + 1):(minx_pix + nx)] .= mask
+
+    threshold_hi = xf(1) + dr
+    threshold_lo = xf(1) - dr
+    limit = xf(1 + 1e-10)
+
+    suboffs = Vector{RT}(undef, nsub)
+    @inbounds for i in 1:nsub
+        suboffs[i] = xf(i - 1 - (nsub ÷ 2)) / xf(nsub)
+    end
+
+    nsubpix = xf(nsub * nsub)
+
+    @inbounds for ypix in miny_pix:maxy_pix
+        y0 = xf(ypix) - ycenter_pix
+        for xpix in minx_pix:maxx_pix
+            x0 = xf(xpix) - xcenter_pix
+
+            xr = (x0 * cost - y0 * sint) / xrad_pix
+            yr = (x0 * sint + y0 * cost) / yrad_pix
+            rv = sqrt(xr * xr + yr * yr)
+
+            pixval = if rv > threshold_hi
+                zero(RT)
+            elseif rv <= threshold_lo
+                one(RT)
+            else
+                cnt = 0
+                for oy in suboffs
+                    ys = y0 + oy
+                    for ox in suboffs
+                        xs = x0 + ox
+                        xsv = (xs * cost - ys * sint) / xrad_pix
+                        ysv = (xs * sint + ys * cost) / yrad_pix
+                        cnt += ((xsv * xsv + ysv * ysv) <= limit)
+                    end
+                end
+                xf(cnt) / nsubpix
+            end
+
+            image[ypix + 1, xpix + 1] = dark ? (one(RT) - pixval) : pixval
+        end
+    end
+
     return image
+end
+
+function _prop_ellipse(
+    wf::WaveFront,
+    xradius::Real,
+    yradius::Real,
+    xc::Real,
+    yc::Real,
+    opts::EllipseOptions,
+)
+    RT = real(eltype(wf.field))
+    image = zeros(RT, prop_get_gridsize(wf), prop_get_gridsize(wf))
+    return _prop_ellipse!(image, wf, xradius, yradius, xc, yc, opts)
+end
+
+function prop_ellipse!(
+    image::AbstractMatrix,
+    wf::WaveFront,
+    xradius::Real,
+    yradius::Real,
+    xc::Real=0.0,
+    yc::Real=0.0;
+    kwargs...,
+)
+    opts = EllipseOptions(kwargs)
+    return _prop_ellipse!(image, wf, xradius, yradius, xc, yc, opts)
 end
 
 """Creates an image containing an antialiased filled ellipse."""
