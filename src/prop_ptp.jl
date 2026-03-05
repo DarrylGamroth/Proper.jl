@@ -9,14 +9,35 @@ function prop_ptp(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
 
     wf.z_m += float(dz)
 
-    f = fft_forward(wf.field, ctx) ./ length(wf.field)
-    f .*= n
+    ny, nx = size(wf.field)
+    kphase = -pi * λ * float(dz)
 
-    rho2 = ensure_rho2_map!(ws, size(wf.field, 1), size(wf.field, 2), dx)
-    f .*= cis.((-pi * λ * float(dz)) .* rho2)
+    if wf.field isa StridedMatrix && fft_style(ctx) isa FFTWStyle
+        f = ensure_fft_scratch!(ws, ny, nx)
+        copyto!(f, wf.field)
+        FFTW.fft!(f)
+        f ./= n
 
-    wf.field .= fft_inverse(f, ctx) .* length(wf.field)
-    wf.field ./= n
+        rho2 = ensure_rho2_map!(ws, ny, nx, dx)
+        @inbounds @simd for idx in eachindex(f, rho2)
+            f[idx] *= cis(kphase * rho2[idx])
+        end
+
+        FFTW.ifft!(f)
+        f .*= n
+        copyto!(wf.field, f)
+    else
+        f = fft_forward(wf.field, ctx) ./ length(wf.field)
+        f .*= n
+
+        rho2 = ensure_rho2_map!(ws, ny, nx, dx)
+        @inbounds @simd for idx in eachindex(f, rho2)
+            f[idx] *= cis(kphase * rho2[idx])
+        end
+
+        wf.field .= fft_inverse(f, ctx) .* length(wf.field)
+        wf.field ./= n
+    end
 
     return wf
 end

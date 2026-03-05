@@ -63,8 +63,10 @@ end
     wf.propagator_type = propagator_transition(wf.beam_type_old, beam_type_new)
     lens_phase = _lens_phase(wf.propagator_type, float(lens_fl), r_beam_old, r_beam)
 
-    rho = prop_radius(wf)
-    prop_add_phase(wf, @. -(rho^2) * (lens_phase / 2))
+    if !iszero(lens_phase)
+        # lens phase term is equivalent to quadratic phase with curvature c = -1/lens_phase.
+        prop_qphase(wf, -inv(lens_phase))
+    end
 
     wf.reference_surface = beam_type_new === INSIDE ? PLANAR : SPHERICAL
     wf.beam_type_old = beam_type_new

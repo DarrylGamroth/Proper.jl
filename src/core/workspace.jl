@@ -14,25 +14,35 @@ end
 
 mutable struct FFTWorkspace{T<:AbstractFloat}
     rho2::Matrix{T}
+    scratch::Matrix{Complex{T}}
     nx::Int
     ny::Int
     dx::T
     valid::Bool
+    scratch_valid::Bool
 end
 
 FFTWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} =
-    FFTWorkspace{T}(Matrix{T}(undef, 0, 0), 0, 0, zero(T), false)
+    FFTWorkspace{T}(Matrix{T}(undef, 0, 0), Matrix{Complex{T}}(undef, 0, 0), 0, 0, zero(T), false, false)
 
-@inline function ensure_rho2_map!(ws::FFTWorkspace{T}, nx::Integer, ny::Integer, dx::Real) where {T}
+@inline function ensure_rho2_map!(ws::FFTWorkspace{T}, ny::Integer, nx::Integer, dx::Real) where {T}
     dxT = T(dx)
     if !(ws.valid && ws.nx == nx && ws.ny == ny && ws.dx == dxT)
-        ws.rho2 = fft_order_rho2_map(nx, ny, dxT)
+        ws.rho2 = fft_order_rho2_map(ny, nx, dxT)
         ws.nx = nx
         ws.ny = ny
         ws.dx = dxT
         ws.valid = true
     end
     return ws.rho2
+end
+
+@inline function ensure_fft_scratch!(ws::FFTWorkspace{T}, ny::Integer, nx::Integer) where {T}
+    if !(ws.scratch_valid && size(ws.scratch) == (ny, nx))
+        ws.scratch = Matrix{Complex{T}}(undef, ny, nx)
+        ws.scratch_valid = true
+    end
+    return ws.scratch
 end
 
 mutable struct ProperWorkspace{T<:AbstractFloat}
