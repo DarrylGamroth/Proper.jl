@@ -146,3 +146,28 @@ end
     @test size(dmap) == size(wf.field)
     @test all(isfinite, dmap)
 end
+
+@testset "Phase 8 segmentation and interpolation parity coverage" begin
+    wf = prop_begin(1.0, 500e-9, 64)
+    m = prop_8th_order_mask(wf, 3.0; circular=true)
+    @test size(m) == size(wf.field)
+    @test 0.0 <= minimum(m) <= maximum(m) <= 1.0
+
+    hz = prop_hex_zernikes(1:3, Float32[1e-9, -2e-9, 1e-9], 64, Float32(prop_get_sampling(wf)), 0.03f0)
+    @test size(hz) == (64, 64)
+    @test eltype(hz) == Float32
+
+    nhex = 1 * (1 + 1) * 3 + 1
+    zvals = zeros(Float64, 22, nhex)
+    zvals[4, :] .= 1e-9
+    ap, ph = prop_hex_wavefront(wf, 1, 0.03, 0.032, zvals; no_apply=true)
+    @test size(ap) == size(wf.field)
+    @test size(ph) == size(wf.field)
+    @test any(!iszero, ap)
+
+    a = reshape(collect(1.0:16.0), 4, 4)
+    @test prop_cubic_conv(a, 2.0, 2.0) ≈ a[2, 2] atol=1e-12
+    out = prop_cubic_conv(a, [1.0, 2.0, 3.0], [1.0, 2.0]; grid=true)
+    @test size(out) == (2, 3)
+    @test size(libszoom(a, 2.0), 1) == 8
+end

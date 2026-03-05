@@ -46,7 +46,8 @@
 
 ## Next Workstream (Phase 8/9)
 - [x] Replace fallback propagation internals with parity implementations.
-- [~] Replace fallback PSD/Zernike/polygon/segmented-optics implementations with parity implementations (Zernike/polygon/PSD done; segmented optics still pending).
+- [~] Replace fallback PSD/Zernike/polygon/segmented-optics implementations with parity implementations (Zernike/polygon/PSD/segmented optics implemented; parity validation pass still pending).
+- [x] Replace interpolation and zoom placeholders with cubic-convolution implementations (`libcconv`, `libcconvthread`, `libszoom`, `prop_cubic_conv`).
 - [ ] Run full 23-example parity report and close threshold gaps in `:python334`.
 - [ ] Perform MATLAB/manual semantic reconciliation on known disagreement hotspots.
 
