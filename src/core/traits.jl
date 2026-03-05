@@ -21,3 +21,21 @@ abstract type RNGStyle end
 struct GenericRNGStyle <: RNGStyle end
 
 rng_style(::Type) = GenericRNGStyle()
+
+abstract type ShiftKernelStyle end
+struct ShiftLoopStyle <: ShiftKernelStyle end
+struct ShiftKAStyle <: ShiftKernelStyle end
+
+shift_kernel_style(::Type{<:AbstractArray}) = ShiftLoopStyle()
+shift_kernel_style(::Type{<:StridedMatrix}) = ShiftKAStyle()
+
+const KA_MASK_MIN_ELEMS = typemax(Int)
+const KA_END_MIN_ELEMS = 200_000
+
+@inline function ka_mask_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
+    return (shift_kernel_style(A) isa ShiftKAStyle) && (ny * nx >= KA_MASK_MIN_ELEMS)
+end
+
+@inline function ka_end_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
+    return (shift_kernel_style(A) isa ShiftKAStyle) && (ny * nx >= KA_END_MIN_ELEMS)
+end

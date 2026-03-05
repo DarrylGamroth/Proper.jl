@@ -4,6 +4,19 @@
     invert::Bool=false,
 )
     ny, nx = size(field)
+    if ka_mask_enabled(typeof(field), ny, nx)
+        return ka_apply_shifted_mask!(field, mask; invert=invert)
+    end
+
+    return _apply_shifted_mask_loop!(field, mask; invert=invert)
+end
+
+@inline function _apply_shifted_mask_loop!(
+    field::AbstractMatrix{<:Complex},
+    mask::AbstractMatrix{<:Real};
+    invert::Bool=false,
+)
+    ny, nx = size(field)
     sy = ny ÷ 2
     sx = nx ÷ 2
 

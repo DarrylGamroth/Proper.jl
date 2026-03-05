@@ -20,6 +20,19 @@ end
     r0::Int,
     c0::Int,
 ) where {Tout<:Complex,Tin<:Complex}
+    oy, ox = size(out)
+    if ka_end_enabled(typeof(out), oy, ox)
+        return ka_copy_shifted_complex!(out, field, r0, c0)
+    end
+    return _copy_shifted_complex_loop!(out, field, r0, c0)
+end
+
+@inline function _copy_shifted_complex_loop!(
+    out::StridedMatrix{Tout},
+    field::StridedMatrix{Tin},
+    r0::Int,
+    c0::Int,
+) where {Tout<:Complex,Tin<:Complex}
     ny, nx = size(field)
     oy, ox = size(out)
     sy = ny ÷ 2
@@ -36,6 +49,19 @@ end
 end
 
 @inline function _copy_shifted_intensity!(
+    out::StridedMatrix{Tout},
+    field::StridedMatrix{Tin},
+    r0::Int,
+    c0::Int,
+) where {Tout<:Number,Tin<:Complex}
+    oy, ox = size(out)
+    if ka_end_enabled(typeof(out), oy, ox)
+        return ka_copy_shifted_intensity!(out, field, r0, c0)
+    end
+    return _copy_shifted_intensity_loop!(out, field, r0, c0)
+end
+
+@inline function _copy_shifted_intensity_loop!(
     out::StridedMatrix{Tout},
     field::StridedMatrix{Tin},
     r0::Int,

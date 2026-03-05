@@ -122,6 +122,31 @@ using Random
         @test (@allocated Proper.prop_end!(xbuf, wf; extract=8)) == 0
     end
 
+    @testset "KA pilot parity on large CPU arrays" begin
+        n = 512
+        @test !Proper.ka_mask_enabled(Matrix{ComplexF64}, n, n)
+        @test Proper.ka_end_enabled(Matrix{ComplexF64}, n, n)
+
+        wfmask = prop_begin(1.0, 500e-9, n)
+        RT = real(eltype(wfmask.field))
+        mask = zeros(RT, n, n)
+        Proper.prop_ellipse!(mask, wfmask, 0.35, 0.35, 0.0, 0.0; NORM=true)
+        f_ka = copy(wfmask.field)
+        f_loop = copy(wfmask.field)
+        Proper.ka_apply_shifted_mask!(f_ka, mask)
+        Proper._apply_shifted_mask_loop!(f_loop, mask)
+        @test isapprox(f_ka, f_loop; atol=0, rtol=0)
+
+        wfend = prop_begin(1.0, 500e-9, n)
+        prop_circular_aperture(wfend, 0.2)
+        prop_propagate(wfend, 0.01)
+        out_ka = Matrix{Float64}(undef, n, n)
+        out_loop = similar(out_ka)
+        Proper.prop_end!(out_ka, wfend)
+        Proper._copy_shifted_intensity_loop!(out_loop, wfend.field, 1, 1)
+        @test isapprox(out_ka, out_loop; atol=0, rtol=0)
+    end
+
     @testset "Mutating geometry parity" begin
         wf = prop_begin(1.0, 500e-9, 64)
         RT = real(eltype(wf.field))

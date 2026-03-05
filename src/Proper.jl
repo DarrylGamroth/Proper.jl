@@ -6,6 +6,7 @@ using Statistics
 
 include("core/policy.jl")
 include("core/traits.jl")
+include("core/ka_kernels.jl")
 include("core/workspace.jl")
 include("core/types.jl")
 include("core/context.jl")
@@ -102,6 +103,7 @@ include("switch_set.jl")
 
 export BackendStyle, CPUBackend, UnknownBackend, FFTStyle, FFTWStyle, GenericFFTStyle
 export InterpStyle, GenericInterpStyle, CubicInterpStyle, RNGStyle, GenericRNGStyle
+export ShiftKernelStyle, ShiftLoopStyle, ShiftKAStyle
 export RunContext, ProperConfig, ProperRuntime, WaveFront
 export prop_wavefront, prop_begin, prop_end, prop_add_phase, prop_add_wavefront
 export prop_multiply, prop_divide, prop_shift_center

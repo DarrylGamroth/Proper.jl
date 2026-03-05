@@ -83,6 +83,18 @@ Status: Pending
 - Update performance gates in tests to reflect improved steady-state allocations.
 - Record results and remaining hotspots in this file.
 
+### O7: KA/AK Pilot for Shift Kernels
+Status: Completed
+- Introduce trait-routed pilot kernels using `KernelAbstractions.jl` with `AcceleratedKernels.jl` backend/sync helpers.
+- Scope:
+  - shifted mask apply path (`_apply_shifted_mask!`)
+  - shifted output copy/intensity path in `prop_end!`
+- Keep loop fallbacks as default for smaller arrays via threshold guard.
+- Targets:
+  - maintain parity and tests
+  - validate neutral-or-better runtime on representative workloads
+  - establish backend-dispatch scaffolding for future GPU methods
+
 ## Execution Log
 - 2026-03-05: Plan created. Starting O1.
 - 2026-03-05: O1 completed.
@@ -131,3 +143,8 @@ Status: Pending
     - `ellipse` mutating: `~1,328 B -> ~832 B`
     - `polygon` mutating: `~6,400 B -> ~832 B`
     - `irregular_polygon` mutating: `~5,408 B -> ~544 B`
+- 2026-03-05: O7 KA/AK pilot implemented for shifted kernels.
+  - added `ShiftKernelStyle` trait with per-kernel guarded enable (`KA_MASK_MIN_ELEMS`, `KA_END_MIN_ELEMS`).
+  - added KA kernel implementations for shifted mask apply and shifted `prop_end!` copy/intensity.
+  - integrated trait routing in `prop_circular_aperture` mask application and `prop_end!` strided fast paths.
+  - updated CPU defaults after benchmarking: mask path remains loop-default; `prop_end!` shifted copy/intensity keeps KA pilot for large arrays.
