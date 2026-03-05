@@ -22,5 +22,5 @@ function prop_wts(wf::WaveFront, dz::Real, ctx::RunContext)
 end
 
 @inline function prop_wts(wf::WaveFront, dz::Real)
-    return prop_wts(wf, dz, RunContext(typeof(wf.field)))
+    return prop_wts(wf, dz, RunContext(wf))
 end

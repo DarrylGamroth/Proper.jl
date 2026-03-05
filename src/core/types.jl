@@ -42,6 +42,7 @@ mutable struct WaveFront{T,A<:AbstractMatrix{Complex{T}}}
     beam_type_old::BeamType
     propagator_type::PropagatorType
     rayleigh_factor::T
+    workspace::ProperWorkspace{T}
 end
 
 function WaveFront(field::A, wavelength_m::T, sampling_m::T, z_m::T, beam_diameter_m::T) where {T<:AbstractFloat,A<:AbstractMatrix{Complex{T}}}
@@ -61,5 +62,6 @@ function WaveFront(field::A, wavelength_m::T, sampling_m::T, z_m::T, beam_diamet
         INSIDE,
         INSIDE_TO_INSIDE,
         one(T),
+        ProperWorkspace(T),
     )
 end

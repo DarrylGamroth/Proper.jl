@@ -24,5 +24,5 @@ function prop_stw(wf::WaveFront, dz::Real, ctx::RunContext)
 end
 
 @inline function prop_stw(wf::WaveFront, dz::Real=0.0)
-    return prop_stw(wf, dz, RunContext(typeof(wf.field)))
+    return prop_stw(wf, dz, RunContext(wf))
 end

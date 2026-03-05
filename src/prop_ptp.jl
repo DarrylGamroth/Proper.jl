@@ -14,8 +14,9 @@ function prop_ptp(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
 
     if wf.field isa StridedMatrix && fft_style(ctx) isa FFTWStyle
         f = ensure_fft_scratch!(ws, ny, nx)
+        pfft, pbfft = ensure_fft_plans!(ws, ny, nx)
         copyto!(f, wf.field)
-        FFTW.fft!(f)
+        LinearAlgebra.mul!(f, pfft, f)
         f ./= n
 
         rho2 = ensure_rho2_map!(ws, ny, nx, dx)
@@ -23,8 +24,8 @@ function prop_ptp(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
             f[idx] *= cis(kphase * rho2[idx])
         end
 
-        FFTW.ifft!(f)
-        f .*= n
+        LinearAlgebra.mul!(f, pbfft, f)
+        f ./= n
         copyto!(wf.field, f)
     else
         f = fft_forward(wf.field, ctx) ./ length(wf.field)
@@ -47,5 +48,5 @@ end
 end
 
 @inline function prop_ptp(wf::WaveFront, dz::Real)
-    return prop_ptp(wf, dz, RunContext(typeof(wf.field)))
+    return prop_ptp(wf, dz, RunContext(wf))
 end

@@ -6,8 +6,8 @@ using Statistics
 
 include("core/policy.jl")
 include("core/traits.jl")
-include("core/types.jl")
 include("core/workspace.jl")
+include("core/types.jl")
 include("core/context.jl")
 include("core/keywords.jl")
 include("core/grid.jl")

@@ -6,21 +6,5 @@ function prop_wavefront(gridsize::Integer, wavelength_m::Real, beam_diameter_m::
     d = float(beam_diameter_m)
     s = sampling_m === nothing ? d / n : float(sampling_m)
     field = fill(complex(one(λ), zero(λ)), n, n)
-    w0 = d / 2
-    zray = pi * w0^2 / λ
-    return WaveFront(
-        field,
-        λ,
-        s,
-        zero(λ),
-        d,
-        zero(λ),
-        w0,
-        zray,
-        float(1e9),
-        PLANAR,
-        INSIDE,
-        INSIDE_TO_INSIDE,
-        one(λ),
-    )
+    return WaveFront(field, λ, s, zero(λ), d)
 end

@@ -21,7 +21,10 @@ using Random
     @testset "Context workspace reuse" begin
         rng = MersenneTwister(123)
         wf = prop_begin(1.0, 500e-9, 32)
-        ctx = RunContext(typeof(wf.field))
+        ctx = RunContext(wf)
+        ctx2 = RunContext(wf)
+        @test Proper.interp_workspace(ctx) === Proper.interp_workspace(ctx2)
+        @test Proper.fft_workspace(ctx) === Proper.fft_workspace(ctx2)
         dmap = rand(rng, Float32, 32, 32)
         opts = Proper.ResampleMapOptions(wf, wf.sampling_m, 16.0, 16.0)
         out = zeros(Float64, size(wf.field)...)
@@ -47,6 +50,8 @@ using Random
         rhoptr = pointer(fws.rho2)
         Proper.prop_ptp(wfptp, 0.01, ctx)
         @test pointer(fws.rho2) == rhoptr
+        @test fws.forward_plan !== nothing
+        @test fws.backward_plan !== nothing
     end
 
     @testset "Mutating wrapper parity" begin

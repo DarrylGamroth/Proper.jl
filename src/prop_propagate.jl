@@ -63,7 +63,7 @@ end
 end
 
 @inline function _prop_propagate!(wf::WaveFront, dz::Real, opts::PropagateOptions)
-    return _prop_propagate!(wf, dz, opts, RunContext(typeof(wf.field)))
+    return _prop_propagate!(wf, dz, opts, RunContext(wf))
 end
 
 @inline function _prop_propagate!(wf::WaveFront, dz::Real, opts::PropagateOptions, ctx::RunContext)
