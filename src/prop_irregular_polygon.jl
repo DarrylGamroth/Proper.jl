@@ -2,11 +2,12 @@
     inside = false
     n = length(xv)
     j = n
+    epsy = eps(promote_type(typeof(y), eltype(yv)))
     @inbounds for i in 1:n
         yi = yv[i]
         yj = yv[j]
         if ((yi > y) != (yj > y))
-            xcross = (xv[j] - xv[i]) * (y - yi) / (yj - yi + eps()) + xv[i]
+            xcross = (xv[j] - xv[i]) * (y - yi) / (yj - yi + epsy) + xv[i]
             inside = (x < xcross) ? !inside : inside
         end
         j = i
@@ -34,30 +35,48 @@ function _prop_irregular_polygon(
     opts::IrregularPolygonOptions,
 )
     length(xverts) == length(yverts) || throw(ArgumentError("vertex arrays must have same length"))
+    nverts = length(xverts)
 
+    RT = real(eltype(wf.field))
     beamr = prop_get_beamradius(wf)
-    xv = opts.norm ? float.(xverts) .* beamr : float.(xverts)
-    yv = opts.norm ? float.(yverts) .* beamr : float.(yverts)
+    xv, yv = ensure_mask_vertices!(wf.workspace.mask, nverts)
+    @inbounds for k in 1:nverts
+        xv0 = RT(xverts[k])
+        yv0 = RT(yverts[k])
+        if opts.norm
+            xv[k] = xv0 * RT(beamr)
+            yv[k] = yv0 * RT(beamr)
+        else
+            xv[k] = xv0
+            yv[k] = yv0
+        end
+    end
 
     ny, nx = size(wf.field)
     size(image) == (ny, nx) || throw(ArgumentError("output size must match wavefront"))
-    dx = wf.sampling_m
-    x = coordinate_axis(nx, dx)
-    y = coordinate_axis(ny, dx)
+    dx = RT(wf.sampling_m)
+    cx = nx ÷ 2
+    cy = ny ÷ 2
 
     subs = antialias_subsampling()
-    offs = ((collect(1:subs) .- (subs + 1) / 2) ./ subs) .* dx
+    inv_subs = inv(RT(subs))
+    halfsub = RT(subs + 1) / RT(2)
+    nsubpix = RT(subs * subs)
 
     fill!(image, zero(eltype(image)))
     @inbounds for j in 1:nx
-        x0 = x[j]
+        x0 = RT(j - 1 - cx) * dx
         for i in 1:ny
-            y0 = y[i]
+            y0 = RT(i - 1 - cy) * dx
             cnt = 0
-            for oy in offs, ox in offs
+            for oy_i in 1:subs
+                oy = (RT(oy_i) - halfsub) * inv_subs * dx
+                for ox_i in 1:subs
+                    ox = (RT(ox_i) - halfsub) * inv_subs * dx
                 cnt += _point_in_poly(x0 + ox, y0 + oy, xv, yv) ? 1 : 0
+                end
             end
-            image[i, j] = cnt / (subs * subs)
+            image[i, j] = RT(cnt) / nsubpix
         end
     end
 

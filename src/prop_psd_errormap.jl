@@ -47,11 +47,46 @@ end
     return wf
 end
 
+@inline function _phase_from_shifted_map!(
+    wf::WaveFront,
+    dmap_shifted::AbstractMatrix,
+    scale::Real,
+)
+    ny, nx = size(wf.field)
+    sy = ny ÷ 2
+    sx = nx ÷ 2
+    @inbounds for j in 1:nx
+        js = mod1(j + sx, nx)
+        for i in 1:ny
+            is = mod1(i + sy, ny)
+            wf.field[i, j] *= cis(scale * dmap_shifted[is, js])
+        end
+    end
+    return wf
+end
+
+@inline function _apply_shifted_amplitude_map!(
+    field::AbstractMatrix{<:Complex},
+    dmap_shifted::AbstractMatrix,
+)
+    ny, nx = size(field)
+    sy = ny ÷ 2
+    sx = nx ÷ 2
+    @inbounds for j in 1:nx
+        js = mod1(j + sx, nx)
+        for i in 1:ny
+            is = mod1(i + sy, ny)
+            field[i, j] *= dmap_shifted[is, js]
+        end
+    end
+    return field
+end
+
 @inline function _read_psd_map(wf::WaveFront, fpath::AbstractString, ::Type{T}) where {T<:AbstractFloat}
     return Matrix{T}(prop_readmap(wf, fpath))
 end
 
-function _build_psd_map(
+function _build_psd_map_unshifted(
     wf::WaveFront,
     amp::Real,
     b::Real,
@@ -137,13 +172,133 @@ function _build_psd_map(
     return dmap
 end
 
+function _build_psd_map_shifted!(
+    dmap::Matrix{T},
+    wf::WaveFront,
+    amp::Real,
+    b::Real,
+    c::Real,
+    opts::PSDErrorMapOptions{T},
+    ws::FFTWorkspace{T},
+) where {T<:AbstractFloat}
+    n = size(wf.field, 1)
+    size(dmap) == (n, n) || throw(ArgumentError("output size must match wavefront grid"))
+    center = n ÷ 2
+    center_pix = center + 1
+    sy = n ÷ 2
+    sx = n ÷ 2
+
+    dx = T(wf.sampling_m)
+    dk = inv(T(n) * dx)
+    inv_dk = inv(dk)
+
+    ampT = T(amp)
+    inv_b = inv(T(b))
+    cT = T(c)
+    halfpow = (cT + one(T)) / T(2)
+
+    rotation = opts.rotation
+    inclination = opts.inclination
+    cr = cos(-rotation)
+    sr = sin(-rotation)
+    ci = cos(-inclination)
+
+    use_tpf = opts.tpf
+    maxfreq = opts.max_frequency
+    use_maxfreq = maxfreq !== nothing
+
+    two_pi = T(2pi)
+    piT = T(pi)
+
+    spectrum = ensure_fft_scratch!(ws, n, n)
+    phase_u = ensure_fft_real_scratch!(ws, n, n)
+    rand!(opts.rng, phase_u)
+    pfft, _ = ensure_fft_plans!(ws, n, n)
+    sum_psd = zero(T)
+
+    @inbounds for j in 1:n
+        x0 = T(j - 1 - center)
+        js = mod1(j + sx, n)
+        for i in 1:n
+            y0 = T(i - 1 - center)
+            is = mod1(i + sy, n)
+
+            # Preserve upstream rotation-order quirk shared by Python and MATLAB.
+            x1 = x0 * cr - y0 * sr
+            y1 = (x1 * sr + y0 * cr) * ci
+            k = sqrt(x1 * x1 + y1 * y1) * dk
+
+            psd = if i == center_pix && j == center_pix
+                zero(T)
+            elseif use_tpf
+                ampT / (one(T) + (k * inv_b)^cT)
+            else
+                ampT / (one(T) + (k * inv_b)^2)^halfpow
+            end
+
+            if use_maxfreq
+                # Keep Python executable baseline behavior: multiply by zeroed k-grid.
+                k_eff = k > maxfreq ? zero(T) : k
+                psd *= k_eff
+            end
+
+            sum_psd += psd
+            phase = muladd(two_pi, phase_u[i, j], -piT)
+            spectrum[is, js] = (sqrt(psd) * inv_dk) * cis(phase)
+        end
+    end
+
+    LinearAlgebra.mul!(spectrum, pfft, spectrum)
+    spectrum ./= length(spectrum)
+
+    inv_rx2 = inv(T(n * n) * dx * dx)
+    sum_v = zero(T)
+    sumsq_v = zero(T)
+    @inbounds @simd for idx in eachindex(spectrum)
+        v = real(spectrum[idx]) * inv_rx2
+        sum_v += v
+        sumsq_v += v * v
+    end
+
+    npts = n * n
+    rms_map = if npts > 1
+        μ = sum_v / T(npts)
+        var = (sumsq_v - T(npts) * μ * μ) / T(npts - 1)
+        sqrt(max(zero(T), var))
+    else
+        zero(T)
+    end
+
+    rms_psd = sqrt(sum_psd) * dk
+    denom = rms_map + eps(T)
+    scale = (!opts.rms && opts.amplitude_target === nothing) ? (rms_psd / denom) : (ampT / denom)
+
+    @inbounds for j in 1:n
+        js = mod1(j + sx, n)
+        for i in 1:n
+            is = mod1(i + sy, n)
+            dmap[is, js] = real(spectrum[i, j]) * inv_rx2 * scale
+        end
+    end
+
+    return dmap
+end
+
 function _prop_psd_errormap!(wf::WaveFront, amp::Real, b::Real, c::Real, opts::PSDErrorMapOptions{T}) where {T<:AbstractFloat}
     n = size(wf.field, 1)
     dx = wf.sampling_m
     fpath = opts.file !== nothing && isfile(opts.file) ? opts.file : nothing
+    map_is_shifted = false
 
     dmap::Matrix{T} = if fpath === nothing
-        _build_psd_map(wf, amp, b, c, opts)
+        if wf.field isa StridedMatrix
+            m = Matrix{T}(undef, n, n)
+            _build_psd_map_shifted!(m, wf, amp, b, c, opts, wf.workspace.fft)
+            map_is_shifted = true
+            m
+        else
+            _build_psd_map_unshifted(wf, amp, b, c, opts)
+        end
     else
         _read_psd_map(wf, fpath, T)
     end
@@ -151,13 +306,25 @@ function _prop_psd_errormap!(wf::WaveFront, amp::Real, b::Real, c::Real, opts::P
     maptype = _psd_maptype(opts)
     if opts.amplitude_target !== nothing
         dmap .+= opts.amplitude_target - maximum(dmap)
-        !opts.no_apply && (wf.field .*= dmap)
+        if !opts.no_apply
+            if map_is_shifted
+                _apply_shifted_amplitude_map!(wf.field, dmap)
+            else
+                wf.field .*= dmap
+            end
+        end
     elseif !opts.no_apply
         scale = maptype === :mirror_surface ? 4pi / wf.wavelength_m : 2pi / wf.wavelength_m
-        _phase_from_map!(wf, dmap, scale)
+        if map_is_shifted
+            _phase_from_shifted_map!(wf, dmap, scale)
+        else
+            _phase_from_map!(wf, dmap, scale)
+        end
     end
 
-    dmap = prop_shift_center(dmap)
+    if !map_is_shifted
+        dmap = prop_shift_center(dmap)
+    end
 
     if opts.file !== nothing && fpath === nothing
         maptype_str = _psd_maptype_string(maptype)

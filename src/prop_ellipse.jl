@@ -54,15 +54,23 @@ function _prop_ellipse!(
     sint = sin(t)
     cost = cos(t)
 
-    xp = RT[-xrad_pix, xrad_pix, xrad_pix, -xrad_pix]
-    yp = RT[-yrad_pix, -yrad_pix, yrad_pix, yrad_pix]
-    xbox = xp .* cost .- yp .* sint .+ xcenter_pix
-    ybox = xp .* sint .+ yp .* cost .+ ycenter_pix
+    minx = typemax(RT)
+    maxx = typemin(RT)
+    miny = typemax(RT)
+    maxy = typemin(RT)
+    @inbounds for (xp, yp) in ((-xrad_pix, -yrad_pix), (xrad_pix, -yrad_pix), (xrad_pix, yrad_pix), (-xrad_pix, yrad_pix))
+        xr = xp * cost - yp * sint + xcenter_pix
+        yr = xp * sint + yp * cost + ycenter_pix
+        minx = min(minx, xr)
+        maxx = max(maxx, xr)
+        miny = min(miny, yr)
+        maxy = max(maxy, yr)
+    end
 
-    minx_pix = clamp(round(Int, minimum(xbox)) - 1, 0, n - 1)
-    maxx_pix = clamp(round(Int, maximum(xbox)) + 1, 0, n - 1)
-    miny_pix = clamp(round(Int, minimum(ybox)) - 1, 0, n - 1)
-    maxy_pix = clamp(round(Int, maximum(ybox)) + 1, 0, n - 1)
+    minx_pix = clamp(round(Int, minx) - 1, 0, n - 1)
+    maxx_pix = clamp(round(Int, maxx) + 1, 0, n - 1)
+    miny_pix = clamp(round(Int, miny) - 1, 0, n - 1)
+    maxy_pix = clamp(round(Int, maxy) + 1, 0, n - 1)
 
     delx = inv(xrad_pix)
     dely = inv(yrad_pix)
@@ -80,12 +88,9 @@ function _prop_ellipse!(
     threshold_lo = xf(1) - dr
     limit = xf(1 + 1e-10)
 
-    suboffs = Vector{RT}(undef, nsub)
-    @inbounds for i in 1:nsub
-        suboffs[i] = xf(i - 1 - (nsub ÷ 2)) / xf(nsub)
-    end
-
     nsubpix = xf(nsub * nsub)
+    nsub_inv = inv(xf(nsub))
+    nsub_ctr = nsub ÷ 2
 
     @inbounds for ypix in miny_pix:maxy_pix
         y0 = xf(ypix) - ycenter_pix
@@ -102,9 +107,11 @@ function _prop_ellipse!(
                 one(RT)
             else
                 cnt = 0
-                for oy in suboffs
+                for oy_i in 1:nsub
+                    oy = xf(oy_i - 1 - nsub_ctr) * nsub_inv
                     ys = y0 + oy
-                    for ox in suboffs
+                    for ox_i in 1:nsub
+                        ox = xf(ox_i - 1 - nsub_ctr) * nsub_inv
                         xs = x0 + ox
                         xsv = (xs * cost - ys * sint) / xrad_pix
                         ysv = (xs * sint + ys * cost) / yrad_pix

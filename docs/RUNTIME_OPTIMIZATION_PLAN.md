@@ -122,3 +122,12 @@ Status: Pending
     - Python median: `8.6305942e7 ns`
     - Julia median: `2.7026525e7 ns`
     - Python/Julia ratio: `3.193`
+- 2026-03-05: allocation reduction pass for PSD + geometry kernels completed.
+  - `prop_psd_errormap` now reuses FFT workspace scratch/plans and phase matrix, and avoids shift-copy temporaries in the generated-map path.
+  - `prop_irregular_polygon`/`prop_polygon` now avoid `coordinate_axis`/`collect`/broadcast temporaries in hot loops and reuse workspace vertex buffers.
+  - `prop_ellipse` now removes temporary corner/offset vectors in favor of scalar loop math.
+  - updated kernel allocation metrics (`bench/julia/steady_state/refactor_kernels.jl`):
+    - `psd_errormap_no_apply`: `~941,344 B -> ~154,224 B`
+    - `ellipse` mutating: `~1,328 B -> ~832 B`
+    - `polygon` mutating: `~6,400 B -> ~832 B`
+    - `irregular_polygon` mutating: `~5,408 B -> ~544 B`
