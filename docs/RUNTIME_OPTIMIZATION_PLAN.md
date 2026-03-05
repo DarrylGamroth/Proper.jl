@@ -110,6 +110,7 @@ Status: Pending
   - default allocating wrapper now allocates output-only footprint (`~2.10 MB` for 512x512 intensity output).
 - 2026-03-05: benchmark update after O2 + O3 completion (`scripts/benchmark_all.sh`).
   - steady-state median: `2.79100035e7 ns`; Python/Julia ratio in this setup: `0.467`.
+  - note: this ratio was from the old non-parity Python toy harness and is superseded by the corrected parity benchmark entry below.
   - example workflow medians / allocations:
     - `simple_prescription_256`: `7.00e6 ns`, `4,206,240 B`
     - `psdtest_128`: `4.05e6 ns`, `2,248,328 B`
