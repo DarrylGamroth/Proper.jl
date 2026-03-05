@@ -358,6 +358,81 @@ Exit criterion for Phase 0: each subsection above is marked “decided” in pro
   - Python parity baseline is green and MATLAB/manual-backed corrections are documented and tested.
   - Release notes clearly describe compatibility guarantees and corrected-mode behavior.
 
+## Refactor Track (Post-Audit, Parity-Preserving)
+Context: `docs/JULIA_IMPLEMENTATION_AUDIT_2026-03-04.md` immediate checklist is complete. This track closes remaining architecture/performance findings without changing user-facing behavior.
+
+### R1: Typed Option Boundaries (Remove Dynamic Keyword Hot Paths)
+- Goals:
+  - Eliminate repeated `kwargs`/`haskey` branching inside compute paths.
+  - Normalize option parsing once at API boundary (`D-0020`, `D-0028`).
+- Work items:
+  - Add typed option structs + normalizers for:
+    - propagation family (`prop_propagate`, `prop_select_propagator`, `prop_lens`)
+    - map/error family (`prop_errormap`, `prop_psd_errormap`, `prop_rotate`, `prop_magnify`)
+    - geometry family (`prop_ellipse`, `prop_rectangle`, `prop_polygon`, `prop_irregular_polygon`)
+  - Keep compatibility keywords in wrappers only; kernels accept typed options.
+- Exit criteria:
+  - No runtime keyword dictionary logic in inner loops of designated hot kernels.
+  - `@code_warntype` clean on normalized kernel entry points.
+
+### R2: Trait-Driven Kernel Routing (CPU/GPU-Ready)
+- Goals:
+  - Move backend/policy selection to trait dispatch points instead of runtime branching.
+  - Ensure backend preservation for `AbstractArray` inputs.
+- Work items:
+  - Define/extend internal dispatch entrypoints:
+    - interpolation trait (`interp_backend(::A)` style) for resample/rotate/magnify/cubic-conv grid path
+    - FFT trait usage in propagation kernels
+  - Thread `RunContext` through internal kernels that currently infer backend implicitly.
+  - Add explicit fallback hierarchy: generic CPU loop -> accelerated CPU/GPU kernel.
+- Exit criteria:
+  - Kernel backend selection visible as dispatch, not symbol/boolean branching.
+  - GPU smoke tests execute for implemented trait-routed kernels with `CUDA.allowscalar(false)`.
+
+### R3: Mutating Kernels + Workspace Reuse
+- Goals:
+  - Cut steady-state allocations in propagation/interpolation hot paths (`D-0018`, `D-0021`).
+- Work items:
+  - Introduce/complete `*_!` kernels for:
+    - `prop_rotate!`, `prop_magnify!`, `prop_cubic_conv_grid!`
+    - geometry mask fill kernels where full-frame temporaries are currently built
+  - Add reusable workspace structs for repeated axis buffers, interpolation scratch, and FFT buffers.
+  - Keep current `prop_*` non-mutating wrappers as compatibility adapters.
+- Exit criteria:
+  - Selected benchmark kernels meet defined allocation budgets in steady-state.
+  - No regression in parity thresholds relative to current baseline.
+
+### R4: WaveFront State Typing And Dispatch Simplification
+- Goals:
+  - Remove string/symbol state machine overhead in propagation control paths.
+- Work items:
+  - Replace `Symbol` propagation-state fields with compact typed selectors (`@enum` or equivalent small type tags).
+  - Dispatch transition math on typed state selectors.
+  - Preserve external behavior and table logging values.
+- Exit criteria:
+  - Propagation state transitions no longer rely on runtime symbol/string comparisons.
+  - Transition kernels are inference-stable and parity tests remain green.
+
+### R5: Performance/Inference Gates And Benchmark Expansion
+- Goals:
+  - Convert refactor expectations into enforced tests and benchmark gates (`D-0029`).
+- Work items:
+  - Expand inference/allocation tests beyond current gate set:
+    - propagation core kernels
+    - PSD/map synthesis hotspots
+    - geometry/mask hotspots
+  - Add benchmark matrix entries for refactored kernels and end-to-end examples.
+  - Continue strict separation of steady-state vs cold-start/TTFx reporting.
+- Exit criteria:
+  - CI enforces inference/allocation checks on designated kernels.
+  - Benchmark reports show no major regressions and document speedup deltas from refactor work.
+
+### Refactor Completion Criteria
+- Public `prop_*` API remains parity-stable.
+- Hot paths are type-stable, dispatch-predictable, and allocation-bounded.
+- Backend routing is trait-based and ready for progressive KA/AK rollout.
+- All changes are covered by parity tests and documented decisions.
+
 ## Example Parity Config Matrix (Coverage Plan)
 | Area | Axis | Permutations | Evidence | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
