@@ -1,12 +1,32 @@
-"""Creates an image containing an antialiased filled ellipse."""
-function prop_ellipse(wf::WaveFront, xradius::Real, yradius::Real, xc::Real=0.0, yc::Real=0.0; kwargs...)
+struct EllipseOptions{T<:AbstractFloat}
+    norm::Bool
+    dark::Bool
+    rotation::T
+end
+
+@inline function EllipseOptions(kwargs::Base.Iterators.Pairs)
+    return EllipseOptions{Float64}(
+        kw_lookup_bool(kwargs, :NORM, false),
+        kw_lookup_bool(kwargs, :DARK, false),
+        kw_lookup_float(kwargs, :ROTATION, 0.0),
+    )
+end
+
+function _prop_ellipse(
+    wf::WaveFront,
+    xradius::Real,
+    yradius::Real,
+    xc::Real,
+    yc::Real,
+    opts::EllipseOptions,
+)
     nsub = antialias_subsampling()
     n = prop_get_gridsize(wf)
     dx = prop_get_sampling(wf)
     beamrad_pix = prop_get_beamradius(wf) / dx
-    norm = switch_set(:NORM; kwargs...)
-    dark = switch_set(:DARK; kwargs...)
-    rotation = haskey(kwargs, :ROTATION) ? float(kwargs[:ROTATION]) : haskey(kwargs, :rotation) ? float(kwargs[:rotation]) : 0.0
+    norm = opts.norm
+    dark = opts.dark
+    rotation = opts.rotation
 
     RT = real(eltype(wf.field))
     xf = RT
@@ -110,4 +130,17 @@ function prop_ellipse(wf::WaveFront, xradius::Real, yradius::Real, xc::Real=0.0,
     image = zeros(RT, n, n)
     @views image[(miny_pix + 1):(miny_pix + ny), (minx_pix + 1):(minx_pix + nx)] .= mask
     return image
+end
+
+"""Creates an image containing an antialiased filled ellipse."""
+function prop_ellipse(
+    wf::WaveFront,
+    xradius::Real,
+    yradius::Real,
+    xc::Real=0.0,
+    yc::Real=0.0;
+    kwargs...,
+)
+    opts = EllipseOptions(kwargs)
+    return _prop_ellipse(wf, xradius, yradius, xc, yc, opts)
 end

@@ -1,28 +1,46 @@
 using Random
 
-@inline function _kw(kwargs, s::Symbol, default)
-    return haskey(kwargs, s) ? kwargs[s] : haskey(kwargs, Symbol(lowercase(String(s)))) ? kwargs[Symbol(lowercase(String(s)))] : default
+struct PSDErrorMapOptions{T<:AbstractFloat,R}
+    rng::R
+    file::Union{Nothing,String}
+    inclination::T
+    rotation::T
+    tpf::Bool
+    max_frequency::Union{Nothing,T}
+    rms::Bool
+    no_apply::Bool
+    mirror::Bool
+    amplitude_target::Union{Nothing,T}
 end
 
-"""Create and optionally apply PSD-based surface/wavefront/amplitude error map."""
-function prop_psd_errormap(wf::WaveFront, amp::Real, b::Real, c::Real; kwargs...)
+@inline function PSDErrorMapOptions(kwargs::Base.Iterators.Pairs)
+    T = Float64
+    rng = kw_lookup(kwargs, :RNG, Random.default_rng())
+    fv = kw_lookup_string(kwargs, :FILE, nothing)
+    inc = deg2rad(kw_lookup_float(kwargs, :INCLINATION, 0.0))
+    rot = deg2rad(kw_lookup_float(kwargs, :ROTATION, 0.0))
+    tpfv = kw_lookup_bool(kwargs, :TPF, false)
+    maxf = kw_lookup_float(kwargs, :MAX_FREQUENCY, nothing)
+    rmsv = kw_lookup_bool(kwargs, :RMS, false)
+    noap = kw_lookup_bool(kwargs, :NO_APPLY, false)
+    mir = kw_lookup_bool(kwargs, :MIRROR, false)
+
+    av = kw_lookup(kwargs, :AMPLITUDE, nothing)
+    atarget = av === nothing ? nothing : float(av)
+
+    return PSDErrorMapOptions{T,typeof(rng)}(rng, fv, inc, rot, tpfv, maxf, rmsv, noap, mir, atarget)
+end
+
+function _prop_psd_errormap!(wf::WaveFront, amp::Real, b::Real, c::Real, opts::PSDErrorMapOptions)
     n = size(wf.field, 1)
     dx = wf.sampling_m
-    rng = _kw(kwargs, :rng, Random.default_rng())
-    fpath = nothing
-    if haskey(kwargs, :FILE)
-        candidate = String(kwargs[:FILE])
-        isfile(candidate) && (fpath = candidate)
-    elseif haskey(kwargs, :file)
-        candidate = String(kwargs[:file])
-        isfile(candidate) && (fpath = candidate)
-    end
-
+    fpath = opts.file !== nothing && isfile(opts.file) ? opts.file : nothing
     maptype = "wavefront"
+
     dmap = if fpath === nothing
         dk = 1 / (n * dx)
-        inclination = deg2rad(float(_kw(kwargs, :INCLINATION, 0.0)))
-        rotation = deg2rad(float(_kw(kwargs, :ROTATION, 0.0)))
+        inclination = opts.inclination
+        rotation = opts.rotation
 
         xk = repeat(collect(0:(n - 1))' .- (n ÷ 2), n, 1)
         yk = transpose(xk)
@@ -33,7 +51,7 @@ function prop_psd_errormap(wf::WaveFront, amp::Real, b::Real, c::Real; kwargs...
         yk .*= cos(-inclination)
         kpsd = sqrt.(xk .^ 2 .+ yk .^ 2) .* dk
 
-        tpf = switch_set(:TPF; kwargs...)
+        tpf = opts.tpf
         psd2d = if tpf
             float(amp) ./ (1 .+ (kpsd ./ float(b)) .^ float(c))
         else
@@ -42,36 +60,33 @@ function prop_psd_errormap(wf::WaveFront, amp::Real, b::Real, c::Real; kwargs...
         psd2d[n ÷ 2 + 1, n ÷ 2 + 1] = 0.0
         rms_psd = sqrt(sum(psd2d)) * dk
 
-        maxfreq = _kw(kwargs, :MAX_FREQUENCY, nothing)
+        maxfreq = opts.max_frequency
         if maxfreq !== nothing
-            kpsd[kpsd .> float(maxfreq)] .= 0.0
+            kpsd[kpsd .> maxfreq] .= 0.0
             psd2d .*= kpsd
         end
 
-        phase = 2pi .* rand(rng, n, n) .- pi
+        phase = 2pi .* rand(opts.rng, n, n) .- pi
         dmap_fft = fft(prop_shift_center(sqrt.(psd2d) ./ dk .* cis.(phase))) ./ length(psd2d)
         dmap_local = real(dmap_fft) ./ (n^2 * dx^2)
         rms_map = std(dmap_local)
 
-        if !switch_set(:RMS; kwargs...) && !haskey(kwargs, :AMPLITUDE) && !haskey(kwargs, :amplitude)
+        if !opts.rms && opts.amplitude_target === nothing
             dmap_local .*= rms_psd / (rms_map + eps())
         else
             dmap_local .*= float(amp) / (rms_map + eps())
         end
         dmap_local
     else
-        fname = haskey(kwargs, :FILE) ? String(kwargs[:FILE]) : String(kwargs[:file])
-        prop_readmap(wf, fname)
+        prop_readmap(wf, fpath)
     end
 
-    no_apply = switch_set(:NO_APPLY; kwargs...)
-    if !no_apply
-        if haskey(kwargs, :AMPLITUDE) || haskey(kwargs, :amplitude)
-            target_amp = _kw(kwargs, :AMPLITUDE, 1.0)
-            dmap .+= float(target_amp) - maximum(dmap)
+    if !opts.no_apply
+        if opts.amplitude_target !== nothing
+            dmap .+= opts.amplitude_target - maximum(dmap)
             wf.field .*= dmap
             maptype = "amplitude"
-        elseif switch_set(:MIRROR; kwargs...)
+        elseif opts.mirror
             wf.field .*= cis.((4pi / wf.wavelength_m) .* dmap)
             maptype = "mirror surface"
         else
@@ -82,8 +97,8 @@ function prop_psd_errormap(wf::WaveFront, amp::Real, b::Real, c::Real; kwargs...
 
     dmap = prop_shift_center(dmap)
 
-    if haskey(kwargs, :FILE) && fpath === nothing
-        fname = String(kwargs[:FILE])
+    if opts.file !== nothing && fpath === nothing
+        fname = opts.file
         header = Dict{String,Any}(
             "MAPTYPE" => (maptype, " error map type"),
             "X_UNIT" => ("meters", " X-Y units"),
@@ -97,14 +112,26 @@ function prop_psd_errormap(wf::WaveFront, amp::Real, b::Real, c::Real; kwargs...
         if maptype != "amplitude"
             header["Z_UNIT"] = ("meters", " Error units")
         end
-        if switch_set(:TPF; kwargs...)
+        if opts.tpf
             header["PSDTYPE"] = ("TPF", "")
         end
-        if haskey(kwargs, :MAX_FREQUENCY)
-            header["MAXFREQ"] = (float(kwargs[:MAX_FREQUENCY]), " Maximum spatial frequency in cycles/meter")
+        if opts.max_frequency !== nothing
+            header["MAXFREQ"] = (opts.max_frequency, " Maximum spatial frequency in cycles/meter")
         end
         prop_fits_write(fname, dmap; HEADER=header)
     end
 
     return dmap
+end
+
+"""Create and optionally apply PSD-based surface/wavefront/amplitude error map."""
+function prop_psd_errormap(
+    wf::WaveFront,
+    amp::Real,
+    b::Real,
+    c::Real;
+    kwargs...,
+)
+    opts = PSDErrorMapOptions(kwargs)
+    return _prop_psd_errormap!(wf, amp, b, c, opts)
 end

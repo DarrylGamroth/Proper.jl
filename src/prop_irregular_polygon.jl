@@ -14,16 +14,29 @@
     return inside
 end
 
-"""Return antialiased filled convex/concave polygon mask."""
-function prop_irregular_polygon(wf::WaveFront, xverts::AbstractVector, yverts::AbstractVector; kwargs...)
+struct IrregularPolygonOptions
+    dark::Bool
+    norm::Bool
+end
+
+@inline function IrregularPolygonOptions(kwargs::Base.Iterators.Pairs)
+    return IrregularPolygonOptions(
+        kw_lookup_bool(kwargs, :DARK, false),
+        kw_lookup_bool(kwargs, :NORM, false),
+    )
+end
+
+function _prop_irregular_polygon(
+    wf::WaveFront,
+    xverts::AbstractVector,
+    yverts::AbstractVector,
+    opts::IrregularPolygonOptions,
+)
     length(xverts) == length(yverts) || throw(ArgumentError("vertex arrays must have same length"))
 
-    dark = switch_set(:DARK; kwargs...)
-    norm = switch_set(:NORM; kwargs...)
     beamr = prop_get_beamradius(wf)
-
-    xv = norm ? float.(xverts) .* beamr : float.(xverts)
-    yv = norm ? float.(yverts) .* beamr : float.(yverts)
+    xv = opts.norm ? float.(xverts) .* beamr : float.(xverts)
+    yv = opts.norm ? float.(yverts) .* beamr : float.(yverts)
 
     ny, nx = size(wf.field)
     dx = wf.sampling_m
@@ -47,5 +60,16 @@ function prop_irregular_polygon(wf::WaveFront, xverts::AbstractVector, yverts::A
         end
     end
 
-    return dark ? (1 .- image) : image
+    return opts.dark ? (1 .- image) : image
+end
+
+"""Return antialiased filled convex/concave polygon mask."""
+function prop_irregular_polygon(
+    wf::WaveFront,
+    xverts::AbstractVector,
+    yverts::AbstractVector;
+    kwargs...,
+)
+    opts = IrregularPolygonOptions(kwargs)
+    return _prop_irregular_polygon(wf, xverts, yverts, opts)
 end

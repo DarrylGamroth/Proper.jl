@@ -1,21 +1,38 @@
-"""Return an antialiased filled rectangle mask."""
-function prop_rectangle(wf::WaveFront, xsize::Real, ysize::Real, xc::Real=0.0, yc::Real=0.0; kwargs...)
+struct RectangleOptions{T<:AbstractFloat}
+    norm::Bool
+    dark::Bool
+    rotation::T
+end
+
+@inline function RectangleOptions(kwargs::Base.Iterators.Pairs)
+    return RectangleOptions{Float64}(
+        kw_lookup_bool(kwargs, :NORM, false),
+        kw_lookup_bool(kwargs, :DARK, false),
+        kw_lookup_float(kwargs, :ROTATION, 0.0),
+    )
+end
+
+function _prop_rectangle(
+    wf::WaveFront,
+    xsize::Real,
+    ysize::Real,
+    xc::Real,
+    yc::Real,
+    opts::RectangleOptions,
+)
     n = prop_get_gridsize(wf)
     dx = prop_get_sampling(wf)
     beamrad = prop_get_beamradius(wf)
     pr = beamrad / dx
 
-    norm = switch_set(:NORM; kwargs...)
-    dark = switch_set(:DARK; kwargs...)
-    rotation = haskey(kwargs, :ROTATION) ? float(kwargs[:ROTATION]) : haskey(kwargs, :rotation) ? float(kwargs[:rotation]) : 0.0
-    θ = deg2rad(rotation)
+    θ = deg2rad(opts.rotation)
     cθ = cos(θ)
     sθ = sin(θ)
 
-    xcp = n ÷ 2 + (norm ? float(xc) * pr : float(xc) / dx)
-    ycp = n ÷ 2 + (norm ? float(yc) * pr : float(yc) / dx)
-    xrp = (norm ? float(xsize) * pr : float(xsize) / dx) / 2
-    yrp = (norm ? float(ysize) * pr : float(ysize) / dx) / 2
+    xcp = n ÷ 2 + (opts.norm ? float(xc) * pr : float(xc) / dx)
+    ycp = n ÷ 2 + (opts.norm ? float(yc) * pr : float(yc) / dx)
+    xrp = (opts.norm ? float(xsize) * pr : float(xsize) / dx) / 2
+    yrp = (opts.norm ? float(ysize) * pr : float(ysize) / dx) / 2
 
     RT = real(eltype(wf.field))
     image = zeros(RT, n, n)
@@ -35,9 +52,9 @@ function prop_rectangle(wf::WaveFront, xsize::Real, ysize::Real, xc::Real=0.0, y
     inv_sub = 1 / (nsub * nsub)
 
     @inbounds for ypix in miny:maxy
-        y0 = (ypix - ycp)
+        y0 = ypix - ycp
         for xpix in minx:maxx
-            x0 = (xpix - xcp)
+            x0 = xpix - xcp
             cnt = 0
             for ys in 1:nsub
                 yo = y0 + (ys - (nsub + 1) / 2) / nsub
@@ -52,9 +69,22 @@ function prop_rectangle(wf::WaveFront, xsize::Real, ysize::Real, xc::Real=0.0, y
         end
     end
 
-    if dark
+    if opts.dark
         image .= 1 .- image
     end
 
     return image
+end
+
+"""Return an antialiased filled rectangle mask."""
+function prop_rectangle(
+    wf::WaveFront,
+    xsize::Real,
+    ysize::Real,
+    xc::Real=0.0,
+    yc::Real=0.0;
+    kwargs...,
+)
+    opts = RectangleOptions(kwargs)
+    return _prop_rectangle(wf, xsize, ysize, xc, yc, opts)
 end

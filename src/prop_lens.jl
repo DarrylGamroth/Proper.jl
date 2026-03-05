@@ -1,5 +1,11 @@
-"""Alter the current wavefront as a perfect thin lens would."""
-function prop_lens(wf::WaveFront, lens_fl::Real, surface_name::AbstractString="")
+struct LensOptions
+    surface_name::String
+end
+
+@inline LensOptions(surface_name::AbstractString="") = LensOptions(String(surface_name))
+
+@inline function _prop_lens!(wf::WaveFront, lens_fl::Real, opts::LensOptions)
+    _ = opts
     iszero(lens_fl) && throw(ArgumentError("lens_fl must be non-zero"))
 
     λ = wf.wavelength_m
@@ -63,4 +69,9 @@ function prop_lens(wf::WaveFront, lens_fl::Real, surface_name::AbstractString=""
     wf.current_fratio = abs(wf.z_w0_m - z) / (2 * w_at_surface)
 
     return wf
+end
+
+"""Alter the current wavefront as a perfect thin lens would."""
+function prop_lens(wf::WaveFront, lens_fl::Real, surface_name::AbstractString="")
+    return _prop_lens!(wf, lens_fl, LensOptions(surface_name))
 end

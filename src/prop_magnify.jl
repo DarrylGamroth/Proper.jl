@@ -1,13 +1,22 @@
-"""Magnify image using upstream PROPER behavior (`QUICK` cubic, default damped-sinc)."""
-function prop_magnify(image_in::AbstractMatrix, mag0::Real, size_out0::Integer=0; kwargs...)
-    mag = float(mag0)
-    ny, nx = size(image_in)
-    out_n = size_out0 > 0 ? Int(size_out0) : round(Int, ny * mag)
-    out_n > 0 || throw(ArgumentError("size_out must be positive"))
+struct MagnifyOptions
+    quick::Bool
+    conserve::Bool
+    amp_conserve::Bool
+end
 
-    out = if switch_set(:QUICK; kwargs...)
+@inline function MagnifyOptions(kwargs::Base.Iterators.Pairs)
+    return MagnifyOptions(
+        kw_lookup_bool(kwargs, :QUICK, false),
+        kw_lookup_bool(kwargs, :CONSERVE, false),
+        kw_lookup_bool(kwargs, :AMP_CONSERVE, false),
+    )
+end
+
+@inline function _prop_magnify(image_in::AbstractMatrix, mag::Real, out_n::Int, opts::MagnifyOptions)
+    out = if opts.quick
         Tin = typeof(real(zero(eltype(image_in))))
         T = float(promote_type(typeof(mag), Tin))
+        ny, nx = size(image_in)
         cx_in = T(nx ÷ 2)
         cy_in = T(ny ÷ 2)
         cx_out = T(out_n ÷ 2)
@@ -28,15 +37,30 @@ function prop_magnify(image_in::AbstractMatrix, mag0::Real, size_out0::Integer=0
         prop_szoom(image_in, mag, out_n)
     end
 
-    if switch_set(:CONSERVE; kwargs...)
+    if opts.conserve
         if eltype(image_in) <: Complex
             out ./= mag
         else
             out ./= mag^2
         end
-    elseif switch_set(:AMP_CONSERVE; kwargs...)
+    elseif opts.amp_conserve
         out ./= mag
     end
 
     return out
+end
+
+"""Magnify image using upstream PROPER behavior (`QUICK` cubic, default damped-sinc)."""
+function prop_magnify(
+    image_in::AbstractMatrix,
+    mag0::Real,
+    size_out0::Integer=0;
+    kwargs...,
+)
+    mag = float(mag0)
+    ny, _ = size(image_in)
+    out_n = size_out0 > 0 ? Int(size_out0) : round(Int, ny * mag)
+    out_n > 0 || throw(ArgumentError("size_out must be positive"))
+    opts = MagnifyOptions(kwargs)
+    return _prop_magnify(image_in, mag, out_n, opts)
 end

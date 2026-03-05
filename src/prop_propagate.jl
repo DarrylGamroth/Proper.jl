@@ -1,11 +1,17 @@
-"""Select and execute appropriate propagation regime for distance `dz`."""
-function prop_propagate(wf::WaveFront, dz::Real, surface_name::AbstractString=""; kwargs...)
+struct PropagateOptions
+    to_plane::Bool
+end
+
+@inline PropagateOptions(kwargs::Base.Iterators.Pairs) = PropagateOptions(kw_lookup_bool(kwargs, :TO_PLANE, false))
+
+@inline function _prop_propagate!(wf::WaveFront, dz::Real, opts::PropagateOptions)
     prop_select_propagator(wf, dz)
 
+    dzv = float(dz)
     z1 = wf.z_m
-    z2 = z1 + float(dz)
+    z2 = z1 + dzv
 
-    if switch_set(:TO_PLANE; kwargs...)
+    if opts.to_plane
         if wf.propagator_type == :INSIDE__to_OUTSIDE
             wf.propagator_type = :INSIDE__to_INSIDE_
         elseif wf.propagator_type == :OUTSIDE_to_OUTSIDE
@@ -14,7 +20,7 @@ function prop_propagate(wf::WaveFront, dz::Real, surface_name::AbstractString=""
     end
 
     if wf.propagator_type == :INSIDE__to_INSIDE_
-        prop_ptp(wf, dz)
+        prop_ptp(wf, dzv)
     elseif wf.propagator_type == :INSIDE__to_OUTSIDE
         prop_ptp(wf, wf.z_w0_m - z1)
         prop_wts(wf, z2 - wf.z_w0_m)
@@ -29,4 +35,16 @@ function prop_propagate(wf::WaveFront, dz::Real, surface_name::AbstractString=""
     end
 
     return wf
+end
+
+"""Select and execute appropriate propagation regime for distance `dz`."""
+function prop_propagate(
+    wf::WaveFront,
+    dz::Real,
+    surface_name::AbstractString="";
+    kwargs...,
+)
+    _ = surface_name
+    opts = PropagateOptions(kwargs)
+    return _prop_propagate!(wf, dz, opts)
 end
