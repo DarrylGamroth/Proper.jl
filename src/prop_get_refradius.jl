@@ -1,1 +1,1 @@
-prop_get_refradius(wf::WaveFront) = prop_get_beamradius(wf)
+prop_get_refradius(wf::WaveFront) = wf.z_m - wf.z_w0_m

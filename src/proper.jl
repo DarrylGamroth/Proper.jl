@@ -1,6 +1,7 @@
 module proper
 
 using LinearAlgebra
+using FFTW
 
 include("core/policy.jl")
 include("core/traits.jl")

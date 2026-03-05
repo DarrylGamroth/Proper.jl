@@ -1,5 +1,9 @@
-"""Return radial coordinate map (meters) at current sampling."""
+"""Return radial coordinate map at current sampling; `NORM` normalizes by beam radius."""
 function prop_radius(wf::WaveFront; kwargs...)
     ny, nx = size(wf.field)
-    return radius_map(ny, nx, wf.sampling_m)
+    r = radius_map(ny, nx, wf.sampling_m)
+    if switch_set(:NORM; kwargs...)
+        return r ./ prop_get_beamradius(wf)
+    end
+    return r
 end

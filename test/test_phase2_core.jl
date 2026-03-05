@@ -6,6 +6,7 @@ using Test
 
     prop_lens(wf, 10.0)
     @test wf.field != orig
+    @test isfinite(prop_get_fratio(wf))
 
     wf2 = prop_begin(1.0, 500e-9, 32)
     prop_circular_aperture(wf2, 0.2)
@@ -14,10 +15,16 @@ using Test
     wf3 = prop_begin(1.0, 500e-9, 32)
     prop_propagate(wf3, 0.25)
     @test isapprox(prop_get_z(wf3), 0.25; atol=1e-12)
+    @test wf3.reference_surface in (:PLANAR, :SPHERI)
 
     a = reshape(collect(1.0:16.0), 4, 4)
     @test size(prop_magnify(a, 2.0)) == (8, 8)
     @test size(prop_rotate(a, 15.0)) == size(a)
+
+    wf4 = prop_begin(1.0, 500e-9, 32)
+    @test (@inferred prop_select_propagator(wf4, 0.1)) isa Float64
+    @test (@inferred prop_qphase(wf4, 1.2)) === wf4
+    @test (@inferred prop_ptp(wf4, 0.01)) === wf4
 end
 
 @testset "Phase 2 run entrypoints" begin

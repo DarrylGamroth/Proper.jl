@@ -1,6 +1,22 @@
-"""Waist-to-spherical propagation placeholder."""
+"""Waist-to-spherical propagation (inside Rayleigh to outside)."""
 function prop_wts(wf::WaveFront, dz::Real)
-    prop_qphase(wf, float(dz))
-    wf.z_m += float(dz)
+    wf.reference_surface = :SPHERI
+    iszero(dz) && return wf
+
+    d = float(dz)
+    n = size(wf.field, 1)
+
+    wf.z_m += d
+    prop_qphase(wf, d)
+
+    if d >= 0
+        f = fft(wf.field) ./ length(wf.field)
+        wf.field .= f .* n
+    else
+        invf = ifft(wf.field) .* length(wf.field)
+        wf.field .= invf ./ n
+    end
+
+    wf.sampling_m = wf.wavelength_m * abs(d) / (n * wf.sampling_m)
     return wf
 end

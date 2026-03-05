@@ -7,7 +7,7 @@
 ## Phase Checklist
 - [x] Phase 0: Preflight decisions and contracts accepted
 - [x] Phase 1: Foundation and infrastructure
-- [~] Phase 2: Core wavefront/math kernels (in progress)
+- [x] Phase 2: Core wavefront/math kernels
 - [~] Phase 3: I/O and state systems (in progress)
 - [~] Phase 4: Apertures/masks/shapes (in progress)
 - [~] Phase 5: Advanced propagation/DM/maps (in progress)
@@ -26,7 +26,11 @@
 - [x] Add benchmark harness skeleton scripts.
 
 ## Current Workstream (Phase 2/3)
-- [x] Implemented first-pass optics kernels: `prop_qphase`, `prop_lens`, `prop_propagate`, `prop_ptp`, `prop_wts`, `prop_stw`.
+- [x] Implemented full Phase-2 propagation kernels and Gaussian-beam state updates:
+  - `prop_select_propagator`, `prop_propagate`
+  - `prop_ptp`, `prop_stw`, `prop_wts`, `prop_qphase`
+  - `prop_lens`
+- [x] Added Phase-2 inference checks in tests and dedicated kernel benchmark script.
 - [x] Implemented first-pass geometry/mask kernels and obscurations.
 - [x] Implemented first-pass map transforms: `prop_magnify`, `prop_rotate`, `prop_resamplemap`.
 - [x] Implemented FITS/map baseline wrappers: `prop_fits_read`, `prop_fits_write`, `prop_readmap`, `prop_writemap`, `prop_errormap`.

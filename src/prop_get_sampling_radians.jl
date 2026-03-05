@@ -1,1 +1,4 @@
-prop_get_sampling_radians(wf::WaveFront) = wf.sampling_m / wf.wavelength_m
+function prop_get_sampling_radians(wf::WaveFront)
+    fl = prop_get_fratio(wf) * wf.beam_diameter_m
+    return prop_get_sampling(wf) / fl
+end
