@@ -2,14 +2,14 @@ using proper
 using Plots
 include(joinpath(@__DIR__, "_shared.jl"))
 
-function example_system(wavelength::Real, gridsize::Integer, passvalue=Dict("state_path" => joinpath(pwd(), "example_system.state")))
+function example_system(wavelength::Real, gridsize::Integer, passvalue=Dict("state_path" => tempname()))
     diam = 1.0
     lens_fl = 20.0
     beam_ratio = 0.5
 
     wfo = prop_begin(diam, wavelength, gridsize; beam_diam_fraction=beam_ratio)
 
-    state_path = get(passvalue, "state_path", get(passvalue, :state_path, joinpath(pwd(), "example_system.state")))
+    state_path = get(passvalue, "state_path", get(passvalue, :state_path, tempname()))
 
     if !prop_is_statesaved(state_path)
         prop_circular_aperture(wfo, diam / 2)
