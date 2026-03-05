@@ -51,6 +51,7 @@ end
 end
 
 @inline function _prop_rotate_cubic!(
+    sty::InterpStyle,
     out::AbstractMatrix,
     old_image::AbstractMatrix,
     c::Real,
@@ -64,20 +65,35 @@ end
             y = i - opts.cy - opts.sy
             xr = c * x - s * y + opts.cx
             yr = s * x + c * y + opts.cy
-            out[i, j] = prop_cubic_conv(old_image, yr, xr)
+            out[i, j] = prop_cubic_conv(sty, old_image, yr, xr)
         end
     end
     return out
 end
 
-@inline function prop_rotate(old_image::AbstractMatrix, theta::Real, opts::RotateOptions)
+@inline function _prop_rotate(sty::InterpStyle, old_image::AbstractMatrix, theta::Real, opts::RotateOptions)
+    if !(old_image isa StridedMatrix)
+        host_out = _prop_rotate(sty, Matrix(old_image), theta, opts)
+        out = similar(old_image, eltype(host_out), size(host_out)...)
+        copyto!(out, host_out)
+        return out
+    end
+
     out = similar(old_image)
     ang = deg2rad(-float(theta))
     c = cos(ang)
     s = sin(ang)
     return opts.method === ROTATE_LINEAR ?
         _prop_rotate_linear!(out, old_image, c, s, opts) :
-        _prop_rotate_cubic!(out, old_image, c, s, opts)
+        _prop_rotate_cubic!(sty, out, old_image, c, s, opts)
+end
+
+@inline function prop_rotate(old_image::AbstractMatrix, theta::Real, opts::RotateOptions, ctx::RunContext)
+    return _prop_rotate(interp_style(ctx), old_image, theta, opts)
+end
+
+@inline function prop_rotate(old_image::AbstractMatrix, theta::Real, opts::RotateOptions)
+    return prop_rotate(old_image, theta, opts, RunContext(typeof(old_image)))
 end
 
 """Rotate image by theta degrees around center (cubic by default)."""
@@ -88,4 +104,9 @@ function prop_rotate(
 )
     opts = RotateOptions(old_image, kwargs)
     return prop_rotate(old_image, theta, opts)
+end
+
+function prop_rotate(old_image::AbstractMatrix, theta::Real, ctx::RunContext; kwargs...)
+    opts = RotateOptions(old_image, kwargs)
+    return prop_rotate(old_image, theta, opts, ctx)
 end

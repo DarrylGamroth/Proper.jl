@@ -11,6 +11,7 @@ include("core/context.jl")
 include("core/keywords.jl")
 include("core/grid.jl")
 include("core/resample.jl")
+include("core/fft_dispatch.jl")
 include("internal/unimplemented.jl")
 
 include("libcconv.jl")

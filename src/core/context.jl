@@ -18,3 +18,6 @@ function RunContext(::Type{A}; rng=Random.default_rng(), verbose::Bool=false) wh
     i = interp_style(A)
     return RunContext{typeof(rng),typeof(b),typeof(f),typeof(i)}(rng, b, f, i, verbose)
 end
+
+@inline fft_style(ctx::RunContext) = ctx.fft
+@inline interp_style(ctx::RunContext) = ctx.interp

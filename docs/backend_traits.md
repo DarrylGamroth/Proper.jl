@@ -14,7 +14,7 @@ Define stable trait-dispatched interfaces for array backends and computational k
 ## Status
 - [x] Draft pre-filled from proposed defaults
 - [x] Trait interfaces frozen
-- [ ] Implementations registered
+- [x] Implementations registered for current CPU baseline and context-routed interpolation/propagation paths
 
 ## 1. Trait Model
 Proposed trait families:
@@ -81,8 +81,8 @@ Semantics:
   - explicit `ArgumentError`/`ErrorException` with supported alternatives
 
 ## 5. Contract Tests
-- [ ] Trait dispatch tests by backend
+- [x] Trait dispatch tests by backend (CPU baseline + optional CUDA smoke when CUDA is available)
 - [ ] FFT equivalence tests across backends
-- [ ] Interpolation consistency tests across backends
-- [ ] Explicit no-scalar-indexing checks on GPU paths
+- [x] Interpolation consistency tests across context/style-dispatched entry points
+- [x] Explicit no-scalar-indexing checks on GPU smoke path (`CUDA.allowscalar(false)`, availability-gated)
 - [ ] Inference checks for hot kernels (`@code_warntype`/equivalent CI gate)

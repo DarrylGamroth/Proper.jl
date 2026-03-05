@@ -18,7 +18,7 @@
 
 ## Refactor Track Status
 - [x] R1: Typed option boundaries (boundary normalization and typed option structs added for propagation/map/geometry families).
-- [ ] R2: Trait-driven kernel routing (CPU/GPU-ready dispatch wiring).
+- [x] R2: Trait-driven kernel routing (CPU/GPU-ready dispatch wiring, context-routed propagation/interpolation kernels, and optional CUDA smoke test coverage).
 - [ ] R3: Mutating kernels and workspace reuse across interpolation/geometry hot paths.
 - [ ] R4: WaveFront state typing and dispatch simplification (`Symbol` propagation-state replacement).
 - [ ] R5: Expanded inference/allocation gates and benchmark matrix updates.

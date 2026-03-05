@@ -19,7 +19,8 @@ end
 end
 
 """Resample map to wavefront grid with cubic interpolation and physical shifts."""
-function prop_resamplemap!(
+function _prop_resamplemap!(
+    sty::InterpStyle,
     out::AbstractMatrix,
     wf::WaveFront,
     dmap::AbstractMatrix,
@@ -43,9 +44,28 @@ function prop_resamplemap!(
         ycoords[i] = (T(i - 1 - (ny ÷ 2)) * scale) + yoff
     end
 
-    sampled = prop_cubic_conv(dmap, xcoords, ycoords; grid=true)
+    sampled = prop_cubic_conv(sty, dmap, xcoords, ycoords; grid=true)
     copyto!(out, sampled)
     return out
+end
+
+function prop_resamplemap!(
+    out::AbstractMatrix,
+    wf::WaveFront,
+    dmap::AbstractMatrix,
+    opts::ResampleMapOptions,
+    ctx::RunContext,
+)
+    return _prop_resamplemap!(interp_style(ctx), out, wf, dmap, opts)
+end
+
+function prop_resamplemap!(
+    out::AbstractMatrix,
+    wf::WaveFront,
+    dmap::AbstractMatrix,
+    opts::ResampleMapOptions,
+)
+    return prop_resamplemap!(out, wf, dmap, opts, RunContext(typeof(out)))
 end
 
 @inline function prop_resamplemap!(
@@ -58,12 +78,33 @@ end
     xshift::Real=0.0,
     yshift::Real=0.0,
 )
-    return prop_resamplemap!(out, wf, dmap, ResampleMapOptions(wf, pixscale, xc, yc, xshift, yshift))
+    return prop_resamplemap!(out, wf, dmap, ResampleMapOptions(wf, pixscale, xc, yc, xshift, yshift), RunContext(typeof(out)))
+end
+
+@inline function prop_resamplemap!(
+    out::AbstractMatrix,
+    wf::WaveFront,
+    dmap::AbstractMatrix,
+    pixscale::Real,
+    xc::Real,
+    yc::Real,
+    ctx::RunContext,
+    xshift::Real=0.0,
+    yshift::Real=0.0,
+)
+    return prop_resamplemap!(out, wf, dmap, ResampleMapOptions(wf, pixscale, xc, yc, xshift, yshift), ctx)
 end
 
 function prop_resamplemap(wf::WaveFront, dmap::AbstractMatrix, pixscale::Real, xc::Real, yc::Real, xshift::Real=0.0, yshift::Real=0.0)
     ny, nx = size(wf.field)
     Tout = float(promote_type(real(eltype(dmap)), typeof(wf.sampling_m), typeof(pixscale), typeof(xc), typeof(yc), typeof(xshift), typeof(yshift)))
     out = similar(dmap, Tout, ny, nx)
-    return prop_resamplemap!(out, wf, dmap, pixscale, xc, yc, xshift, yshift)
+    return prop_resamplemap!(out, wf, dmap, pixscale, xc, yc, RunContext(typeof(out)), xshift, yshift)
+end
+
+function prop_resamplemap(wf::WaveFront, dmap::AbstractMatrix, pixscale::Real, xc::Real, yc::Real, ctx::RunContext, xshift::Real=0.0, yshift::Real=0.0)
+    ny, nx = size(wf.field)
+    Tout = float(promote_type(real(eltype(dmap)), typeof(wf.sampling_m), typeof(pixscale), typeof(xc), typeof(yshift), typeof(xshift)))
+    out = similar(dmap, Tout, ny, nx)
+    return prop_resamplemap!(out, wf, dmap, pixscale, xc, yc, ctx, xshift, yshift)
 end
