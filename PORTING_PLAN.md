@@ -433,6 +433,22 @@ Context: `docs/JULIA_IMPLEMENTATION_AUDIT_2026-03-04.md` immediate checklist is 
 - Backend routing is trait-based and ready for progressive KA/AK rollout.
 - All changes are covered by parity tests and documented decisions.
 
+### KernelAbstractions/AcceleratedKernels Placement Plan
+Goal: use `KernelAbstractions.jl` (KA) for custom index-heavy kernels and `AcceleratedKernels.jl` (AK) for high-level fused elementwise/reduction operations where coverage is sufficient.
+
+| Area | Primary package | Candidate routines | Why |
+| --- | --- | --- | --- |
+| Grid-sampling interpolation | `KernelAbstractions.jl` | `prop_resamplemap!`, `prop_rotate!`, `prop_magnify!`, `prop_cubic_conv` grid path | gather/scatter indexing and custom boundary handling are clearer as explicit kernels |
+| Geometry mask fill | `KernelAbstractions.jl` | `prop_ellipse`, `prop_rectangle`, `prop_irregular_polygon` fill loops | per-pixel tests with branchy geometry logic map naturally to custom kernels |
+| PSD spectral-map synthesis | `KernelAbstractions.jl` + `AcceleratedKernels.jl` | `prop_psd_errormap` frequency-grid assembly + postprocessing | KA for coordinate/index transforms, AK for fused elementwise scaling/normalization |
+| Field algebra and simple map transforms | `AcceleratedKernels.jl` | `prop_multiply`, `prop_divide`, `prop_add_phase`, selected map postprocess steps | mostly elementwise operations where high-level fused kernels can reduce temporaries |
+| Reductions/statistics in map normalization | `AcceleratedKernels.jl` (if supported) else CPU fallback | RMS/peak normalization in PSD/error-map flows | use AK reductions where numerically consistent; fallback remains deterministic CPU path |
+
+Integration policy:
+- Keep generic CPU loops as correctness baseline.
+- Route backend choice through traits/dispatch first, then select KA/AK implementation.
+- Add KA/AK methods only when parity tests and steady-state benchmarks show clear wins.
+
 ## Example Parity Config Matrix (Coverage Plan)
 | Area | Axis | Permutations | Evidence | Status | Notes |
 | --- | --- | --- | --- | --- | --- |

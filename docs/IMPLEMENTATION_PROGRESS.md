@@ -2,7 +2,7 @@
 
 ## Status Snapshot
 - Date: 2026-03-04
-- Overall: Phase 9 complete
+- Overall: Phase 9 complete; Refactor Track active
 
 ## Phase Checklist
 - [x] Phase 0: Preflight decisions and contracts accepted
@@ -15,6 +15,13 @@
 - [x] Phase 7: Benchmarks, CI, release prep
 - [x] Phase 8: Full parity closure (Python baseline)
 - [x] Phase 9: MATLAB semantic reconciliation and final validation
+
+## Refactor Track Status
+- [x] R1: Typed option boundaries (boundary normalization and typed option structs added for propagation/map/geometry families).
+- [ ] R2: Trait-driven kernel routing (CPU/GPU-ready dispatch wiring).
+- [ ] R3: Mutating kernels and workspace reuse across interpolation/geometry hot paths.
+- [ ] R4: WaveFront state typing and dispatch simplification (`Symbol` propagation-state replacement).
+- [ ] R5: Expanded inference/allocation gates and benchmark matrix updates.
 
 ## Current Workstream (Phase 1)
 - [x] Core policy/trait/context types created.
