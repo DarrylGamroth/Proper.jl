@@ -288,3 +288,17 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Consequences:
   - Remaining parity closure focuses on physically meaningful agreement and documented threshold criteria.
   - MATLAB remains a semantic/style reference; Python remains the executable numeric baseline.
+
+## D-0031: Implementation Style Clarification
+- Date: 2026-03-04
+- Status: Accepted
+- Context:
+  - The project should not target MATLAB coding style directly.
+  - We still want algorithmic comparability with upstream implementations while preserving Julia quality.
+- Decision:
+  - Prefer idiomatic Julia implementation patterns (multiple dispatch, concrete types, traits, type-stable kernels).
+  - Validate that algorithms are semantically similar to upstream PROPER implementations.
+  - Keep parity target as physics-equivalent behavior to Python 3.3.4 (with documented absolute/relative acceptance criteria).
+- Consequences:
+  - MATLAB is treated as semantic reference material only, not a style template.
+  - Code review criteria prioritize Julia idioms and performance constraints over direct stylistic mirroring.
