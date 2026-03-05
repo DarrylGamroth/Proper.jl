@@ -347,3 +347,18 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Consequences:
   - Supersedes D-0006, D-0017, and D-0032.
   - Future behavior changes require decision-log entries + tests instead of mode branches.
+
+## D-0036: `prop_dm`/`prop_cubic_conv` Indexing Reconciliation (MATLAB/Python)
+- Date: 2026-03-04
+- Status: Accepted
+- Context:
+  - `prop_dm` was materially diverging in DM-corrected coronagraph behavior despite passing coarse parity summaries.
+  - MATLAB reference (`prop_dm.m`) uses 1-based interpolation coordinates (`xc_inf = floor(nx/2)+1`, actuator grid origins with `+1` index offsets).
+  - Python translation maps those coordinates into 0-based cubic-convolution coordinates.
+- Decision:
+  - Align `libcconv` with upstream `cubic_conv_c.c` semantics (rounding, support window, edge clamping).
+  - In Julia `prop_dm`, keep interpolation-coordinate math in upstream 0-based space while converting only array indexing operations to 1-based.
+  - Apply DM phase using transposed internal map layout to match current wavefront-array orientation in this codebase.
+- Consequences:
+  - `run_coronagraph_dm` with deterministic map input now matches Python 3.3.4 executable outputs for no-error, error-only, and DM-corrected cases.
+  - Added regression coverage to prevent reintroduction of DM correction divergence.
