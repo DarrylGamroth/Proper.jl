@@ -48,7 +48,8 @@ function _zernike_maps(wf::WaveFront, nterms::Int; radius_m::Union{Nothing,Real}
     beam_radius = radius_m === nothing ? prop_get_beamradius(wf) : float(radius_m)
     descs = prop_noll_zernikes(nterms)
 
-    out = Array{Float64}(undef, ny, nx, nterms)
+    RT = real(eltype(wf.field))
+    out = similar(wf.field, RT, ny, nx, nterms)
     @inbounds for j in 1:nx
         xj = x[j]
         for i in 1:ny
@@ -87,7 +88,9 @@ function prop_zernikes(
     nmax = maximum(nums)
     all_maps = _zernike_maps(wf, nmax; radius_m=radius)
 
-    dmap = zeros(Float64, size(wf.field))
+    RT = real(eltype(wf.field))
+    dmap = similar(wf.field, RT, size(wf.field)...)
+    fill!(dmap, zero(RT))
     @inbounds for (j, coeff) in zip(nums, vals)
         dmap .+= coeff .* @view(all_maps[:, :, j])
     end
