@@ -1,4 +1,59 @@
 """Apply an 8th-order occulter mask and return the generated amplitude mask."""
+abstract type EighthOrderMaskShape end
+struct LinearMaskShape <: EighthOrderMaskShape end
+struct CircularMaskShape <: EighthOrderMaskShape end
+struct EllipticalMaskShape <: EighthOrderMaskShape end
+
+@inline _mask_shape_style(circular::Bool, elliptical::Nothing) = circular ? CircularMaskShape() : LinearMaskShape()
+@inline _mask_shape_style(circular::Bool, elliptical::Real) = EllipticalMaskShape()
+
+@inline function _mask_profile(r::T, e::T, ll::T, mm::T, plml::T) where {T<:AbstractFloat}
+    return plml - prop_sinc(pi * r * e / ll)^ll + (mm / ll) * prop_sinc(pi * r * e / mm)^mm
+end
+
+function _fill_8th_mask!(::LinearMaskShape, mask::AbstractMatrix{T}, x::AbstractVector{T}, y::AbstractVector{T}, e::T, ll::T, mm::T, plml::T, y_axis::Bool) where {T<:AbstractFloat}
+    if y_axis
+        line = similar(y)
+        @inbounds for i in eachindex(y)
+            line[i] = _mask_profile(y[i], e, ll, mm, plml)
+        end
+        @inbounds for j in axes(mask, 2)
+            mask[:, j] .= line
+        end
+    else
+        line = similar(x)
+        @inbounds for j in eachindex(x)
+            line[j] = _mask_profile(x[j], e, ll, mm, plml)
+        end
+        @inbounds for i in axes(mask, 1)
+            mask[i, :] .= line
+        end
+    end
+    return mask
+end
+
+function _fill_8th_mask!(::CircularMaskShape, mask::AbstractMatrix{T}, x::AbstractVector{T}, y::AbstractVector{T}, e::T, ll::T, mm::T, plml::T, y_axis::Bool) where {T<:AbstractFloat}
+    @inbounds for j in eachindex(x)
+        xj = x[j]
+        for i in eachindex(y)
+            r = hypot(xj, y[i])
+            mask[i, j] = _mask_profile(r, e, ll, mm, plml)
+        end
+    end
+    return mask
+end
+
+function _fill_8th_mask!(::EllipticalMaskShape, mask::AbstractMatrix{T}, x::AbstractVector{T}, y::AbstractVector{T}, e::T, ll::T, mm::T, plml::T, y_axis::Bool, axis_ratio::T) where {T<:AbstractFloat}
+    @inbounds for j in eachindex(x)
+        xj = x[j]
+        for i in eachindex(y)
+            r = hypot(xj, y[i] / axis_ratio)
+            mask[i, j] = _mask_profile(r, e, ll, mm, plml)
+        end
+    end
+    return mask
+end
+
 function prop_8th_order_mask(
     wf::WaveFront,
     hwhm::Real;
@@ -19,50 +74,31 @@ function prop_8th_order_mask(
         elliptical = float(kwargs[:elliptical])
     end
 
-    fratio = prop_get_fratio(wf)
-    wavelength = prop_get_wavelength(wf)
-    sampling = prop_get_sampling(wf)
+    RT = real(eltype(wf.field))
+    fratio = RT(prop_get_fratio(wf))
+    wavelength = RT(prop_get_wavelength(wf))
+    sampling = RT(prop_get_sampling(wf))
 
-    hwhm_ld = meters ? float(hwhm) / (fratio * wavelength) : float(hwhm)
-    e = 1.788 / hwhm_ld
+    hwhm_ld = meters ? RT(float(hwhm) / (fratio * wavelength)) : RT(float(hwhm))
+    e = RT(1.788) / hwhm_ld
 
     ny, nx = size(wf.field)
-    ll = 3.0
-    mm = 1.0
+    ll = RT(3)
+    mm = RT(1)
     plml = (ll - mm) / ll
     c = sampling / (fratio * wavelength)
 
     x = (collect(0:(nx - 1)) .- nx / 2) .* c
     y = (collect(0:(ny - 1)) .- ny / 2) .* c
 
-    linear = !circular && elliptical === nothing
-    RT = real(eltype(wf.field))
     mask = similar(wf.field, RT, ny, nx)
+    shape = _mask_shape_style(circular, elliptical)
 
-    if linear
-        if y_axis
-            v = y
-            line = @. plml - prop_sinc(pi * v * e / ll)^ll + (mm / ll) * prop_sinc(pi * v * e / mm)^mm
-            @inbounds for j in 1:nx
-                mask[:, j] .= line
-            end
-        else
-            v = x
-            line = @. plml - prop_sinc(pi * v * e / ll)^ll + (mm / ll) * prop_sinc(pi * v * e / mm)^mm
-            @inbounds for i in 1:ny
-                mask[i, :] .= line
-            end
-        end
+    if shape isa EllipticalMaskShape
+        axis_ratio = RT(float(elliptical))
+        _fill_8th_mask!(shape, mask, x, y, e, ll, mm, plml, y_axis, axis_ratio)
     else
-        axis_ratio = elliptical === nothing ? 1.0 : float(elliptical)
-        @inbounds for j in 1:nx
-            xj = x[j]
-            for i in 1:ny
-                yy = y[i] / axis_ratio
-                r = hypot(xj, yy)
-                mask[i, j] = plml - prop_sinc(pi * r * e / ll)^ll + (mm / ll) * prop_sinc(pi * r * e / mm)^mm
-            end
-        end
+        _fill_8th_mask!(shape, mask, x, y, e, ll, mm, plml, y_axis)
     end
 
     # Renormalize in intensity space then convert back to amplitude.
@@ -73,8 +109,8 @@ function prop_8th_order_mask(
     if mmax > 0
         mask ./= mmax
     end
-    mask .*= (float(max_transmission) - float(min_transmission))
-    mask .+= float(min_transmission)
+    mask .*= (RT(float(max_transmission)) - RT(float(min_transmission)))
+    mask .+= RT(float(min_transmission))
     mask .= sqrt.(mask)
 
     wf.field .*= prop_shift_center(mask)

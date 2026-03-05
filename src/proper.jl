@@ -102,7 +102,7 @@ include("switch_set.jl")
 
 export CompatPolicy, Python334Policy, CorrectedPolicy, resolve_compat_policy
 export BackendStyle, CPUBackend, UnknownBackend, FFTStyle, FFTWStyle, GenericFFTStyle
-export InterpStyle, GenericInterpStyle, RNGStyle, GenericRNGStyle
+export InterpStyle, GenericInterpStyle, CubicInterpStyle, RNGStyle, GenericRNGStyle
 export RunContext, ProperConfig, ProperRuntime, WaveFront
 export prop_wavefront, prop_begin, prop_end, prop_add_phase, prop_add_wavefront
 export prop_multiply, prop_divide, prop_shift_center

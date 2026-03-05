@@ -12,8 +12,10 @@ fft_style(::Type{<:AbstractArray}) = FFTWStyle()
 
 abstract type InterpStyle end
 struct GenericInterpStyle <: InterpStyle end
+struct CubicInterpStyle <: InterpStyle end
 
 interp_style(::Type{<:AbstractArray}) = GenericInterpStyle()
+interp_style(::Type{<:StridedMatrix}) = CubicInterpStyle()
 
 abstract type RNGStyle end
 struct GenericRNGStyle <: RNGStyle end
