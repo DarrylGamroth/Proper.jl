@@ -16,7 +16,7 @@
     @test eltype(out_i) <: Real
     @test s_i == wf.sampling_m
 
-    out_c, s_c = prop_end(wf; NOABS=true)
+    out_c, s_c = prop_end(wf; noabs=true)
     @test eltype(out_c) <: Complex
     @test s_c == wf.sampling_m
 

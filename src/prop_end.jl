@@ -1,9 +1,8 @@
 """Finalize propagation and return either intensity or complex field plus sampling."""
-function prop_end(wf::WaveFront; NOABS::Union{Bool,Integer}=false, EXTRACT::Union{Nothing,Integer}=nothing)
-    noabs = compat_bool(NOABS)
+function prop_end(wf::WaveFront; noabs::Bool=false, extract::Union{Nothing,Int}=nothing)
     out = noabs ? wf.field : abs2.(wf.field)
-    if EXTRACT !== nothing
-        n = Int(EXTRACT)
+    if extract !== nothing
+        n = extract
         ny, nx = size(out)
         n <= ny && n <= nx || throw(ArgumentError("EXTRACT exceeds array size"))
         cy = ny ÷ 2
