@@ -303,3 +303,19 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Consequences:
   - MATLAB is treated as semantic reference material only, not a style template.
   - Code review criteria prioritize Julia idioms and performance constraints over direct stylistic mirroring.
+
+## D-0032: Current Corrected-Mode Divergence Policy
+- Date: 2026-03-04
+- Status: Accepted
+- Context:
+  - Phase 8 exit criteria require any remaining `:corrected` deltas to be intentional and documented.
+  - At present, no active algorithmic behavior divergence is implemented between `:python334` and `:corrected`.
+- Decision:
+  - Treat `:corrected` as behavior-equivalent to `:python334` until specific corrected algorithms are intentionally introduced.
+  - Any future corrected-mode divergence must be:
+    - explicitly documented in `docs/compat_decisions.md`,
+    - covered by tests for both modes,
+    - reflected in parity threshold rationale where relevant.
+- Consequences:
+  - Current phase-8 parity closure is evaluated against `:python334` thresholds with no undocumented corrected-mode deltas.
+  - Corrected-mode behavior changes remain controlled and auditable.

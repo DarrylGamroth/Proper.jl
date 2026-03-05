@@ -13,7 +13,7 @@
 - [~] Phase 5: Advanced propagation/DM/maps (in progress)
 - [~] Phase 6: Parity harness and examples (in progress)
 - [~] Phase 7: Benchmarks, CI, release prep (in progress)
-- [ ] Phase 8: Full parity closure (Python baseline)
+- [x] Phase 8: Full parity closure (Python baseline)
 - [ ] Phase 9: MATLAB semantic reconciliation and final validation
 
 ## Current Workstream (Phase 1)
@@ -44,11 +44,12 @@
 - [x] Port example internals to fully match upstream Python physics (all 23 example filenames now contain translated prescription/demo logic).
 - [x] Wire benchmark/parity scripts into CI and publish artifacts.
 
-## Next Workstream (Phase 8/9)
+## Next Workstream (Phase 9)
 - [x] Replace fallback propagation internals with parity implementations.
-- [~] Replace fallback PSD/Zernike/polygon/segmented-optics implementations with parity implementations (Zernike/polygon/PSD/segmented optics implemented; parity validation pass still pending).
+- [x] Replace fallback PSD/Zernike/polygon/segmented-optics implementations with parity implementations (threshold-gated parity validated in `:python334` mode).
 - [x] Replace interpolation and zoom placeholders with cubic-convolution implementations (`libcconv`, `libcconvthread`, `libszoom`, `prop_cubic_conv`).
-- [~] Run full 23-example parity report and close threshold gaps in `:python334` (multi-example metrics harness now reports both relative and absolute deltas; most examples are tightly matched in relative terms, and residual `run_occulter/run_coronagraph*` mismatches are deep-null absolute deltas on the order of `1e-12` sum and `1e-14` peak intensity).
+- [x] Run full example parity report and close threshold gaps in `:python334` (combined abs/rel threshold policy and CI gating are green; residual deep-null coronagraph deltas are documented and accepted).
+- [x] Document Phase 8 closure evidence (`docs/PHASE8_CLOSURE.md`).
 - [ ] Perform MATLAB/manual semantic reconciliation on known disagreement hotspots.
 
 ## Latest Pass (2026-03-04)
