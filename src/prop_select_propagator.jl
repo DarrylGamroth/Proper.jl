@@ -10,7 +10,7 @@ function prop_select_propagator(wf::WaveFront, opts::SelectPropagatorOptions)
     dzw = wf.z_w0_m - wf.z_m
     newz = wf.z_m + opts.dz
 
-    beam_type_new = abs(wf.z_w0_m - newz) < wf.rayleigh_factor * wf.z_rayleigh_m ? INSIDE_ : OUTSIDE
+    beam_type_new = abs(wf.z_w0_m - newz) < wf.rayleigh_factor * wf.z_rayleigh_m ? INSIDE : OUTSIDE
     wf.propagator_type = propagator_transition(wf.beam_type_old, beam_type_new)
     wf.beam_type_old = beam_type_new
     return dzw

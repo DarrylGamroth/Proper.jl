@@ -1,6 +1,6 @@
 """Spherical-to-waist propagation (outside Rayleigh to inside)."""
 function prop_stw(wf::WaveFront, dz::Real, ctx::RunContext)
-    if wf.reference_surface !== SPHERI
+    if wf.reference_surface !== SPHERICAL
         return prop_ptp(wf, dz, ctx)
     end
 

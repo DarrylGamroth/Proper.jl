@@ -10,7 +10,7 @@ end
     z2::Real,
     dzv::Real,
     ctx::RunContext,
-    ::Val{INSIDE__to_INSIDE_},
+    ::Val{INSIDE_TO_INSIDE},
 )
     return prop_ptp(wf, dzv, ctx)
 end
@@ -21,7 +21,7 @@ end
     z2::Real,
     dzv::Real,
     ctx::RunContext,
-    ::Val{INSIDE__to_OUTSIDE},
+    ::Val{INSIDE_TO_OUTSIDE},
 )
     prop_ptp(wf, wf.z_w0_m - z1, ctx)
     return prop_wts(wf, z2 - wf.z_w0_m, ctx)
@@ -33,7 +33,7 @@ end
     z2::Real,
     dzv::Real,
     ctx::RunContext,
-    ::Val{OUTSIDE_to_INSIDE_},
+    ::Val{OUTSIDE_TO_INSIDE},
 )
     prop_stw(wf, wf.z_w0_m - z1, ctx)
     return prop_ptp(wf, z2 - wf.z_w0_m, ctx)
@@ -45,7 +45,7 @@ end
     z2::Real,
     dzv::Real,
     ctx::RunContext,
-    ::Val{OUTSIDE_to_OUTSIDE},
+    ::Val{OUTSIDE_TO_OUTSIDE},
 )
     prop_stw(wf, wf.z_w0_m - z1, ctx)
     return prop_wts(wf, z2 - wf.z_w0_m, ctx)

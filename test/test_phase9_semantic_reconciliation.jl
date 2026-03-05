@@ -37,9 +37,9 @@ using Random
         wf.w0_m = 0.123
         wf.z_rayleigh_m = 1.234
         wf.current_fratio = 42.0
-        wf.reference_surface = :SPHERI
-        wf.beam_type_old = :OUTSIDE
-        wf.propagator_type = :OUTSIDE_to_OUTSIDE
+        wf.reference_surface = Proper.SPHERICAL
+        wf.beam_type_old = Proper.OUTSIDE
+        wf.propagator_type = Proper.OUTSIDE_TO_OUTSIDE
         wf.rayleigh_factor = 1.5
 
         mktempdir() do d

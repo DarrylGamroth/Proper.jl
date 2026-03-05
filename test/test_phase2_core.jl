@@ -17,7 +17,7 @@ using Statistics
     wf3 = prop_begin(1.0, 500e-9, 32)
     prop_propagate(wf3, 0.25)
     @test isapprox(prop_get_z(wf3), 0.25; atol=1e-12)
-    @test wf3.reference_surface in (:PLANAR, :SPHERI)
+    @test wf3.reference_surface in (Proper.PLANAR, Proper.SPHERICAL)
 
     a = reshape(collect(1.0:16.0), 4, 4)
     @test size(prop_magnify(a, 2.0)) == (8, 8)
