@@ -18,9 +18,9 @@ function prop_wavefront(gridsize::Integer, wavelength_m::Real, beam_diameter_m::
         w0,
         zray,
         float(1e9),
-        :PLANAR,
-        :INSIDE_,
-        :INSIDE__to_INSIDE_,
+        PLANAR,
+        INSIDE_,
+        INSIDE__to_INSIDE_,
         one(λ),
     )
 end

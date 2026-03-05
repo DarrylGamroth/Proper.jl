@@ -20,9 +20,9 @@ function prop_begin(diam::Real, wavelength_m::Real, gridsize::Integer; beam_diam
         w0,
         zray,
         float(1e9),
-        :PLANAR,
-        :INSIDE_,
-        :INSIDE__to_INSIDE_,
+        PLANAR,
+        INSIDE_,
+        INSIDE__to_INSIDE_,
         one(λ),
     )
 end

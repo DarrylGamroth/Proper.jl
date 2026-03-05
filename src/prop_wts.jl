@@ -1,6 +1,6 @@
 """Waist-to-spherical propagation (inside Rayleigh to outside)."""
 function prop_wts(wf::WaveFront, dz::Real, ctx::RunContext)
-    wf.reference_surface = :SPHERI
+    wf.reference_surface = SPHERI
     iszero(dz) && return wf
 
     d = float(dz)

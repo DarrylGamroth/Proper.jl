@@ -20,7 +20,7 @@
 - [x] R1: Typed option boundaries (boundary normalization and typed option structs added for propagation/map/geometry families).
 - [x] R2: Trait-driven kernel routing (CPU/GPU-ready dispatch wiring, context-routed propagation/interpolation kernels, and optional CUDA smoke test coverage).
 - [x] R3: Mutating kernels and workspace reuse across interpolation/geometry hot paths (added `prop_rotate!`, `prop_magnify!`, `prop_cubic_conv_grid!`, geometry `*_!` variants, and reusable interpolation/FFT workspace caches in `RunContext`).
-- [ ] R4: WaveFront state typing and dispatch simplification (`Symbol` propagation-state replacement).
+- [x] R4: WaveFront state typing and dispatch simplification (state enums + typed transition selectors for propagation/lens paths; symbol conversions retained at assignment/comparison boundaries).
 - [ ] R5: Expanded inference/allocation gates and benchmark matrix updates.
 
 ## Current Workstream (Phase 1)
@@ -76,6 +76,11 @@
   - switched hot map kernels to mutating grid/interpolation pathways
   - added mutating geometry mask builders and parity tests for non-mutating wrappers
   - added R3 regression tests for workspace reuse and mutating-kernel parity (`test/test_r3_mutating_workspace.jl`)
+- [x] Completed R4 refactor scope:
+  - replaced wavefront propagation state `Symbol`s with typed enums in `WaveFront`
+  - removed runtime string/symbol transition assembly in `prop_select_propagator`/`prop_lens`
+  - routed propagation transition execution through typed selectors in `prop_propagate`
+  - added state-typing regression tests (`test/test_r4_state_typing.jl`)
 
 ## Notes
 - Runtime compatibility mode flags were removed; parity behavior is anchored to the patched Python baseline (`D-0035`).

@@ -4,6 +4,64 @@ end
 
 @inline PropagateOptions(kwargs::Base.Iterators.Pairs) = PropagateOptions(kw_lookup_bool(kwargs, :TO_PLANE, false))
 
+@inline function _propagate_by_transition!(
+    wf::WaveFront,
+    z1::Real,
+    z2::Real,
+    dzv::Real,
+    ctx::RunContext,
+    ::Val{INSIDE__to_INSIDE_},
+)
+    return prop_ptp(wf, dzv, ctx)
+end
+
+@inline function _propagate_by_transition!(
+    wf::WaveFront,
+    z1::Real,
+    z2::Real,
+    dzv::Real,
+    ctx::RunContext,
+    ::Val{INSIDE__to_OUTSIDE},
+)
+    prop_ptp(wf, wf.z_w0_m - z1, ctx)
+    return prop_wts(wf, z2 - wf.z_w0_m, ctx)
+end
+
+@inline function _propagate_by_transition!(
+    wf::WaveFront,
+    z1::Real,
+    z2::Real,
+    dzv::Real,
+    ctx::RunContext,
+    ::Val{OUTSIDE_to_INSIDE_},
+)
+    prop_stw(wf, wf.z_w0_m - z1, ctx)
+    return prop_ptp(wf, z2 - wf.z_w0_m, ctx)
+end
+
+@inline function _propagate_by_transition!(
+    wf::WaveFront,
+    z1::Real,
+    z2::Real,
+    dzv::Real,
+    ctx::RunContext,
+    ::Val{OUTSIDE_to_OUTSIDE},
+)
+    prop_stw(wf, wf.z_w0_m - z1, ctx)
+    return prop_wts(wf, z2 - wf.z_w0_m, ctx)
+end
+
+@inline function _propagate_by_transition!(
+    wf::WaveFront,
+    z1::Real,
+    z2::Real,
+    dzv::Real,
+    ctx::RunContext,
+    pt::PropagatorType,
+)
+    return _propagate_by_transition!(wf, z1, z2, dzv, ctx, Val(pt))
+end
+
 @inline function _prop_propagate!(wf::WaveFront, dz::Real, opts::PropagateOptions)
     return _prop_propagate!(wf, dz, opts, RunContext(typeof(wf.field)))
 end
@@ -16,27 +74,10 @@ end
     z2 = z1 + dzv
 
     if opts.to_plane
-        if wf.propagator_type == :INSIDE__to_OUTSIDE
-            wf.propagator_type = :INSIDE__to_INSIDE_
-        elseif wf.propagator_type == :OUTSIDE_to_OUTSIDE
-            wf.propagator_type = :OUTSIDE_to_INSIDE_
-        end
+        wf.propagator_type = to_plane_propagator(wf.propagator_type)
     end
 
-    if wf.propagator_type == :INSIDE__to_INSIDE_
-        prop_ptp(wf, dzv, ctx)
-    elseif wf.propagator_type == :INSIDE__to_OUTSIDE
-        prop_ptp(wf, wf.z_w0_m - z1, ctx)
-        prop_wts(wf, z2 - wf.z_w0_m, ctx)
-    elseif wf.propagator_type == :OUTSIDE_to_INSIDE_
-        prop_stw(wf, wf.z_w0_m - z1, ctx)
-        prop_ptp(wf, z2 - wf.z_w0_m, ctx)
-    elseif wf.propagator_type == :OUTSIDE_to_OUTSIDE
-        prop_stw(wf, wf.z_w0_m - z1, ctx)
-        prop_wts(wf, z2 - wf.z_w0_m, ctx)
-    else
-        throw(ArgumentError("Unknown propagator_type $(wf.propagator_type)"))
-    end
+    _propagate_by_transition!(wf, z1, z2, dzv, ctx, wf.propagator_type)
 
     return wf
 end
