@@ -273,3 +273,18 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     - steady-state throughput/latency (Python vs Julia)
     - Julia cold-start/TTFx diagnostics (not mixed into steady-state comparison)
   - Precompile improvements are evaluated against the separate TTFx metric.
+
+## D-0030: Final Parity Goal Definition
+- Date: 2026-03-04
+- Status: Accepted
+- Context:
+  - Exact bit-level Python equivalence is not required when differences are numerically negligible in deep-null regions.
+  - MATLAB 3.3.1 is a useful style/semantic reference even though runtime comparison is unavailable in this environment.
+- Decision:
+  - Final target is:
+    - implementation style and algorithm structure guided by MATLAB where practical and idiomatic in Julia,
+    - numerical behavior physics-equivalent to Python 3.3.4 for executable parity workflows.
+  - Parity acceptance must use both relative and absolute error criteria (not relative-only) for high-contrast/null outputs.
+- Consequences:
+  - Remaining parity closure focuses on physically meaningful agreement and documented threshold criteria.
+  - MATLAB remains a semantic/style reference; Python remains the executable numeric baseline.
