@@ -30,6 +30,22 @@ using Random
         @test (@inferred prop_propagate(wf_prop, 0.01, ctx_prop)) === wf_prop
         prop_propagate(wf_prop, 0.01, ctx_prop) # warmup
         @test (@allocated prop_propagate(wf_prop, 0.01, ctx_prop)) < 2_000_000
+
+        RT = typeof(abs2(zero(eltype(wf_prop.field))))
+        iout = similar(wf_prop.field, RT, 64, 64)
+        @test (@inferred Proper.prop_end!(iout, wf_prop)) === iout
+        Proper.prop_end!(iout, wf_prop) # warmup
+        @test (@allocated Proper.prop_end!(iout, wf_prop)) == 0
+
+        cout = similar(wf_prop.field)
+        @test (@inferred Proper.prop_end!(cout, wf_prop; noabs=true)) === cout
+        Proper.prop_end!(cout, wf_prop; noabs=true) # warmup
+        @test (@allocated Proper.prop_end!(cout, wf_prop; noabs=true)) == 0
+
+        xout = similar(iout, 32, 32)
+        @test (@inferred Proper.prop_end!(xout, wf_prop; extract=32)) === xout
+        Proper.prop_end!(xout, wf_prop; extract=32) # warmup
+        @test (@allocated Proper.prop_end!(xout, wf_prop; extract=32)) == 0
     end
 
     @testset "Map/PSD hotspots" begin
@@ -88,5 +104,13 @@ using Random
         @test (@inferred Proper.prop_irregular_polygon!(ipoly_out, wf, xverts, yverts; NORM=true)) === ipoly_out
         Proper.prop_irregular_polygon!(ipoly_out, wf, xverts, yverts; NORM=true) # warmup
         @test (@allocated Proper.prop_irregular_polygon!(ipoly_out, wf, xverts, yverts; NORM=true)) < 100_000
+
+        wf_mask = prop_begin(1.0, 500e-9, 64)
+        Proper.prop_circular_aperture(wf_mask, 0.2) # warmup
+        @test (@allocated Proper.prop_circular_aperture(wf_mask, 0.2)) < 60_000
+        Proper.prop_elliptical_aperture(wf_mask, 0.2, 0.15) # warmup
+        @test (@allocated Proper.prop_elliptical_aperture(wf_mask, 0.2, 0.15)) < 80_000
+        Proper.prop_rectangular_aperture(wf_mask, 0.25, 0.18) # warmup
+        @test (@allocated Proper.prop_rectangular_aperture(wf_mask, 0.25, 0.18)) < 80_000
     end
 end

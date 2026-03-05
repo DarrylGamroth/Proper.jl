@@ -48,15 +48,15 @@ Status: Completed
   - lower `prop_propagate` allocation in representative workloads.
 
 ### O2: Mask/Geometry Reuse in Aperture/Obscuration Wrappers
-Status: In Progress
-- Remove repeated full-mask allocations in `prop_circular_aperture` and `prop_circular_obscuration`.
+Status: Completed
+- Remove repeated full-mask allocations in aperture/obscuration wrappers.
 - Reuse a workspace-backed real mask buffer.
 - Apply centered mask without `prop_shift_center` temporary arrays.
 - Targets:
-  - reduce `prop_circular_aperture` allocations from MB-scale to KB/near-zero in warm path.
+  - reduce wrapper allocations from MB-scale to KB/near-zero in warm path.
 
 ### O3: End-of-Run Output Buffer Reuse
-Status: Pending
+Status: Completed
 - Add mutating extraction/copy path for `prop_end` internals (`prop_end!`-style buffer option).
 - Keep existing API unchanged; wrapper allocates only when caller does not provide output buffer.
 - Targets:
@@ -99,3 +99,18 @@ Status: Pending
     - `simple_prescription_256`: `~7.35 MB -> ~4.73 MB`
     - `psdtest_128`: `~4.35 MB -> ~2.38 MB`
     - `simple_telescope_256`: `~12.61 MB -> ~5.79 MB`
+- 2026-03-05: O2 completed.
+  - wrappers updated to reuse wavefront mask workspace:
+    - `prop_circular_aperture` warm-path allocation: `1328 B` (512-grid probe)
+    - `prop_elliptical_aperture` warm-path allocation: `1328 B` (512-grid probe)
+    - `prop_rectangular_aperture` warm-path allocation: `832 B` (512-grid probe)
+- 2026-03-05: O3 completed.
+  - added `prop_end!` mutating output path and `prop_end(wf, out; ...)` buffer overload.
+  - `prop_end!` warm-path allocation: `0 B` (full and extract paths on 512-grid probe).
+  - default allocating wrapper now allocates output-only footprint (`~2.10 MB` for 512x512 intensity output).
+- 2026-03-05: benchmark update after O2 + O3 completion (`scripts/benchmark_all.sh`).
+  - steady-state median: `2.79100035e7 ns`; Python/Julia ratio in this setup: `0.467`.
+  - example workflow medians / allocations:
+    - `simple_prescription_256`: `7.00e6 ns`, `4,206,240 B`
+    - `psdtest_128`: `4.05e6 ns`, `2,248,328 B`
+    - `simple_telescope_256`: `1.60e7 ns`, `5,264,464 B`

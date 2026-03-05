@@ -60,8 +60,20 @@ using Random
         mptr = pointer(mws.mask)
         Proper.prop_circular_aperture(wfmask, 0.2)
         @test pointer(mws.mask) == mptr
+        Proper.prop_elliptical_aperture(wfmask, 0.2, 0.15)
+        @test pointer(mws.mask) == mptr
+        Proper.prop_elliptical_obscuration(wfmask, 0.2, 0.15)
+        @test pointer(mws.mask) == mptr
+        Proper.prop_rectangular_aperture(wfmask, 0.25, 0.18)
+        @test pointer(mws.mask) == mptr
+        Proper.prop_rectangular_obscuration(wfmask, 0.25, 0.18)
+        @test pointer(mws.mask) == mptr
         Proper.prop_circular_aperture(wfmask, 0.2) # warmup
         @test (@allocated Proper.prop_circular_aperture(wfmask, 0.2)) < 50_000
+        Proper.prop_elliptical_aperture(wfmask, 0.2, 0.15) # warmup
+        @test (@allocated Proper.prop_elliptical_aperture(wfmask, 0.2, 0.15)) < 70_000
+        Proper.prop_rectangular_aperture(wfmask, 0.25, 0.18) # warmup
+        @test (@allocated Proper.prop_rectangular_aperture(wfmask, 0.25, 0.18)) < 70_000
     end
 
     @testset "Mutating wrapper parity" begin
@@ -78,6 +90,36 @@ using Random
         Proper.prop_magnify!(mout, img, 1.2, ctx; QUICK=true)
         mref = prop_magnify(img, 1.2, 16, ctx; QUICK=true)
         @test isapprox(mout, mref; atol=1e-6, rtol=1e-6)
+    end
+
+    @testset "Mutating prop_end reuse" begin
+        wf = prop_begin(1.0, 500e-9, 32)
+        prop_circular_aperture(wf, 0.2)
+        prop_propagate(wf, 0.01)
+
+        iref, sref = prop_end(wf)
+        ibuf = similar(iref)
+        @test (@inferred Proper.prop_end!(ibuf, wf)) === ibuf
+        iout, s = prop_end(wf, ibuf)
+        @test iout === ibuf
+        @test s == sref
+        @test isapprox(iout, iref; atol=0, rtol=0)
+        Proper.prop_end!(ibuf, wf) # warmup
+        @test (@allocated Proper.prop_end!(ibuf, wf)) == 0
+
+        cref, _ = prop_end(wf; noabs=true)
+        cbuf = similar(cref)
+        @test (@inferred Proper.prop_end!(cbuf, wf; noabs=true)) === cbuf
+        @test isapprox(Proper.prop_end!(cbuf, wf; noabs=true), cref; atol=0, rtol=0)
+        Proper.prop_end!(cbuf, wf; noabs=true) # warmup
+        @test (@allocated Proper.prop_end!(cbuf, wf; noabs=true)) == 0
+
+        xref, _ = prop_end(wf; extract=8)
+        xbuf = similar(xref)
+        @test (@inferred Proper.prop_end!(xbuf, wf; extract=8)) === xbuf
+        @test isapprox(Proper.prop_end!(xbuf, wf; extract=8), xref; atol=0, rtol=0)
+        Proper.prop_end!(xbuf, wf; extract=8) # warmup
+        @test (@allocated Proper.prop_end!(xbuf, wf; extract=8)) == 0
     end
 
     @testset "Mutating geometry parity" begin
