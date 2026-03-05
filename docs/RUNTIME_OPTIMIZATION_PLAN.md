@@ -95,6 +95,18 @@ Status: Completed
   - validate neutral-or-better runtime on representative workloads
   - establish backend-dispatch scaffolding for future GPU methods
 
+### O8: PSD Map Mutating Path and Benchmark De-biasing
+Status: Completed
+- Add preallocated-output `prop_psd_errormap!` API and internal output-buffer overloads.
+- Keep parity behavior unchanged (same returned map values and application semantics).
+- Replace `prop_shift_center` allocation in PSD output normalization with workspace-backed in-place shift.
+- Update refactor kernel benchmark to:
+  - include PSD wrapper vs mutating pair
+  - avoid per-call RNG-object construction noise in PSD timings
+- Targets:
+  - mutating PSD path near-zero extra allocations (beyond caller-owned output)
+  - preserve parity and regression tests
+
 ## Execution Log
 - 2026-03-05: Plan created. Starting O1.
 - 2026-03-05: O1 completed.
@@ -148,3 +160,10 @@ Status: Completed
   - added KA kernel implementations for shifted mask apply and shifted `prop_end!` copy/intensity.
   - integrated trait routing in `prop_circular_aperture` mask application and `prop_end!` strided fast paths.
   - updated CPU defaults after benchmarking: mask path remains loop-default; `prop_end!` shifted copy/intensity keeps KA pilot for large arrays.
+- 2026-03-05: O8 completed.
+  - added `prop_psd_errormap!(out, wf, ...)` mutating API and internal output-buffer overload.
+  - replaced PSD `prop_shift_center` allocation with workspace-backed in-place shift for matrix fast path.
+  - tightened PSD performance gates:
+    - wrapper allocation threshold: `< 100_000` bytes (64-grid test)
+    - mutating allocation threshold: `< 10_000` bytes (64-grid test)
+  - updated refactor benchmark report schema to include PSD wrapper/mutating pair + hotspot entries.

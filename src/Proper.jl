@@ -115,7 +115,7 @@ export prop_qphase, prop_lens, prop_ptp, prop_wts, prop_stw, prop_propagate
 export prop_magnify, prop_rotate, prop_resamplemap, prop_select_propagator
 export prop_magnify!, prop_rotate!, prop_resamplemap!, prop_cubic_conv_grid!, prop_end!
 export prop_fits_read, prop_fits_write, prop_readmap, prop_writemap
-export prop_errormap, prop_psd_errormap
+export prop_errormap, prop_psd_errormap, prop_psd_errormap!
 export prop_savestate, prop_state, prop_is_statesaved, prop_init_savestate, prop_end_savestate
 export prop_execute_multi, prop_use_fftw, prop_use_ffti, prop_fftw_wisdom, prop_load_fftw_wisdom
 export prop_set_antialiasing, prop_table

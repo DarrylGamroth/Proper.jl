@@ -56,6 +56,11 @@ function bench_refactor_kernels()
 
     # PSD hotspot
     wf_psd = prop_begin(0.212, 0.55e-6, 128)
+    psd_out = zeros(Float64, 128, 128)
+    psd_rng_wrap = MersenneTwister(3)
+    psd_rng_mut = MersenneTwister(3)
+    psd_opts_wrap = Proper.PSDErrorMapOptions(pairs((; no_apply=true, rng=psd_rng_wrap)))
+    psd_opts_mut = Proper.PSDErrorMapOptions(pairs((; no_apply=true, rng=psd_rng_mut)))
 
     # Warmup (exclude compilation)
     prop_resamplemap(wf_map, dmap, wf_map.sampling_m, 64.0, 64.0, ctx_map)
@@ -74,7 +79,8 @@ function bench_refactor_kernels()
     prop_irregular_polygon(wf_geom, xverts, yverts; NORM=true)
     prop_irregular_polygon!(ipoly_out, wf_geom, xverts, yverts; NORM=true)
 
-    prop_psd_errormap(wf_psd, 3.29e-23, 212.26, 7.8; no_apply=true, rng=MersenneTwister(3))
+    Proper._prop_psd_errormap!(wf_psd, 3.29e-23, 212.26, 7.8, psd_opts_wrap)
+    Proper._prop_psd_errormap!(psd_out, wf_psd, 3.29e-23, 212.26, 7.8, psd_opts_mut)
 
     samples_fast = 30
     samples_heavy = 15
@@ -114,7 +120,9 @@ function bench_refactor_kernels()
         run(@benchmarkable prop_irregular_polygon!($ipoly_out, $wf_geom, $xverts, $yverts; NORM=true) evals=1 samples=samples_fast),
     )
 
-    psd_trial = run(@benchmarkable prop_psd_errormap($wf_psd, 3.29e-23, 212.26, 7.8; no_apply=true, rng=MersenneTwister(3)) evals=1 samples=samples_heavy)
+    psd_wrap_trial = run(@benchmarkable Proper._prop_psd_errormap!($wf_psd, 3.29e-23, 212.26, 7.8, $psd_opts_wrap) evals=1 samples=samples_heavy)
+    psd_mut_trial = run(@benchmarkable Proper._prop_psd_errormap!($psd_out, $wf_psd, 3.29e-23, 212.26, 7.8, $psd_opts_mut) evals=1 samples=samples_heavy)
+    psd_pair = pair_stats(psd_wrap_trial, psd_mut_trial)
 
     return Dict(
         "meta" => benchmark_metadata(run_tag="steady_state_kernels_refactor"),
@@ -127,9 +135,11 @@ function bench_refactor_kernels()
             "rectangle" => rectangle_pair,
             "polygon" => polygon_pair,
             "irregular_polygon" => irregular_polygon_pair,
+            "psd_errormap" => psd_pair,
         ),
         "hotspots" => Dict(
-            "psd_errormap_no_apply" => trial_stats(psd_trial),
+            "psd_errormap_no_apply_wrapper" => trial_stats(psd_wrap_trial),
+            "psd_errormap_no_apply_mutating" => trial_stats(psd_mut_trial),
         ),
     )
 end

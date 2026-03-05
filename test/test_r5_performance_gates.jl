@@ -75,7 +75,13 @@ using Random
         @test m isa AbstractMatrix
         @test size(m) == size(wf_psd.field)
         prop_psd_errormap(wf_psd, 3.29e-23, 212.26, 7.8; no_apply=true, rng=MersenneTwister(7)) # warmup
-        @test (@allocated prop_psd_errormap(wf_psd, 3.29e-23, 212.26, 7.8; no_apply=true, rng=MersenneTwister(7))) < 2_000_000
+        @test (@allocated prop_psd_errormap(wf_psd, 3.29e-23, 212.26, 7.8; no_apply=true, rng=MersenneTwister(7))) < 100_000
+
+        mout = zeros(Float64, size(wf_psd.field)...)
+        rng_psd_mut = MersenneTwister(7)
+        @test (@inferred Proper.prop_psd_errormap!(mout, wf_psd, 3.29e-23, 212.26, 7.8; no_apply=true, rng=rng_psd_mut)) === mout
+        Proper.prop_psd_errormap!(mout, wf_psd, 3.29e-23, 212.26, 7.8; no_apply=true, rng=rng_psd_mut) # warmup
+        @test (@allocated Proper.prop_psd_errormap!(mout, wf_psd, 3.29e-23, 212.26, 7.8; no_apply=true, rng=rng_psd_mut)) < 10_000
     end
 
     @testset "Geometry mask hotspots" begin

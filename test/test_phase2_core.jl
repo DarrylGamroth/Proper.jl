@@ -147,6 +147,12 @@ end
     dmap = prop_psd_errormap(wf, 1e-18, 10.0, 3.0; no_apply=true, rng=MersenneTwister(1))
     @test size(dmap) == size(wf.field)
     @test all(isfinite, dmap)
+
+    # Mutating PSD map path should match wrapper output with same RNG seed.
+    dmap_out = zeros(Float64, size(wf.field)...)
+    dmap_mut = prop_psd_errormap!(dmap_out, wf, 1e-18, 10.0, 3.0; no_apply=true, rng=MersenneTwister(1))
+    @test dmap_mut === dmap_out
+    @test dmap_mut == dmap
 end
 
 @testset "Phase 8 segmentation and interpolation parity coverage" begin

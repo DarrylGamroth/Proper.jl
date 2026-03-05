@@ -47,13 +47,35 @@ if refactor !== nothing
             payload["median_byte_reduction"],
         )
     end
-    hs = refactor["hotspots"]["psd_errormap_no_apply"]
-    println(
-        "psd_errormap_no_apply median ns: ",
-        hs["median_ns"],
-        " median bytes: ",
-        hs["median_bytes"],
-    )
+    hotspots = refactor["hotspots"]
+    if haskey(hotspots, "psd_errormap_no_apply")
+        hs = hotspots["psd_errormap_no_apply"]
+        println(
+            "psd_errormap_no_apply median ns: ",
+            hs["median_ns"],
+            " median bytes: ",
+            hs["median_bytes"],
+        )
+    else
+        if haskey(hotspots, "psd_errormap_no_apply_wrapper")
+            hs_wrap = hotspots["psd_errormap_no_apply_wrapper"]
+            println(
+                "psd_errormap_no_apply_wrapper median ns: ",
+                hs_wrap["median_ns"],
+                " median bytes: ",
+                hs_wrap["median_bytes"],
+            )
+        end
+        if haskey(hotspots, "psd_errormap_no_apply_mutating")
+            hs_mut = hotspots["psd_errormap_no_apply_mutating"]
+            println(
+                "psd_errormap_no_apply_mutating median ns: ",
+                hs_mut["median_ns"],
+                " median bytes: ",
+                hs_mut["median_bytes"],
+            )
+        end
+    end
 end
 
 if examples !== nothing
