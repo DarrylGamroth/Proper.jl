@@ -9,6 +9,9 @@ root = @__DIR__
 py = loadjson(joinpath(root, "python_steady_state.json"))
 jl = loadjson(joinpath(root, "julia_steady_state.json"))
 ttfx = loadjson(joinpath(root, "julia_cold_start.json"))
+phase2 = loadjson(joinpath(root, "phase2_kernels.json"))
+refactor = loadjson(joinpath(root, "refactor_kernels.json"))
+examples = loadjson(joinpath(root, "example_workflows.json"))
 
 if py !== nothing && jl !== nothing
     py_med = Float64(py["stats"]["median_ns"])
@@ -24,4 +27,38 @@ end
 if ttfx !== nothing
     println("\n# Cold Start / TTFx")
     println("Julia first call ns: ", ttfx["first_call_ns"])
+end
+
+if phase2 !== nothing
+    println("\n# Phase-2 Kernel Matrix")
+    for (name, stats) in pairs(phase2["kernels"])
+        println(name, " median ns: ", stats["median_ns"], " median bytes: ", stats["median_bytes"])
+    end
+end
+
+if refactor !== nothing
+    println("\n# Refactor Kernel Deltas")
+    for (name, payload) in pairs(refactor["pairs"])
+        println(
+            name,
+            " speedup(wrapper/mutating): ",
+            payload["speedup_wrapper_over_mutating"],
+            " median byte reduction: ",
+            payload["median_byte_reduction"],
+        )
+    end
+    hs = refactor["hotspots"]["psd_errormap_no_apply"]
+    println(
+        "psd_errormap_no_apply median ns: ",
+        hs["median_ns"],
+        " median bytes: ",
+        hs["median_bytes"],
+    )
+end
+
+if examples !== nothing
+    println("\n# Example Workflow Matrix")
+    for (name, stats) in pairs(examples["examples"])
+        println(name, " median ns: ", stats["median_ns"], " median bytes: ", stats["median_bytes"])
+    end
 end

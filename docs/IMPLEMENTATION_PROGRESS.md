@@ -20,8 +20,8 @@
 - [x] R1: Typed option boundaries (boundary normalization and typed option structs added for propagation/map/geometry families).
 - [x] R2: Trait-driven kernel routing (CPU/GPU-ready dispatch wiring, context-routed propagation/interpolation kernels, and optional CUDA smoke test coverage).
 - [x] R3: Mutating kernels and workspace reuse across interpolation/geometry hot paths (added `prop_rotate!`, `prop_magnify!`, `prop_cubic_conv_grid!`, geometry `*_!` variants, and reusable interpolation/FFT workspace caches in `RunContext`).
-- [x] R4: WaveFront state typing and dispatch simplification (state enums + typed transition selectors for propagation/lens paths; symbol conversions retained at assignment/comparison boundaries).
-- [ ] R5: Expanded inference/allocation gates and benchmark matrix updates.
+- [x] R4: WaveFront state typing and dispatch simplification (state enums + typed transition selectors for propagation/lens paths; strict typed state transitions).
+- [x] R5: Expanded inference/allocation gates and benchmark matrix updates (new R5 gate suite; benchmark matrix expanded for phase-2 kernels, refactor kernel deltas, and end-to-end example workflows; steady-state vs TTFx separation retained).
 
 ## Current Workstream (Phase 1)
 - [x] Core policy/trait/context types created.
@@ -81,6 +81,10 @@
   - removed runtime string/symbol transition assembly in `prop_select_propagator`/`prop_lens`
   - routed propagation transition execution through typed selectors in `prop_propagate`
   - added state-typing regression tests (`test/test_r4_state_typing.jl`)
+- [x] Completed R5 refactor scope:
+  - added expanded inference/allocation gates across propagation, PSD/map, and geometry hotspots (`test/test_r5_performance_gates.jl`)
+  - expanded benchmark matrix with dedicated phase-2 kernel report, refactor wrapper-vs-mutating delta report, and end-to-end example workflow report
+  - updated benchmark driver and summary reporting while preserving steady-state vs cold-start/TTFx separation
 
 ## Notes
 - Runtime compatibility mode flags were removed; parity behavior is anchored to the patched Python baseline (`D-0035`).
