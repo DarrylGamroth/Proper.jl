@@ -11,13 +11,10 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Decision:
   - Use Python 3.3.4 as the primary executable baseline for parity/regression tests.
   - Use MATLAB 3.3.1 and the PROPER manual as semantic references to identify likely translation defects and intended behavior.
-  - Implement dual compatibility modes in Julia:
-    - `compat_mode = :python334` for strict Python parity.
-    - `compat_mode = :corrected` for behavior corrected using MATLAB/manual-backed rationale.
 - Consequences:
   - Automated golden-data generation and CI parity checks run against Python outputs.
   - Divergences from Python must be documented in this file with justification and tests.
-  - Any corrected behavior must remain opt-in unless explicitly promoted by project decision.
+  - Behavior changes are tracked by decisions/tests rather than runtime compatibility mode flags.
 
 ## D-0002: FITS Library Selection
 - Date: 2026-03-04
@@ -61,19 +58,18 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 
 ## D-0006: Default Compatibility Mode
 - Date: 2026-03-04
-- Status: Accepted
+- Status: Superseded by D-0035
 - Decision:
-  - Default `compat_mode = :python334`.
-  - Provide `compat_mode = :corrected` for MATLAB/manual-backed fixes.
-  - Promote corrected behavior to default only through explicit future decision.
+  - Historical: default mode `:python334`, optional `:corrected`.
+  - Current: runtime compatibility modes removed; use patched baseline parity policy (D-0035).
 
 ## D-0007: Numerical Convention Contract
 - Date: 2026-03-04
 - Status: Accepted
 - Decision:
-  - Match Python 3.3.4 normalization and centering behavior in `:python334` mode.
+  - Match Python 3.3.4 normalization and centering behavior.
   - Freeze coordinate/pixel-center conventions per PROPER behavior and test them explicitly (even/odd sizes).
-  - Expose all numerically meaningful deviations only via explicit compat-mode switches.
+  - Expose all numerically meaningful deviations via explicit decisions and tests.
 
 ## D-0008: GPU Scope for Phase 1
 - Date: 2026-03-04
@@ -149,20 +145,16 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 
 ## D-0017: `compat_mode` Evaluation Policy
 - Date: 2026-03-04
-- Status: Accepted
+- Status: Superseded by D-0035
 - Context:
   - Repeated `compat_mode` branching inside inner loops adds overhead and increases behavioral complexity.
   - Mode decisions should be deterministic and easy to audit.
 - Decision:
-  - Accept `compat_mode` only as a keyword in context/config constructor(s).
-  - Resolve `compat_mode` exactly once during context/config construction.
-  - Convert mode to an internal typed policy and pass that policy through call chains.
-  - Do not branch on mode inside hot-path inner loops.
+  - Historical: accepted mode exactly once in constructor and passed typed policy internally.
+  - Current: compatibility modes removed; no mode dispatch remains.
 - Consequences:
-  - Public `prop_*` APIs operate on pre-built context/config objects and do not re-accept `compat_mode`.
-  - Kernel methods can dispatch on policy type, reducing runtime branching overhead.
-  - Raw mode symbols are constructor-only inputs and are not propagated through runtime call chains.
-  - Removing `compat_mode` later is localized to constructor/context and policy mapping code.
+  - Public `prop_*` APIs and context constructors have no compatibility-mode parameters.
+  - Behavior differences are represented by explicit code paths and decision-log entries.
 
 ## D-0018: API Layering With Mutating Kernels
 - Date: 2026-03-04
@@ -176,7 +168,7 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Date: 2026-03-04
 - Status: Accepted
 - Decision:
-  - Introduce a typed run context carrying compat policy, backend traits, RNG, and workspace handles.
+  - Introduce a typed run context carrying backend traits, RNG, and workspace handles.
   - Pass context explicitly through call chains instead of using module-global state.
 
 ## D-0020: One-Time Option Normalization
@@ -306,19 +298,13 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 
 ## D-0032: Current Corrected-Mode Divergence Policy
 - Date: 2026-03-04
-- Status: Accepted
+- Status: Superseded by D-0035
 - Context:
-  - Phase 8 exit criteria require any remaining `:corrected` deltas to be intentional and documented.
-  - At present, no active algorithmic behavior divergence is implemented between `:python334` and `:corrected`.
+  - Historical policy before runtime compatibility mode removal.
 - Decision:
-  - Treat `:corrected` as behavior-equivalent to `:python334` until specific corrected algorithms are intentionally introduced.
-  - Any future corrected-mode divergence must be:
-    - explicitly documented in `docs/compat_decisions.md`,
-    - covered by tests for both modes,
-    - reflected in parity threshold rationale where relevant.
+  - Historical: `:corrected` tracked as behavior-equivalent to `:python334`.
 - Consequences:
-  - Current phase-8 parity closure is evaluated against `:python334` thresholds with no undocumented corrected-mode deltas.
-  - Corrected-mode behavior changes remain controlled and auditable.
+  - Replaced by single baseline policy in D-0035.
 
 ## D-0033: Phase 9 Hotspot Reconciliation Outcomes
 - Date: 2026-03-04
@@ -342,8 +328,22 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   - Project direction is to match upstream behavior after applying this known fix, not preserve the historical defect.
 - Decision:
   - Patch the local Python parity baseline to use `y += yc - yshift/pixscale`.
-  - Regenerate parity artifacts from the patched baseline and treat that output as canonical `:python334` executable reference in this repository.
-  - Keep Julia `prop_resamplemap` on independent `xshift`/`yshift` semantics with no compat-mode split for this case.
+  - Regenerate parity artifacts from the patched baseline and treat that output as canonical executable reference in this repository.
+  - Keep Julia `prop_resamplemap` on independent `xshift`/`yshift` semantics.
 - Consequences:
   - Removes ambiguity around preserving the historical Y-shift coupling defect.
   - Parity comparisons stay executable and reproducible while aligned with intended semantics.
+
+## D-0035: Remove Runtime Compatibility Modes
+- Date: 2026-03-04
+- Status: Accepted
+- Context:
+  - `compat_mode` no longer provided real behavioral coverage and added maintenance/documentation overhead.
+  - Project direction is to keep one executable baseline and track intentional divergences explicitly.
+- Decision:
+  - Remove runtime `compat_mode` support from context/config/public APIs.
+  - Remove compatibility policy types and mode-based dispatch plumbing.
+  - Keep parity anchored to the patched Python 3.3.4 executable baseline.
+- Consequences:
+  - Supersedes D-0006, D-0017, and D-0032.
+  - Future behavior changes require decision-log entries + tests instead of mode branches.

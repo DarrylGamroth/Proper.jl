@@ -5,7 +5,7 @@ Freeze numerical conventions used by propagation, transforms, and coordinate sys
 
 ## Decision Links
 - `D-0001` baseline/parity policy
-- `D-0006` compat mode default (accepted)
+- `D-0035` remove runtime compatibility modes (accepted)
 - `D-0007` numerical convention contract (accepted)
 
 ## Status
@@ -24,7 +24,7 @@ Freeze numerical conventions used by propagation, transforms, and coordinate sys
 - Backend primitive convention:
   - use `AbstractFFTs`/backend-default semantics (forward unscaled, inverse scaled by `1/N` product)
 - PROPER routine convention:
-  - apply explicit routine-level scaling to match Python 3.3.4 in `:python334`
+  - apply explicit routine-level scaling to match the patched Python 3.3.4 baseline
 - Net scaling expectation:
   - parity is validated at routine outputs, not raw backend FFT calls
 - Backend equivalence tolerance:
@@ -63,12 +63,12 @@ Freeze numerical conventions used by propagation, transforms, and coordinate sys
 - Cross-backend parity workflow:
   - generate deterministic random phase maps on CPU and transfer as needed
 
-## 7. Compat-Mode Numerical Differences
-Document expected differences:
-- `:python334`:
-  - preserve Python 3.3.4 behavior, including known quirks where intentionally retained
-- `:corrected`:
-  - apply documented fixes (e.g., map-shift semantics, extract indexing, state restore semantics, backend-toggle side effects)
+## 7. Numerical Divergence Policy
+- Preserve patched Python 3.3.4 baseline behavior unless a divergence is explicitly documented.
+- Any divergence must include:
+  - rationale tied to MATLAB/manual intent or correctness
+  - parity evidence and updated thresholds where relevant
+  - regression tests covering the chosen behavior
 
 ## 8. Contract Tests
 - [ ] FFT normalization regression tests

@@ -100,7 +100,6 @@ include("prop_wts.jl")
 include("prop_zernikes.jl")
 include("switch_set.jl")
 
-export CompatPolicy, Python334Policy, CorrectedPolicy, resolve_compat_policy
 export BackendStyle, CPUBackend, UnknownBackend, FFTStyle, FFTWStyle, GenericFFTStyle
 export InterpStyle, GenericInterpStyle, CubicInterpStyle, RNGStyle, GenericRNGStyle
 export RunContext, ProperConfig, ProperRuntime, WaveFront

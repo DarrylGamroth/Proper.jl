@@ -9,6 +9,11 @@ This file defines local agent/contributor guidance for `proper.jl` (PROPER Pytho
 - Python baseline code: `../proper_v3.3.4_python`
 - MATLAB semantic reference: `../proper_v3.3.1_matlab` (no runtime available here)
 
+## Python Parity Environment
+- Use local venv: `.venv-parity`.
+- Baseline/parity generators should run with `.venv-parity/bin/python`.
+- Required Python deps for parity workflows: `numpy`, `scipy`, `astropy`, `matplotlib`.
+
 ## Non-Negotiable Decisions (Accepted)
 - `D-0001`: Python 3.3.4 is the executable parity baseline.
 - `D-0002`: FITS handling uses `FITSIO.jl`.
@@ -23,15 +28,10 @@ This file defines local agent/contributor guidance for `proper.jl` (PROPER Pytho
 - Default behavior should remain parity-first unless an explicit decision says otherwise.
 - Hot-path code must be type-stable and minimize dynamic dispatch.
 
-## Compatibility Modes
-- `compat_mode = :python334`:
-  - Strict behavior parity with Python 3.3.4.
-  - Default mode unless changed by accepted decision.
-- `compat_mode = :corrected`:
-  - Uses MATLAB/manual-backed behavior where Python appears defective.
-  - Any corrected behavior must be documented in `docs/compat_decisions.md`.
-- `compat_mode` is only accepted at context/config constructor boundary and then converted to policy traits.
-- Do not pass raw `compat_mode` symbols through runtime call chains.
+## Compatibility Baseline
+- Behavior targets the patched Python 3.3.4 executable baseline used by parity harnesses.
+- MATLAB/manual remain semantic references when evaluating suspected translation defects.
+- Do not add runtime compatibility mode flags; document and test behavior changes directly.
 
 ## Array/Backend Requirements
 - Core APIs should accept `AbstractArray`/`AbstractMatrix`.

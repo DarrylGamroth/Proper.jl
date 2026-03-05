@@ -46,9 +46,9 @@
 
 ## Next Workstream
 - [x] Replace fallback propagation internals with parity implementations.
-- [x] Replace fallback PSD/Zernike/polygon/segmented-optics implementations with parity implementations (threshold-gated parity validated in `:python334` mode).
+- [x] Replace fallback PSD/Zernike/polygon/segmented-optics implementations with parity implementations (threshold-gated parity validated against patched Python baseline).
 - [x] Replace interpolation and zoom placeholders with cubic-convolution implementations (`libcconv`, `libcconvthread`, `libszoom`, `prop_cubic_conv`).
-- [x] Run full example parity report and close threshold gaps in `:python334` (combined abs/rel threshold policy and CI gating are green; residual deep-null coronagraph deltas are documented and accepted).
+- [x] Run full example parity report and close threshold gaps against patched Python baseline (combined abs/rel threshold policy and CI gating are green; residual deep-null coronagraph deltas are documented and accepted).
 - [x] Document Phase 8 closure evidence (`docs/PHASE8_CLOSURE.md`).
 - [x] Perform MATLAB/manual semantic reconciliation on known disagreement hotspots.
 - [x] Publish Phase 9 reconciliation report (`docs/PHASE9_RECONCILIATION.md`) and migration guide (`docs/MIGRATION_GUIDE.md`).
@@ -66,5 +66,5 @@
 - [x] Added Phase 9 semantic reconciliation report and migration guide.
 
 ## Notes
-- `compat_mode` is constructor-only and resolves once to a policy type (`D-0017`).
+- Runtime compatibility mode flags were removed; parity behavior is anchored to the patched Python baseline (`D-0035`).
 - Benchmark policy keeps steady-state comparisons separate from TTFx (`D-0029`).

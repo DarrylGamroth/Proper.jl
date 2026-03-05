@@ -1,15 +1,9 @@
 @testset "Phase 1 foundation" begin
     ctx_default = RunContext()
-    @test ctx_default.policy isa Python334Policy
-
-    ctx_corrected = RunContext(; compat_mode=:corrected)
-    @test ctx_corrected.policy isa CorrectedPolicy
-
-    @test_throws ArgumentError RunContext(; compat_mode=:unknown)
 
     @test proper.interp_style(Matrix{Float64}) isa CubicInterpStyle
     @test proper.interp_style(AbstractMatrix{Float64}) isa GenericInterpStyle
-    ctx_f32 = RunContext(Matrix{Float32}; compat_mode=:python334)
+    ctx_f32 = RunContext(Matrix{Float32})
     @test ctx_f32.interp isa CubicInterpStyle
 
     wf = prop_begin(2.0, 550e-9, 16)

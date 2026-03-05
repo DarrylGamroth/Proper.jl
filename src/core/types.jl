@@ -1,5 +1,4 @@
-Base.@kwdef struct ProperConfig{P<:CompatPolicy}
-    policy::P = Python334Policy()
+Base.@kwdef struct ProperConfig
     verbose::Bool = false
 end
 

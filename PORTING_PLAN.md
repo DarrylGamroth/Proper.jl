@@ -89,16 +89,16 @@
 
 ### 6. Compatibility Policy
 - Default behavior should match Python outputs for existing examples.
-- For known Python bugs above, add one of:
-  - explicit bugfix behavior with release notes, or
-  - `compat_mode=:python334` switches if strict behavior replication is required.
+- For known Python bugs above, either:
+  - patch the executable baseline and regenerate artifacts, or
+  - document and test any intentional Julia-side divergence.
 
 ## Phase 0: Preflight Decisions (Required Before Phase 1)
 Purpose: freeze compatibility, architecture, and validation contracts so file-by-file porting does not thrash.
 
 ### 0.1 API and Compatibility Contract
 - Decide preserved public surface (`prop_*` function names, keyword names/casing, return-value shapes/types).
-- Decide which known Python bugs are fixed by default vs preserved under `compat_mode=:python334`.
+- Decide which known Python bugs are baseline-patched versus intentionally retained.
 - Decide whether keyword parsing will support both uppercase compatibility style and idiomatic Julia keyword aliases.
 
 ### 0.2 Naming and Packaging
@@ -192,12 +192,10 @@ Exit criterion for Phase 0: each subsection above is marked “decided” in pro
   - Implement core types:
     - `WaveFront{T,A<:AbstractMatrix{Complex{T}}}`
     - runtime/config structs for formerly global state
-    - resolved compatibility policy types (`Python334Policy`, `CorrectedPolicy`)
-    - typed run context carrying policy/backend/RNG/workspace
+    - typed run context carrying backend/RNG/workspace
   - Implement keyword normalization (compat uppercase + idiomatic aliases).
   - Normalize optional inputs once at API boundary into typed options.
   - Implement backend trait stubs and default CPU backend wiring.
-  - Accept `compat_mode` only in context/config constructor, resolve once there, and propagate policy object through context.
   - Define mutating internal kernel naming/pattern (`*_!`) and wrapper policy (`prop_*`).
   - Define workspace and FFT-plan caching interfaces.
   - Add test scaffolding:
@@ -221,7 +219,7 @@ Exit criterion for Phase 0: each subsection above is marked “decided” in pro
     - `prop_ptp`, `prop_stw`, `prop_wts`, `prop_qphase`
     - `prop_lens`
   - Implement shared internal helpers for centered frequency grids and reusable workspace.
-  - Add mode-aware behavior checks (`:python334` vs `:corrected` where needed).
+  - Add behavior checks against the patched Python baseline where needed.
   - Benchmark core kernels for allocations and throughput.
   - Add type-inference/dispatch checks for hot kernels.
 - Deliverables:
@@ -260,7 +258,7 @@ Exit criterion for Phase 0: each subsection above is marked “decided” in pro
   - Implement CPU baseline kernels first, then accelerated kernels via `AcceleratedKernels.jl` / `KernelAbstractions.jl`.
   - Add deterministic RNG hooks for parity tests in randomized map generation.
 - Deliverables:
-  - Full map workflow available and tested in both compat modes.
+  - Full map workflow available and tested against patched Python baseline.
 - Exit criteria:
   - `psdtest` and map round-trip tests pass parity thresholds.
   - FITS headers/units semantics match contract.
@@ -329,15 +327,15 @@ Exit criterion for Phase 0: each subsection above is marked “decided” in pro
     - PSD/map synthesis and transforms (`prop_psd_errormap`, interpolation/cubic-conv paths)
     - Zernike/fit stack (`prop_zernikes`, `prop_noll_zernikes`, `prop_fit_zernikes`, related helpers)
     - polygon/segmented optics paths (`prop_polygon`, `prop_irregular_polygon`, `prop_hex_*`, rounded geometry)
-  - Run parity harness on all 23 examples for both `compat_mode=:python334` and `compat_mode=:corrected`.
+  - Run parity harness on all 23 examples against the patched Python baseline.
   - Add per-module parity fixtures and failure triage reports with decision-log links.
   - Close parity gaps by updating implementation and/or explicitly documenting accepted divergence.
 - Deliverables:
   - No physics-critical module relies on placeholder/fallback behavior.
   - Full parity report for all examples with provenance and threshold outcomes.
 - Exit criteria:
-  - All example parity thresholds are met in `:python334` mode.
-  - Any remaining `:corrected` deltas are intentional and documented in `docs/compat_decisions.md`.
+  - All example parity thresholds are met against the patched Python baseline.
+  - Any remaining intentional divergences are documented in `docs/compat_decisions.md`.
   - No unresolved high-severity parity gaps remain.
 
 ### Phase 9: MATLAB Semantic Reconciliation And Final Validation
@@ -400,7 +398,7 @@ Decision reference: `D-0029` in `docs/compat_decisions.md`.
 
 ### 2. Workload Matrix
 - Grid sizes: `256`, `512`, `1024` (extend as needed)
-- Modes: `compat_mode=:python334` and `compat_mode=:corrected`
+- Baseline: patched Python 3.3.4 executable reference
 - Backends:
   - CPU required
   - GPU optional/nightly (where implementation exists)
@@ -452,7 +450,7 @@ Decision reference: `D-0029` in `docs/compat_decisions.md`.
 
 ### 7. Artifacts And Reproducibility
 - Store benchmark config + metadata with each run:
-  - commit hash, decision set, compat mode, backend, hardware, thread count
+  - commit hash, decision set, baseline tag, backend, hardware, thread count
 - Emit machine-readable outputs (`JSON`/`CSV`) and human summary (`Markdown`).
 - Keep large/raw artifacts outside default git history unless explicitly approved.
 - Include explicit run tags:

@@ -17,18 +17,18 @@ Phase 8 target from `PORTING_PLAN.md`:
   - `docs/parity_thresholds.md`
   - `test/parity/thresholds/example_metrics_thresholds.json`
 - Decision log:
-  - `docs/compat_decisions.md` (`D-0030`, `D-0031`, `D-0032`)
+  - `docs/compat_decisions.md` (`D-0030`, `D-0031`, `D-0035`)
 
 ## Results
 - Python-baseline parity threshold gate: `PASS`.
 - No physics-critical placeholder implementation remains in active parity paths.
 - Residual coronagraph-family differences are deep-null absolute-scale differences and are covered by combined abs/rel thresholds.
 
-## Compat Mode Status
-- `compat_mode=:python334` remains the executable parity baseline mode.
-- `compat_mode=:corrected` currently has no active algorithmic divergences from `:python334`; any future corrected-mode divergence must be explicitly documented in `docs/compat_decisions.md`.
+## Compatibility Status
+- Patched Python 3.3.4 remains the executable parity baseline.
+- Runtime compatibility mode flags were removed; divergences are documented directly in `docs/compat_decisions.md`.
 
 ## Phase 8 Exit Criteria Evaluation
-- All example parity thresholds met in `:python334` mode: `Yes`.
-- Any remaining `:corrected` deltas intentional and documented: `Yes` (currently none active; policy documented).
+- All example parity thresholds met against patched Python baseline: `Yes`.
+- Any remaining intentional deltas documented: `Yes`.
 - No unresolved high-severity parity gaps: `Yes` (threshold-gated parity is green).

@@ -10,13 +10,9 @@ This guide summarizes compatibility expectations for users migrating prescriptio
 - Default plotting in examples uses `Plots.jl`.
 - FITS IO uses `FITSIO.jl`.
 
-## Compatibility Modes
-- `compat_mode=:python334`:
-  - default mode
-  - parity-first behavior against Python 3.3.4
-- `compat_mode=:corrected`:
-  - reserved for explicitly documented corrected behavior
-  - currently no active algorithmic divergence from `:python334`
+## Compatibility Baseline
+- Parity-first behavior against the patched Python 3.3.4 executable baseline.
+- MATLAB/manual remain semantic references for investigating suspected translation defects.
 
 ## Known Semantics Adopted In Julia
 - `prop_resamplemap`: independent `xshift`/`yshift` handling (aligned with MATLAB/manual intent).

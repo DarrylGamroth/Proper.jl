@@ -31,7 +31,7 @@ Each baseline artifact should capture:
 - wavelength/grid/passvalue/config
 - RNG seed info (if applicable)
 - generation timestamp
-- target compat mode
+- baseline identifier
 - backend label and numeric precision
 
 ## 4. Metrics And Thresholds

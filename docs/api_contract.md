@@ -7,8 +7,7 @@ Define the user-facing API guarantees for `Proper.jl` so ports remain familiar t
 - `D-0001` baseline/parity policy
 - `D-0004` package/module naming (accepted)
 - `D-0005` public API compatibility surface (accepted)
-- `D-0006` default compat mode (accepted)
-- `D-0017` `compat_mode` evaluation policy (accepted)
+- `D-0035` remove runtime compatibility modes (accepted)
 - `D-0028` dynamic dispatch minimization (accepted)
 
 ## Status
@@ -42,22 +41,14 @@ Notes:
 - Keep PROPER-style names for user familiarity.
 - Internals may be refactored freely if behavior contract is preserved.
 
-## 3. Compatibility Modes
-- Default mode: `:python334`
-- Supported modes:
-  - `:python334` behavior:
-    - prioritize strict parity with executable Python 3.3.4 behavior
-  - `:corrected` behavior:
-    - apply explicit MATLAB/manual-backed fixes documented in decision log
-- Evaluation rule:
-  - `compat_mode` is accepted only in context/config constructor(s), not repeated across `prop_*` APIs.
-  - Resolve once during constructor call and convert to internal policy type.
-  - Propagate resolved policy via context and avoid repeated mode branching in inner-loop kernels.
+## 3. Parity Baseline
+- Behavior targets the patched Python 3.3.4 executable baseline used by the parity harness.
+- MATLAB/manual references are used to evaluate suspected translation defects.
 
 ### 3.1 Context Constructor Contract
 - Canonical constructor entry point (name subject to implementation details):
-  - `RunContext(; compat_mode=:python334, backend=..., rng=..., workspace=...)`
-- `prop_*` public APIs should consume `RunContext` (or equivalent typed config) rather than raw `compat_mode` keywords.
+  - `RunContext(; backend=..., rng=..., workspace=...)`
+- `prop_*` public APIs should consume `RunContext` (or equivalent typed config) without compatibility mode flags.
 
 ## 4. Keyword Argument Contract
 - Keyword style support:
@@ -91,7 +82,7 @@ Notes:
   - missing backend implementation: `MethodError`
   - unsupported runtime path: `ErrorException` with actionable message
 - Warning policy:
-  - `@warn` for compatibility quirks and behavior changes in `:corrected` mode
+  - `@warn` for compatibility-relevant behavior changes
 
 ## 7. Non-Goals
 - Reproducing Python module-global mutable state patterns.
@@ -102,4 +93,4 @@ Notes:
 - [ ] API smoke tests for all stable entry points
 - [ ] Keyword compatibility tests (uppercase/lowercase)
 - [ ] Return shape/type tests
-- [ ] Compat-mode behavior divergence tests
+- [ ] Baseline parity behavior tests
