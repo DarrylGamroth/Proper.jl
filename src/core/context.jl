@@ -9,7 +9,7 @@ struct RunContext{RNGT,B<:BackendStyle,FS<:FFTStyle,IS<:InterpStyle}
 end
 
 function RunContext(; rng=Random.default_rng(), verbose::Bool=false)
-    return RunContext(Array{Float64,2}; rng=rng, verbose=verbose)
+    return RunContext(Matrix; rng=rng, verbose=verbose)
 end
 
 function RunContext(::Type{A}; rng=Random.default_rng(), verbose::Bool=false) where {A<:AbstractArray}

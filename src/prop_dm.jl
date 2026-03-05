@@ -68,7 +68,7 @@ function prop_dm(
     ztilt = float(_dm_kw(kwargs, :ZTILT, 0.0))
 
     influence_path = String(_dm_kw(kwargs, :INFLUENCE_FUNCTION_FILE, joinpath(@__DIR__, "..", "data", "influence_dm5v2_1.fits")))
-    dm_z = dm_z0 isa AbstractString ? prop_fits_read(String(dm_z0)) : float.(dm_z0)
+    dm_z = dm_z0 isa AbstractString ? float.(prop_fits_read(String(dm_z0))) : float.(dm_z0)
 
     n = size(wf.field, 1)
     dx_surf = wf.sampling_m

@@ -1,10 +1,10 @@
-function _fit_zernike_design(r::AbstractVector, t::AbstractVector, nzer::Int)
+function _fit_zernike_design(r::AbstractVector{T}, t::AbstractVector{T}, nzer::Int) where {T<:AbstractFloat}
     desc = prop_noll_zernikes(nzer)
-    A = Matrix{Float64}(undef, length(r), nzer)
+    A = Matrix{T}(undef, length(r), nzer)
     @inbounds for j in 1:nzer
         dj = desc[j]
         for i in eachindex(r)
-            A[i, j] = _zernike_mode(dj, r[i], t[i])
+            A[i, j] = T(_zernike_mode(dj, r[i], t[i]))
         end
     end
     return A
@@ -22,23 +22,24 @@ function prop_fit_zernikes(
 )
     ny, nx = size(wavefront)
     size(pupil) == (ny, nx) || throw(ArgumentError("pupil size mismatch"))
+    RT = float(promote_type(real(eltype(wavefront)), real(eltype(pupil)), typeof(pupilradius)))
 
     x0 = xc === nothing ? nx ÷ 2 : xc
     y0 = yc === nothing ? ny ÷ 2 : yc
 
-    rr = Float64[]
-    tt = Float64[]
-    vv = Float64[]
+    rr = Vector{RT}()
+    tt = Vector{RT}()
+    vv = Vector{RT}()
 
     @inbounds for j in 1:nx
-        x = (j - 1 - x0) / float(pupilradius)
+        x = RT(j - 1 - x0) / RT(pupilradius)
         for i in 1:ny
-            y = (i - 1 - y0) / float(pupilradius)
+            y = RT(i - 1 - y0) / RT(pupilradius)
             r = hypot(x, y)
-            if r < 1.0 && pupil[i, j] != 0
+            if r < one(RT) && pupil[i, j] != 0
                 push!(rr, r)
                 push!(tt, atan(y, x))
-                push!(vv, float(wavefront[i, j]))
+                push!(vv, RT(real(wavefront[i, j])))
             end
         end
     end
@@ -47,17 +48,17 @@ function prop_fit_zernikes(
     coeff = A \ vv
 
     if fit
-        fitmap = zeros(Float64, ny, nx)
+        fitmap = zeros(RT, ny, nx)
         desc = prop_noll_zernikes(Int(nzer))
         @inbounds for j in 1:nx
-            x = (j - 1 - x0) / float(pupilradius)
+            x = RT(j - 1 - x0) / RT(pupilradius)
             for i in 1:ny
-                y = (i - 1 - y0) / float(pupilradius)
+                y = RT(i - 1 - y0) / RT(pupilradius)
                 r = hypot(x, y)
                 t = atan(y, x)
-                acc = 0.0
+                acc = zero(RT)
                 for k in 1:Int(nzer)
-                    acc += coeff[k] * _zernike_mode(desc[k], r, t)
+                    acc += coeff[k] * RT(_zernike_mode(desc[k], r, t))
                 end
                 fitmap[i, j] = acc
             end
@@ -71,7 +72,8 @@ end
 """Convenience fit against wavefront real part over full grid pupil."""
 function prop_fit_zernikes(wf::WaveFront, nterms::Integer)
     ny, nx = size(wf.field)
-    pupil = ones(Float64, ny, nx)
-    pr = min(ny, nx) / 2
+    RT = float(real(eltype(wf.field)))
+    pupil = ones(RT, ny, nx)
+    pr = RT(min(ny, nx) / 2)
     return prop_fit_zernikes(real.(wf.field), pupil, pr, Int(nterms))
 end

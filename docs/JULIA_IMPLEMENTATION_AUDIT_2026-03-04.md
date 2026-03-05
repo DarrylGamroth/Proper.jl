@@ -314,9 +314,16 @@ Approach:
 3. Add GPU tests with `CUDA.allowscalar(false)` for implemented paths.
 
 ## Immediate Actionable Checklist
-- [ ] Eliminate `Any` in FITS/readmap path.
-- [ ] Remove all hard-coded `Float64` array allocations in hot kernels.
-- [ ] Replace `Vector{Any}` in `prop_run_multi`.
-- [ ] Introduce first typed options struct and one `*_!` kernel path (`prop_resamplemap!`).
-- [ ] Add CI checks for inference (`@inferred`) and allocation budget on selected kernels.
-
+- [x] Eliminate `Any` in FITS/readmap path.
+  - `src/prop_fits_read.jl`: split explicit header/data read paths, added typed return assertions.
+  - `src/prop_readmap.jl`: migrated key options to typed keyword arguments.
+- [x] Remove all hard-coded `Float64` array allocations in hot kernels.
+  - `src/prop_fit_zernikes.jl`: promoted numeric types from inputs; removed `Float64`-fixed buffers.
+  - `src/prop_rounded_rectangle.jl`: promoted runtime type for mask allocations.
+  - `src/core/context.jl`: removed `Array{Float64,2}` default backend constructor.
+- [x] Replace `Vector{Any}` in `prop_run_multi`.
+  - `src/prop_run_multi.jl`: first-pass typed initialization for outputs/samplings.
+- [x] Introduce first typed options struct and one `*_!` kernel path (`prop_resamplemap!`).
+  - `src/prop_resamplemap.jl`: added `ResampleMapOptions{T}` and `prop_resamplemap!`.
+- [x] Add CI checks for inference (`@inferred`) and allocation budget on selected kernels.
+  - `test/test_inference_allocations.jl` added and wired in `test/runtests.jl`.
