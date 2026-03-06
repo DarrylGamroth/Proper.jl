@@ -78,7 +78,7 @@ Status: Completed
   - fewer branch costs in hot loops
 
 ### O6: Benchmark and Gate Tightening
-Status: Pending
+Status: Completed
 - Re-run `scripts/benchmark_all.sh`.
 - Update performance gates in tests to reflect improved steady-state allocations.
 - Record results and remaining hotspots in this file.
@@ -176,3 +176,6 @@ Status: Completed
     - Python median: `8.4526305e7 ns`
     - Julia median: `2.6214626e7 ns`
     - Python/Julia ratio: `3.224`
+- 2026-03-05: O6 completed.
+  - benchmark suite rerun and reported through `scripts/benchmark_all.sh` and report summary.
+  - performance gates tightened in `test/test_r5_performance_gates.jl` for PSD wrapper/mutating paths and propagation kernels.
