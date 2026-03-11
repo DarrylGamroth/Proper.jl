@@ -86,9 +86,26 @@ end
         return out
     end
 
+    return _prop_rotate_strided!(sty, out, old_image, theta, opts)
+end
+
+@inline function _prop_rotate_strided!(
+    sty::InterpStyle,
+    out::StridedMatrix,
+    old_image::StridedMatrix,
+    theta::Real,
+    opts::RotateOptions,
+)
+    size(out) == size(old_image) || throw(ArgumentError("output size must match input image"))
     ang = deg2rad(-float(theta))
     c = cos(ang)
     s = sin(ang)
+    ny, nx = size(out)
+    if ka_rotate_enabled(typeof(out), ny, nx)
+        return opts.method === ROTATE_LINEAR ?
+            ka_rotate_linear!(out, old_image, c, s, opts.cx, opts.cy, opts.sx, opts.sy) :
+            ka_rotate_cubic!(out, old_image, c, s, opts.cx, opts.cy, opts.sx, opts.sy)
+    end
     return opts.method === ROTATE_LINEAR ?
         _prop_rotate_linear!(out, old_image, c, s, opts) :
         _prop_rotate_cubic!(sty, out, old_image, c, s, opts)

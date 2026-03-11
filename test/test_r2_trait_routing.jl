@@ -33,6 +33,37 @@ using Test
         @test isapprox(m_ctx, m_def; atol=1e-6, rtol=1e-6)
     end
 
+    @testset "KA interpolation pilot parity on large CPU arrays" begin
+        n = 256
+        @test !Proper.ka_cubic_grid_enabled(Matrix{Float32}, n, n)
+        @test !Proper.ka_rotate_enabled(Matrix{Float32}, n, n)
+
+        a = reshape(collect(Float32, 1:(n * n)), n, n)
+        x = collect(Float32, 1:n)
+        y = collect(Float32, 1:n)
+        out_loop = similar(a)
+        out_ka = similar(a)
+        Proper._prop_cubic_conv_grid_loop!(out_loop, Proper.CubicInterpStyle(), a, x, y)
+        Proper.ka_cubic_conv_grid!(out_ka, a, x, y)
+        @test isapprox(out_ka, out_loop; atol=0, rtol=0)
+
+        opts_cubic = Proper.RotateOptions(a, pairs((; CUBIC=true)))
+        rc_loop = similar(a)
+        rc_ka = similar(a)
+        c = cos(-deg2rad(9.0))
+        s = sin(-deg2rad(9.0))
+        Proper._prop_rotate_cubic!(Proper.CubicInterpStyle(), rc_loop, a, c, s, opts_cubic)
+        Proper.ka_rotate_cubic!(rc_ka, a, c, s, opts_cubic.cx, opts_cubic.cy, opts_cubic.sx, opts_cubic.sy)
+        @test isapprox(rc_ka, rc_loop; atol=0, rtol=0)
+
+        opts_linear = Proper.RotateOptions(a, pairs((; METH="linear")))
+        rl_loop = similar(a)
+        rl_ka = similar(a)
+        Proper._prop_rotate_linear!(rl_loop, a, c, s, opts_linear)
+        Proper.ka_rotate_linear!(rl_ka, a, c, s, opts_linear.cx, opts_linear.cy, opts_linear.sx, opts_linear.sy)
+        @test isapprox(rl_ka, rl_loop; atol=0, rtol=0)
+    end
+
     @testset "Context-routed propagation kernels" begin
         wf1 = prop_begin(1.0, 500e-9, 32)
         wf2 = prop_begin(1.0, 500e-9, 32)

@@ -22,7 +22,13 @@ function _prop_cubic_conv(sty::InterpStyle, ::PointwiseTopology, a::StridedMatri
     return out
 end
 
-function prop_cubic_conv_grid!(out::StridedMatrix, sty::InterpStyle, a::StridedMatrix, xval::AbstractVector, yval::AbstractVector)
+function _prop_cubic_conv_grid_loop!(
+    out::StridedMatrix,
+    sty::InterpStyle,
+    a::StridedMatrix,
+    xval::AbstractVector,
+    yval::AbstractVector,
+)
     size(out) == (length(yval), length(xval)) || throw(ArgumentError("output size mismatch for grid interpolation"))
     @inbounds for j in eachindex(xval)
         x = xval[j]
@@ -31,6 +37,14 @@ function prop_cubic_conv_grid!(out::StridedMatrix, sty::InterpStyle, a::StridedM
         end
     end
     return out
+end
+
+function prop_cubic_conv_grid!(out::StridedMatrix, sty::InterpStyle, a::StridedMatrix, xval::AbstractVector, yval::AbstractVector)
+    oy, ox = size(out)
+    if ka_cubic_grid_enabled(typeof(out), oy, ox)
+        return ka_cubic_conv_grid!(out, a, xval, yval)
+    end
+    return _prop_cubic_conv_grid_loop!(out, sty, a, xval, yval)
 end
 
 function prop_cubic_conv_grid!(out::AbstractMatrix, sty::InterpStyle, a::AbstractMatrix, xval::AbstractVector, yval::AbstractVector)

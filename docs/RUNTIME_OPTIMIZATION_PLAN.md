@@ -107,6 +107,19 @@ Status: Completed
   - mutating PSD path near-zero extra allocations (beyond caller-owned output)
   - preserve parity and regression tests
 
+### O9: KA Interpolation Pilot
+Status: Completed
+- Add KA-backed pilot kernels for interpolation-heavy paths:
+  - `prop_cubic_conv_grid!`
+  - `prop_rotate!` (`linear` and `cubic` methods)
+  - inherited public-path coverage for `prop_resamplemap!` and `prop_magnify!(; QUICK=true)` through cubic-grid routing
+- Keep loop baselines as the correctness and CPU-performance reference.
+- Benchmark KA vs loop directly before enabling any CPU default route.
+- Targets:
+  - exact parity against current loop implementations
+  - explicit benchmark evidence for CPU enable/disable policy
+  - trait-routed scaffolding ready for future GPU/backend work
+
 ## Execution Log
 - 2026-03-05: Plan created. Starting O1.
 - 2026-03-05: O1 completed.
@@ -179,3 +192,13 @@ Status: Completed
 - 2026-03-05: O6 completed.
   - benchmark suite rerun and reported through `scripts/benchmark_all.sh` and report summary.
   - performance gates tightened in `test/test_r5_performance_gates.jl` for PSD wrapper/mutating paths and propagation kernels.
+- 2026-03-11: O9 completed.
+  - added KA-backed internal kernels for cubic-grid interpolation and rotate (`linear`/`cubic`) in `src/core/ka_kernels.jl`.
+  - added trait/guard wiring for interpolation kernels in `src/core/traits.jl`; CPU defaults remain disabled (`KA_CUBIC_GRID_MIN_ELEMS = typemax(Int)`, `KA_ROTATE_MIN_ELEMS = typemax(Int)`).
+  - added parity tests for KA interpolation kernels vs loop baselines in `test/test_r2_trait_routing.jl`.
+  - added dedicated benchmark report `bench/julia/steady_state/ka_interp_kernels.jl` and summary integration.
+  - benchmark outcome on CPU (`n = 256`):
+    - `cubic_conv_grid`: loop/KA speed ratio `0.870` (KA slower)
+    - `rotate_cubic`: loop/KA speed ratio `0.963` (KA slower)
+    - `rotate_linear`: loop/KA speed ratio `0.921` (KA slower)
+  - decision: keep KA interpolation routes implemented but disabled by default on CPU until CUDA or another backend justifies enabling them.

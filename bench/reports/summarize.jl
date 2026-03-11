@@ -11,6 +11,7 @@ jl = loadjson(joinpath(root, "julia_steady_state.json"))
 ttfx = loadjson(joinpath(root, "julia_cold_start.json"))
 phase2 = loadjson(joinpath(root, "phase2_kernels.json"))
 refactor = loadjson(joinpath(root, "refactor_kernels.json"))
+ka_interp = loadjson(joinpath(root, "ka_interp_kernels.json"))
 examples = loadjson(joinpath(root, "example_workflows.json"))
 
 if py !== nothing && jl !== nothing
@@ -75,6 +76,20 @@ if refactor !== nothing
                 hs_mut["median_bytes"],
             )
         end
+    end
+end
+
+if ka_interp !== nothing
+    println("\n# KA Interp Pilot")
+    for (name, payload) in pairs(ka_interp["pairs"])
+        println(
+            name,
+            " speedup(loop/ka): ",
+            payload["speedup_loop_over_ka"],
+        )
+    end
+    for (name, stats) in pairs(ka_interp["public"])
+        println(name, " median ns: ", stats["median_ns"], " median bytes: ", stats["median_bytes"])
     end
 end
 
