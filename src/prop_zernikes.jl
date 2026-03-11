@@ -188,9 +188,9 @@ function prop_zernikes(
 
     if !no_apply
         if amplitude
-            wf.field .*= dmap
+            wf.field .*= backend_adapt(wf.field, dmap)
         else
-            wf.field .*= cis.((2pi / wf.wavelength_m) .* dmap)
+            wf.field .*= cis.((2pi / wf.wavelength_m) .* backend_adapt(wf.field, dmap))
         end
     end
 

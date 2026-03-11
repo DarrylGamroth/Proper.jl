@@ -5,7 +5,7 @@
 )
     ny, nx = size(field)
     if ka_mask_enabled(typeof(field), ny, nx)
-        return ka_apply_shifted_mask!(field, mask; invert=invert)
+        return ka_apply_shifted_mask!(field, backend_adapt(field, mask); invert=invert)
     end
 
     return _apply_shifted_mask_loop!(field, mask; invert=invert)

@@ -89,7 +89,7 @@ end
     c0::Int,
 )
     shifted = prop_shift_center(field)
-    @views out .= shifted[r0:(r0 + size(out, 1) - 1), c0:(c0 + size(out, 2) - 1)]
+    @views copyto!(out, shifted[r0:(r0 + size(out, 1) - 1), c0:(c0 + size(out, 2) - 1)])
     return out
 end
 
@@ -100,7 +100,7 @@ end
     c0::Int,
 )
     shifted = prop_shift_center(abs2.(field))
-    @views out .= shifted[r0:(r0 + size(out, 1) - 1), c0:(c0 + size(out, 2) - 1)]
+    @views copyto!(out, shifted[r0:(r0 + size(out, 1) - 1), c0:(c0 + size(out, 2) - 1)])
     return out
 end
 
@@ -119,6 +119,10 @@ end
     r0::Int,
     c0::Int,
 )
+    oy, ox = size(out)
+    if ka_end_enabled(typeof(out), oy, ox) && same_backend_style(typeof(out), typeof(field))
+        return ka_copy_shifted_complex!(out, field, r0, c0)
+    end
     return _copy_shifted_complex_generic!(out, field, r0, c0)
 end
 
@@ -137,6 +141,10 @@ end
     r0::Int,
     c0::Int,
 )
+    oy, ox = size(out)
+    if ka_end_enabled(typeof(out), oy, ox) && same_backend_style(typeof(out), typeof(field))
+        return ka_copy_shifted_intensity!(out, field, r0, c0)
+    end
     return _copy_shifted_intensity_generic!(out, field, r0, c0)
 end
 

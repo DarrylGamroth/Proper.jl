@@ -5,6 +5,6 @@ end
 
 function prop_divide(wf::WaveFront, d::AbstractMatrix)
     size(d) == size(wf.field) || throw(ArgumentError("divisor size must match wavefront"))
-    wf.field ./= prop_shift_center(d)
+    wf.field ./= backend_adapt(wf.field, prop_shift_center(d))
     return wf
 end

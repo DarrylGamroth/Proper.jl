@@ -79,6 +79,17 @@ end
     opts::RotateOptions,
 )
     size(out) == size(old_image) || throw(ArgumentError("output size must match input image"))
+    ny, nx = size(out)
+    can_use_ka = ka_rotate_enabled(typeof(out), ny, nx) && same_backend_style(typeof(out), typeof(old_image))
+    if can_use_ka && (opts.method === ROTATE_LINEAR || sty isa CubicInterpStyle)
+        ang = deg2rad(-float(theta))
+        c = cos(ang)
+        s = sin(ang)
+        return opts.method === ROTATE_LINEAR ?
+            ka_rotate_linear!(out, old_image, c, s, opts.cx, opts.cy, opts.sx, opts.sy) :
+            ka_rotate_cubic!(out, old_image, c, s, opts.cx, opts.cy, opts.sx, opts.sy)
+    end
+
     if !(old_image isa StridedMatrix && out isa StridedMatrix)
         host_out = Matrix{eltype(out)}(undef, size(out)...)
         _prop_rotate!(sty, host_out, Matrix(old_image), theta, opts)
@@ -101,7 +112,7 @@ end
     c = cos(ang)
     s = sin(ang)
     ny, nx = size(out)
-    if ka_rotate_enabled(typeof(out), ny, nx)
+    if ka_rotate_enabled(typeof(out), ny, nx) && (opts.method === ROTATE_LINEAR || sty isa CubicInterpStyle)
         return opts.method === ROTATE_LINEAR ?
             ka_rotate_linear!(out, old_image, c, s, opts.cx, opts.cy, opts.sx, opts.sy) :
             ka_rotate_cubic!(out, old_image, c, s, opts.cx, opts.cy, opts.sx, opts.sy)

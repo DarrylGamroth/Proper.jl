@@ -7,7 +7,9 @@ end
 end
 
 @inline _fft_forward(::FFTWStyle, a::AbstractArray) = fft(a)
+@inline _fft_forward(::CUFFTStyle, a::AbstractArray) = fft(a)
 @inline _fft_forward(::FFTStyle, a::AbstractArray) = fft(a)
 
 @inline _fft_inverse(::FFTWStyle, a::AbstractArray) = ifft(a)
+@inline _fft_inverse(::CUFFTStyle, a::AbstractArray) = ifft(a)
 @inline _fft_inverse(::FFTStyle, a::AbstractArray) = ifft(a)

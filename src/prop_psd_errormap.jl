@@ -43,9 +43,7 @@ end
 end
 
 @inline function _phase_from_map!(wf::WaveFront, dmap::AbstractMatrix, scale::Real)
-    @inbounds @simd for idx in eachindex(wf.field, dmap)
-        wf.field[idx] *= cis(scale * dmap[idx])
-    end
+    wf.field .*= cis.(scale .* backend_adapt(wf.field, dmap))
     return wf
 end
 
@@ -54,16 +52,7 @@ end
     dmap_shifted::AbstractMatrix,
     scale::Real,
 )
-    ny, nx = size(wf.field)
-    sy = ny ÷ 2
-    sx = nx ÷ 2
-    @inbounds for j in 1:nx
-        js = mod1(j + sx, nx)
-        for i in 1:ny
-            is = mod1(i + sy, ny)
-            wf.field[i, j] *= cis(scale * dmap_shifted[is, js])
-        end
-    end
+    wf.field .*= cis.(scale .* backend_adapt(wf.field, prop_shift_center(dmap_shifted)))
     return wf
 end
 
@@ -71,16 +60,7 @@ end
     field::AbstractMatrix{<:Complex},
     dmap_shifted::AbstractMatrix,
 )
-    ny, nx = size(field)
-    sy = ny ÷ 2
-    sx = nx ÷ 2
-    @inbounds for j in 1:nx
-        js = mod1(j + sx, nx)
-        for i in 1:ny
-            is = mod1(i + sy, ny)
-            field[i, j] *= dmap_shifted[is, js]
-        end
-    end
+    field .*= backend_adapt(field, prop_shift_center(dmap_shifted))
     return field
 end
 

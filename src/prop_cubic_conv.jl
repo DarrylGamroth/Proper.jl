@@ -41,7 +41,7 @@ end
 
 function prop_cubic_conv_grid!(out::StridedMatrix, sty::InterpStyle, a::StridedMatrix, xval::AbstractVector, yval::AbstractVector)
     oy, ox = size(out)
-    if ka_cubic_grid_enabled(typeof(out), oy, ox)
+    if (sty isa CubicInterpStyle) && ka_cubic_grid_enabled(typeof(out), oy, ox)
         return ka_cubic_conv_grid!(out, a, xval, yval)
     end
     return _prop_cubic_conv_grid_loop!(out, sty, a, xval, yval)
@@ -49,6 +49,10 @@ end
 
 function prop_cubic_conv_grid!(out::AbstractMatrix, sty::InterpStyle, a::AbstractMatrix, xval::AbstractVector, yval::AbstractVector)
     size(out) == (length(yval), length(xval)) || throw(ArgumentError("output size mismatch for grid interpolation"))
+    oy, ox = size(out)
+    if (sty isa CubicInterpStyle) && ka_cubic_grid_enabled(typeof(out), oy, ox) && same_backend_style(typeof(out), typeof(a))
+        return ka_cubic_conv_grid!(out, a, backend_adapt(out, xval), backend_adapt(out, yval))
+    end
     if out isa StridedMatrix && a isa StridedMatrix
         return prop_cubic_conv_grid!(out, sty, a, xval, yval)
     end

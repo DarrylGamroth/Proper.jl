@@ -101,7 +101,7 @@ include("prop_wts.jl")
 include("prop_zernikes.jl")
 include("switch_set.jl")
 
-export BackendStyle, CPUBackend, UnknownBackend, FFTStyle, FFTWStyle, GenericFFTStyle
+export BackendStyle, CPUBackend, CUDABackend, UnknownBackend, FFTStyle, FFTWStyle, CUFFTStyle, GenericFFTStyle
 export InterpStyle, GenericInterpStyle, CubicInterpStyle, RNGStyle, GenericRNGStyle
 export ShiftKernelStyle, ShiftLoopStyle, ShiftKAStyle
 export RunContext, ProperConfig, ProperRuntime, WaveFront

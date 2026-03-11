@@ -1,8 +1,8 @@
 # Implementation Progress
 
 ## Status Snapshot
-- Date: 2026-03-04
-- Overall: Phase 9 complete; Refactor Track active
+- Date: 2026-03-11
+- Overall: Phase 9 complete; Refactor Track complete; backend extension work active
 
 ## Phase Checklist
 - [x] Phase 0: Preflight decisions and contracts accepted
@@ -22,6 +22,7 @@
 - [x] R3: Mutating kernels and workspace reuse across interpolation/geometry hot paths (added `prop_rotate!`, `prop_magnify!`, `prop_cubic_conv_grid!`, geometry `*_!` variants, and reusable interpolation/FFT workspace caches in `RunContext`).
 - [x] R4: WaveFront state typing and dispatch simplification (state enums + typed transition selectors for propagation/lens paths; strict typed state transitions).
 - [x] R5: Expanded inference/allocation gates and benchmark matrix updates (new R5 gate suite; benchmark matrix expanded for phase-2 kernels, refactor kernel deltas, and end-to-end example workflows; steady-state vs TTFx separation retained).
+- [x] GPU extension scaffold: optional `CUDA.jl` package extension with `CuArray` trait registration and public KA-routed interpolation/end-kernel entry points.
 
 ## Current Workstream (Phase 1)
 - [x] Core policy/trait/context types created.
@@ -85,6 +86,10 @@
   - added expanded inference/allocation gates across propagation, PSD/map, and geometry hotspots (`test/test_r5_performance_gates.jl`)
   - expanded benchmark matrix with dedicated phase-2 kernel report, refactor wrapper-vs-mutating delta report, and end-to-end example workflow report
   - updated benchmark driver and summary reporting while preserving steady-state vs cold-start/TTFx separation
+- [x] Added `ProperCUDAExt` package extension:
+  - `CUDA.jl` is now a weak dependency rather than a hard package dependency
+  - `CuArray` backend/FFT/interpolation traits register through `ext/ProperCUDAExt.jl`
+  - public `prop_cubic_conv_grid!`, `prop_rotate!`, `prop_end!`, `prop_qphase`, and mask-application paths avoid host fallbacks when CUDA is available
 
 ## Notes
 - Runtime compatibility mode flags were removed; parity behavior is anchored to the patched Python baseline (`D-0035`).

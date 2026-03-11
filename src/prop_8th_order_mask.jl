@@ -113,6 +113,6 @@ function prop_8th_order_mask(
     mask .+= RT(float(min_transmission))
     mask .= sqrt.(mask)
 
-    wf.field .*= prop_shift_center(mask)
+    wf.field .*= backend_adapt(wf.field, prop_shift_center(mask))
     return mask
 end

@@ -87,15 +87,27 @@ using Test
 
         if cuda_ready
             CUDA.allowscalar(false)
+            @test Base.get_extension(Proper, :ProperCUDAExt) !== nothing
+
             a = CUDA.rand(Float32, 16, 16)
             ctx = RunContext(typeof(a))
-            @test ctx.backend isa Proper.BackendStyle
-            @test ctx.interp isa Proper.InterpStyle
+            @test ctx.backend isa Proper.CUDABackend
+            @test ctx.fft isa Proper.CUFFTStyle
+            @test ctx.interp isa Proper.CubicInterpStyle
+            @test Proper.ka_cubic_grid_enabled(typeof(a), 16, 16)
+            @test Proper.ka_rotate_enabled(typeof(a), 16, 16)
 
             m = prop_magnify(a, 1.1, 16, ctx; QUICK=true)
             r = prop_rotate(a, 5.0, ctx)
             @test size(m) == (16, 16)
             @test size(r) == (16, 16)
+
+            wf = Proper.WaveFront(CUDA.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
+            prop_qphase(wf, 0.25f0, ctx)
+            prop_circular_aperture(wf, 2.5f-4)
+            out, sampling = prop_end(wf)
+            @test size(out) == (16, 16)
+            @test sampling == wf.sampling_m
         else
             @test true
         end

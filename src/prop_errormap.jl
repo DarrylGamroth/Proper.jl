@@ -70,10 +70,10 @@ function _prop_errormap!(wf::WaveFront, filename::AbstractString, xshift::Real, 
 
     maptype = _errormap_maptype(opts)
     if maptype === :amplitude
-        wf.field .*= dmap
+        wf.field .*= backend_adapt(wf.field, dmap)
     else
         scale = maptype === :mirror_surface ? 4pi / wf.wavelength_m : 2pi / wf.wavelength_m
-        wf.field .*= cis.(scale .* dmap)
+        wf.field .*= cis.(scale .* backend_adapt(wf.field, dmap))
     end
     return wf
 end

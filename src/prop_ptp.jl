@@ -31,10 +31,8 @@ function prop_ptp(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
         f = fft_forward(wf.field, ctx) ./ length(wf.field)
         f .*= n
 
-        rho2 = ensure_rho2_map!(ws, ny, nx, dx)
-        @inbounds @simd for idx in eachindex(f, rho2)
-            f[idx] *= cis(kphase * rho2[idx])
-        end
+        rho2 = backend_adapt(f, ensure_rho2_map!(ws, ny, nx, dx))
+        f .*= cis.(kphase .* rho2)
 
         wf.field .= fft_inverse(f, ctx) .* length(wf.field)
         wf.field ./= n

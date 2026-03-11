@@ -1,11 +1,13 @@
 abstract type BackendStyle end
 struct CPUBackend <: BackendStyle end
+struct CUDABackend <: BackendStyle end
 struct UnknownBackend <: BackendStyle end
 
 backend_style(::Type{<:AbstractArray}) = CPUBackend()
 
 abstract type FFTStyle end
 struct FFTWStyle <: FFTStyle end
+struct CUFFTStyle <: FFTStyle end
 struct GenericFFTStyle <: FFTStyle end
 
 fft_style(::Type{<:AbstractArray}) = FFTWStyle()
@@ -56,4 +58,17 @@ end
 
 @inline function ka_rotate_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
     return (interp_kernel_style(A) isa InterpKAStyle) && (ny * nx >= KA_ROTATE_MIN_ELEMS)
+end
+
+@inline function same_backend_style(::Type{A}, ::Type{B}) where {A<:AbstractArray,B<:AbstractArray}
+    return typeof(backend_style(A)) === typeof(backend_style(B))
+end
+
+@inline function backend_adapt(template::AbstractArray, src::AbstractArray)
+    if same_backend_style(typeof(template), typeof(src))
+        return src
+    end
+    out = similar(template, eltype(src), size(src)...)
+    copyto!(out, src)
+    return out
 end

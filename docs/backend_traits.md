@@ -15,6 +15,7 @@ Define stable trait-dispatched interfaces for array backends and computational k
 - [x] Draft pre-filled from proposed defaults
 - [x] Trait interfaces frozen
 - [x] Implementations registered for current CPU baseline and context-routed interpolation/propagation paths
+- [x] CUDA package extension registers `CuArray` backend, FFT, and KA kernel traits without making `CUDA.jl` a hard dependency
 
 ## 1. Trait Model
 Proposed trait families:
@@ -71,6 +72,7 @@ Semantics:
 - GPU `CuArray`:
   - FFT: `CUDA.CUFFT`
   - Interp/resample: `KernelAbstractions.jl` / `AcceleratedKernels.jl` kernels where implemented
+  - Registration: package extension `ProperCUDAExt`
 - Future backends:
   - oneAPI/ROCm backends may be added without API break if they satisfy trait contracts
 
