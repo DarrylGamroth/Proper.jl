@@ -4,54 +4,62 @@ struct EllipseOptions{T<:AbstractFloat}
     rotation::T
 end
 
-@inline function EllipseOptions(kwargs::Base.Iterators.Pairs)
-    return EllipseOptions{Float64}(
+struct EllipseGeometry{T<:AbstractFloat}
+    xcenter_pix::T
+    ycenter_pix::T
+    xrad_pix::T
+    yrad_pix::T
+    sint::T
+    cost::T
+    threshold_hi::T
+    threshold_lo::T
+    limit::T
+    minx_pix::Int
+    maxx_pix::Int
+    miny_pix::Int
+    maxy_pix::Int
+end
+
+@inline function EllipseOptions(::Type{T}, kwargs::Base.Iterators.Pairs) where {T<:AbstractFloat}
+    return EllipseOptions{T}(
         kw_lookup_bool(kwargs, :NORM, false),
         kw_lookup_bool(kwargs, :DARK, false),
-        kw_lookup_float(kwargs, :ROTATION, 0.0),
+        T(kw_lookup_float(kwargs, :ROTATION, 0.0)),
     )
 end
 
-function _prop_ellipse!(
-    ::GeometryLoopExecStyle,
-    image::AbstractMatrix,
+@inline EllipseOptions(kwargs::Base.Iterators.Pairs) = EllipseOptions(Float64, kwargs)
+
+@inline function ellipse_geometry(
+    ::Type{T},
     wf::WaveFront,
     xradius::Real,
     yradius::Real,
     xc::Real,
     yc::Real,
     opts::EllipseOptions,
-)
+) where {T<:AbstractFloat}
     n = prop_get_gridsize(wf)
-    size(image) == (n, n) || throw(ArgumentError("output size must match wavefront grid"))
-
-    nsub = antialias_subsampling()
-    T = eltype(image)
     dx = T(prop_get_sampling(wf))
     beamrad_pix = T(prop_get_beamradius(wf)) / dx
-    norm = opts.norm
-    dark = opts.dark
-    rotation = opts.rotation
 
-    xf = T
-    xcenter_pix = xf(n ÷ 2)
-    ycenter_pix = xf(n ÷ 2)
-
-    xrad_pix::T = zero(T)
-    yrad_pix::T = zero(T)
-    if norm
-        xcenter_pix += xf(xc) * xf(beamrad_pix)
-        ycenter_pix += xf(yc) * xf(beamrad_pix)
-        xrad_pix = xf(xradius) * xf(beamrad_pix)
-        yrad_pix = xf(yradius) * xf(beamrad_pix)
+    xcenter_pix = T(n ÷ 2)
+    ycenter_pix = T(n ÷ 2)
+    xrad_pix = zero(T)
+    yrad_pix = zero(T)
+    if opts.norm
+        xcenter_pix += T(xc) * beamrad_pix
+        ycenter_pix += T(yc) * beamrad_pix
+        xrad_pix = T(xradius) * beamrad_pix
+        yrad_pix = T(yradius) * beamrad_pix
     else
-        xcenter_pix += xf(xc / dx)
-        ycenter_pix += xf(yc / dx)
-        xrad_pix = xf(xradius / dx)
-        yrad_pix = xf(yradius / dx)
+        xcenter_pix += T(xc) / dx
+        ycenter_pix += T(yc) / dx
+        xrad_pix = T(xradius) / dx
+        yrad_pix = T(yradius) / dx
     end
 
-    t = xf(deg2rad(rotation))
+    t = T(deg2rad(opts.rotation))
     sint = sin(t)
     cost = cos(t)
 
@@ -79,46 +87,84 @@ function _prop_ellipse!(
     dry = delx * sint + dely * cost
     dr = max(abs(drx), abs(dry))
 
-    fill!(image, dark ? one(T) : zero(T))
+    return EllipseGeometry(
+        xcenter_pix,
+        ycenter_pix,
+        xrad_pix,
+        yrad_pix,
+        sint,
+        cost,
+        one(T) + dr,
+        one(T) - dr,
+        T(1 + 1e-10),
+        minx_pix,
+        maxx_pix,
+        miny_pix,
+        maxy_pix,
+    )
+end
 
-    threshold_hi = xf(1) + dr
-    threshold_lo = xf(1) - dr
-    limit = xf(1 + 1e-10)
+@inline function ellipse_mask_fraction(x0::T, y0::T, geom::EllipseGeometry{T}, nsub::Int) where {T<:AbstractFloat}
+    xr = (x0 * geom.cost - y0 * geom.sint) / geom.xrad_pix
+    yr = (x0 * geom.sint + y0 * geom.cost) / geom.yrad_pix
+    rv = sqrt(xr * xr + yr * yr)
 
-    nsubpix = xf(nsub * nsub)
-    nsub_inv = inv(xf(nsub))
-    nsub_ctr = nsub ÷ 2
+    if rv > geom.threshold_hi
+        return zero(T)
+    elseif rv <= geom.threshold_lo
+        return one(T)
+    end
 
-    @inbounds for ypix in miny_pix:maxy_pix
-        y0 = xf(ypix) - ycenter_pix
-        for xpix in minx_pix:maxx_pix
-            x0 = xf(xpix) - xcenter_pix
+    cnt = 0
+    @inbounds for oy_i in 1:nsub
+        ys = y0 + _ka_subsample_offset(oy_i, nsub, one(T))
+        for ox_i in 1:nsub
+            xs = x0 + _ka_subsample_offset(ox_i, nsub, one(T))
+            xsv = (xs * geom.cost - ys * geom.sint) / geom.xrad_pix
+            ysv = (xs * geom.sint + ys * geom.cost) / geom.yrad_pix
+            cnt += ((xsv * xsv + ysv * ysv) <= geom.limit)
+        end
+    end
 
-            xr = (x0 * cost - y0 * sint) / xrad_pix
-            yr = (x0 * sint + y0 * cost) / yrad_pix
-            rv = sqrt(xr * xr + yr * yr)
+    return T(cnt) / T(nsub * nsub)
+end
 
-            pixval = if rv > threshold_hi
-                zero(T)
-            elseif rv <= threshold_lo
-                one(T)
-            else
-                cnt = 0
-                for oy_i in 1:nsub
-                    oy = xf(oy_i - 1 - nsub_ctr) * nsub_inv
-                    ys = y0 + oy
-                    for ox_i in 1:nsub
-                        ox = xf(ox_i - 1 - nsub_ctr) * nsub_inv
-                        xs = x0 + ox
-                        xsv = (xs * cost - ys * sint) / xrad_pix
-                        ysv = (xs * sint + ys * cost) / yrad_pix
-                        cnt += ((xsv * xsv + ysv * ysv) <= limit)
-                    end
-                end
-                xf(cnt) / nsubpix
-            end
+@inline function ellipse_mask_value(x0::T, y0::T, geom::EllipseGeometry{T}, dark::Bool, nsub::Int) where {T<:AbstractFloat}
+    pixval = ellipse_mask_fraction(x0, y0, geom, nsub)
+    return dark ? (one(T) - pixval) : pixval
+end
 
-            image[ypix + 1, xpix + 1] = dark ? (one(T) - pixval) : pixval
+abstract type ShiftedEllipseApplyExecStyle end
+struct ShiftedEllipseMaskExecStyle <: ShiftedEllipseApplyExecStyle end
+struct ShiftedEllipseKAExecStyle <: ShiftedEllipseApplyExecStyle end
+
+@inline shifted_ellipse_apply_exec_style(::GeometryKAStyle) = ShiftedEllipseKAExecStyle()
+@inline shifted_ellipse_apply_exec_style(::GeometryKernelStyle) = ShiftedEllipseMaskExecStyle()
+@inline shifted_ellipse_apply_exec_style(::Type{A}) where {A<:AbstractArray} = shifted_ellipse_apply_exec_style(geometry_kernel_style(A))
+
+function _prop_ellipse!(
+    ::GeometryLoopExecStyle,
+    image::AbstractMatrix,
+    wf::WaveFront,
+    xradius::Real,
+    yradius::Real,
+    xc::Real,
+    yc::Real,
+    opts::EllipseOptions,
+)
+    n = prop_get_gridsize(wf)
+    size(image) == (n, n) || throw(ArgumentError("output size must match wavefront grid"))
+
+    nsub = antialias_subsampling()
+    T = eltype(image)
+    geom = ellipse_geometry(T, wf, xradius, yradius, xc, yc, opts)
+    fill!(image, opts.dark ? one(T) : zero(T))
+
+    @inbounds for ypix in geom.miny_pix:geom.maxy_pix
+        y0 = T(ypix) - geom.ycenter_pix
+        for xpix in geom.minx_pix:geom.maxx_pix
+            x0 = T(xpix) - geom.xcenter_pix
+            image[ypix + 1, xpix + 1] = ellipse_mask_value(x0, y0, geom, opts.dark, nsub)
         end
     end
 
@@ -138,55 +184,22 @@ function _prop_ellipse!(
     n = prop_get_gridsize(wf)
     size(image) == (n, n) || throw(ArgumentError("output size must match wavefront grid"))
 
-    nsub = antialias_subsampling()
     T = eltype(image)
-    dx = T(prop_get_sampling(wf))
-    beamrad_pix = T(prop_get_beamradius(wf)) / dx
-
-    xcenter_pix = T(n ÷ 2)
-    ycenter_pix = T(n ÷ 2)
-
-    xrad_pix = zero(T)
-    yrad_pix = zero(T)
-    if opts.norm
-        xcenter_pix += T(xc) * beamrad_pix
-        ycenter_pix += T(yc) * beamrad_pix
-        xrad_pix = T(xradius) * beamrad_pix
-        yrad_pix = T(yradius) * beamrad_pix
-    else
-        xcenter_pix += T(xc) / dx
-        ycenter_pix += T(yc) / dx
-        xrad_pix = T(xradius) / dx
-        yrad_pix = T(yradius) / dx
-    end
-
-    t = T(deg2rad(opts.rotation))
-    sint = sin(t)
-    cost = cos(t)
-
-    delx = inv(xrad_pix)
-    dely = inv(yrad_pix)
-    drx = delx * cost - dely * sint
-    dry = delx * sint + dely * cost
-    dr = max(abs(drx), abs(dry))
-
-    threshold_hi = one(T) + dr
-    threshold_lo = one(T) - dr
-    limit = T(1 + 1e-10)
+    geom = ellipse_geometry(T, wf, xradius, yradius, xc, yc, opts)
 
     return ka_ellipse_mask!(
         image,
-        xcenter_pix,
-        ycenter_pix,
-        xrad_pix,
-        yrad_pix,
-        sint,
-        cost,
-        threshold_hi,
-        threshold_lo,
-        limit;
+        geom.xcenter_pix,
+        geom.ycenter_pix,
+        geom.xrad_pix,
+        geom.yrad_pix,
+        geom.sint,
+        geom.cost,
+        geom.threshold_hi,
+        geom.threshold_lo,
+        geom.limit;
         dark=opts.dark,
-        nsub=nsub,
+        nsub=antialias_subsampling(),
     )
 end
 
@@ -224,7 +237,7 @@ function prop_ellipse!(
     yc::Real=0.0;
     kwargs...,
 )
-    opts = EllipseOptions(kwargs)
+    opts = EllipseOptions(eltype(image), kwargs)
     return _prop_ellipse!(image, wf, xradius, yradius, xc, yc, opts)
 end
 
@@ -237,6 +250,90 @@ function prop_ellipse(
     yc::Real=0.0;
     kwargs...,
 )
-    opts = EllipseOptions(kwargs)
+    opts = EllipseOptions(real(eltype(wf.field)), kwargs)
     return _prop_ellipse(wf, xradius, yradius, xc, yc, opts)
+end
+
+@inline function _apply_shifted_ellipse_loop!(
+    field::AbstractMatrix{Complex{T}},
+    geom::EllipseGeometry{T},
+    dark::Bool,
+    invert::Bool,
+    nsub::Int,
+) where {T<:AbstractFloat}
+    ny, nx = size(field)
+    sy = ny ÷ 2
+    sx = nx ÷ 2
+
+    @inbounds for j in 1:nx
+        js = mod1(j + sx, nx)
+        x0 = T(js - 1) - geom.xcenter_pix
+        for i in 1:ny
+            is = mod1(i + sy, ny)
+            y0 = T(is - 1) - geom.ycenter_pix
+            maskval = ellipse_mask_value(x0, y0, geom, dark, nsub)
+            field[i, j] *= invert ? (one(T) - maskval) : maskval
+        end
+    end
+
+    return field
+end
+
+@inline function _apply_shifted_ellipse!(
+    ::ShiftedEllipseMaskExecStyle,
+    wf::WaveFront,
+    xradius::Real,
+    yradius::Real,
+    xc::Real,
+    yc::Real,
+    opts::EllipseOptions,
+    invert::Bool,
+)
+    ny, nx = size(wf.field)
+    m = ensure_mask_buffer!(wf.workspace.mask, ny, nx)
+    _prop_ellipse!(m, wf, xradius, yradius, xc, yc, opts)
+    _apply_shifted_mask!(wf.field, m; invert=invert)
+    return wf
+end
+
+@inline function _apply_shifted_ellipse!(
+    ::ShiftedEllipseKAExecStyle,
+    wf::WaveFront{T},
+    xradius::Real,
+    yradius::Real,
+    xc::Real,
+    yc::Real,
+    opts::EllipseOptions,
+    invert::Bool,
+) where {T<:AbstractFloat}
+    geom = ellipse_geometry(T, wf, xradius, yradius, xc, yc, opts)
+    ka_apply_shifted_ellipse!(
+        wf.field,
+        geom.xcenter_pix,
+        geom.ycenter_pix,
+        geom.xrad_pix,
+        geom.yrad_pix,
+        geom.sint,
+        geom.cost,
+        geom.threshold_hi,
+        geom.threshold_lo,
+        geom.limit;
+        dark=opts.dark,
+        invert=invert,
+        nsub=antialias_subsampling(),
+    )
+    return wf
+end
+
+@inline function _apply_shifted_ellipse!(
+    wf::WaveFront,
+    xradius::Real,
+    yradius::Real,
+    xc::Real,
+    yc::Real,
+    opts::EllipseOptions,
+    invert::Bool,
+)
+    sty = shifted_ellipse_apply_exec_style(typeof(wf.field))
+    return _apply_shifted_ellipse!(sty, wf, xradius, yradius, xc, yc, opts, invert)
 end

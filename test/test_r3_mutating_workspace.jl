@@ -78,6 +78,24 @@ using Random
         @test (@allocated Proper.prop_rectangular_aperture(wfmask, 0.25, 0.18)) < 70_000
     end
 
+    @testset "Shifted ellipse application semantics" begin
+        wf_ref = prop_begin(1.0, 500e-9, 32)
+        wf_loop = prop_begin(1.0, 500e-9, 32)
+        opts = Proper.EllipseOptions{Float64}(true, false, 13.0)
+        geom = Proper.ellipse_geometry(Float64, wf_loop, 0.35, 0.25, 0.05, -0.03, opts)
+        Proper._apply_shifted_ellipse_loop!(wf_loop.field, geom, opts.dark, false, Proper.antialias_subsampling())
+        Proper.prop_elliptical_aperture(wf_ref, 0.35, 0.25, 0.05, -0.03; NORM=true, ROTATION=13.0)
+        @test isapprox(wf_loop.field, wf_ref.field; atol=0, rtol=0)
+
+        wf_ref_dark = prop_begin(1.0, 500e-9, 32)
+        wf_loop_dark = prop_begin(1.0, 500e-9, 32)
+        opts_dark = Proper.EllipseOptions{Float64}(true, true, -9.0)
+        geom_dark = Proper.ellipse_geometry(Float64, wf_loop_dark, 0.22, 0.18, -0.04, 0.02, opts_dark)
+        Proper._apply_shifted_ellipse_loop!(wf_loop_dark.field, geom_dark, opts_dark.dark, true, Proper.antialias_subsampling())
+        Proper.prop_elliptical_obscuration(wf_ref_dark, 0.22, 0.18, -0.04, 0.02; NORM=true, ROTATION=-9.0, DARK=true)
+        @test isapprox(wf_loop_dark.field, wf_ref_dark.field; atol=0, rtol=0)
+    end
+
     @testset "Mutating wrapper parity" begin
         rng = MersenneTwister(7)
         img = rand(rng, Float32, 16, 16)

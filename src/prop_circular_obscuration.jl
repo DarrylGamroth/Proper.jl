@@ -1,7 +1,4 @@
 function prop_circular_obscuration(wf::WaveFront, radius::Real, xc::Real=0.0, yc::Real=0.0; kwargs...)
-    ny, nx = size(wf.field)
-    m = ensure_mask_buffer!(wf.workspace.mask, ny, nx)
-    prop_ellipse!(m, wf, radius, radius, xc, yc; kwargs...)
-    _apply_shifted_mask!(wf.field, m; invert=true)
-    return wf
+    opts = EllipseOptions(real(eltype(wf.field)), kwargs)
+    return _apply_shifted_ellipse!(wf, radius, radius, xc, yc, opts, true)
 end

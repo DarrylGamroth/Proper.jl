@@ -170,6 +170,66 @@ end
     end
 end
 
+@kernel function _ka_apply_shifted_ellipse_kernel!(
+    field,
+    xcenter_pix,
+    ycenter_pix,
+    xrad_pix,
+    yrad_pix,
+    sint,
+    cost,
+    threshold_hi,
+    threshold_lo,
+    limit,
+    nsub::Int,
+    dark::Bool,
+    invert::Bool,
+    sy::Int,
+    sx::Int,
+    ny::Int,
+    nx::Int,
+)
+    I = @index(Global, NTuple)
+    i = I[1]
+    j = I[2]
+
+    if i <= ny && j <= nx
+        T = typeof(xcenter_pix)
+        is = i + sy
+        js = j + sx
+        is = ifelse(is > ny, is - ny, is)
+        js = ifelse(js > nx, js - nx, js)
+
+        x0 = T(js - 1) - xcenter_pix
+        y0 = T(is - 1) - ycenter_pix
+
+        xr = (x0 * cost - y0 * sint) / xrad_pix
+        yr = (x0 * sint + y0 * cost) / yrad_pix
+        rv = sqrt(xr * xr + yr * yr)
+
+        pixval = if rv > threshold_hi
+            zero(T)
+        elseif rv <= threshold_lo
+            one(T)
+        else
+            cnt = 0
+            for oy_i in 1:nsub
+                ys = y0 + _ka_subsample_offset(oy_i, nsub, one(T))
+                for ox_i in 1:nsub
+                    xs = x0 + _ka_subsample_offset(ox_i, nsub, one(T))
+                    xsv = (xs * cost - ys * sint) / xrad_pix
+                    ysv = (xs * sint + ys * cost) / yrad_pix
+                    cnt += ((xsv * xsv + ysv * ysv) <= limit)
+                end
+            end
+            T(cnt) / T(nsub * nsub)
+        end
+
+        maskval = dark ? (one(T) - pixval) : pixval
+        field[i, j] *= invert ? (one(T) - maskval) : maskval
+    end
+end
+
 @kernel function _ka_copy_shifted_complex_kernel!(
     out,
     field,
@@ -627,6 +687,49 @@ end
     ny, nx = size(field)
     backend = AK.get_backend(field)
     _ka_apply_shifted_mask_kernel!(backend, (16, 16))(field, mask, ny ÷ 2, nx ÷ 2, ny, nx, invert; ndrange=(ny, nx))
+    return field
+end
+
+@inline function ka_apply_shifted_ellipse!(
+    field::AbstractMatrix{<:Complex},
+    xcenter_pix,
+    ycenter_pix,
+    xrad_pix,
+    yrad_pix,
+    sint,
+    cost,
+    threshold_hi,
+    threshold_lo,
+    limit;
+    dark::Bool=false,
+    invert::Bool=false,
+    nsub::Int=1,
+)
+    ny, nx = size(field)
+    backend = AK.get_backend(field)
+    _ka_apply_shifted_ellipse_kernel!(
+        backend,
+        (16, 16),
+    )(
+        field,
+        xcenter_pix,
+        ycenter_pix,
+        xrad_pix,
+        yrad_pix,
+        sint,
+        cost,
+        threshold_hi,
+        threshold_lo,
+        limit,
+        nsub,
+        dark,
+        invert,
+        ny ÷ 2,
+        nx ÷ 2,
+        ny,
+        nx;
+        ndrange=(ny, nx),
+    )
     return field
 end
 

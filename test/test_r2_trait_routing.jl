@@ -207,6 +207,12 @@ using Test
             @test Proper.fft_workspace(ctx).scratch isa CUDA.CuArray
             prop_circular_aperture(wf, 2.5f-4)
             @test wf.workspace.mask.mask isa CUDA.CuArray
+            wf_ref = Proper.WaveFront(fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
+            prop_qphase(wf_ref, 0.25f0)
+            wf_ref.reference_surface = Proper.PLANAR
+            prop_ptp(wf_ref, 0.01f0)
+            prop_circular_aperture(wf_ref, 2.5f-4)
+            @test isapprox(Array(wf.field), wf_ref.field; atol=1f-5, rtol=1f-5)
             rect = prop_rectangle(wf, 5f-4, 4f-4)
             round = prop_rounded_rectangle(wf, 2f-4, 5f-4, 4f-4)
             out, sampling = prop_end(wf)
