@@ -91,10 +91,8 @@ using Random
 
     @testset "DM correction behavior matches upstream trend" begin
         exdir = joinpath(@__DIR__, "..", "examples")
-        include(joinpath(exdir, "telescope.jl"))
-        include(joinpath(exdir, "telescope_dm.jl"))
-        include(joinpath(exdir, "coronagraph.jl"))
-        include(joinpath(exdir, "run_coronagraph_dm.jl"))
+        mod = load_example_module(joinpath(exdir, "run_coronagraph_dm.jl"))
+        run_coronagraph_dm = getfield(mod, :run_coronagraph_dm)
 
         mktempdir() do d
             cp(joinpath(exdir, "telescope_obj.fits"), joinpath(d, "telescope_obj.fits"); force=true)

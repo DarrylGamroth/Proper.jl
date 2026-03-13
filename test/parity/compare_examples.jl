@@ -3,18 +3,23 @@ using LinearAlgebra
 using Random
 using Proper
 
-include(joinpath(@__DIR__, "..", "..", "examples", "simple_prescription.jl"))
-include(joinpath(@__DIR__, "..", "..", "examples", "simple_telescope.jl"))
-include(joinpath(@__DIR__, "..", "..", "examples", "hubble_simple.jl"))
-include(joinpath(@__DIR__, "..", "..", "examples", "microscope.jl"))
-include(joinpath(@__DIR__, "..", "..", "examples", "example_system.jl"))
-include(joinpath(@__DIR__, "..", "..", "examples", "psdtest.jl"))
-include(joinpath(@__DIR__, "..", "..", "examples", "talbot.jl"))
-include(joinpath(@__DIR__, "..", "..", "examples", "talbot_correct.jl"))
-include(joinpath(@__DIR__, "..", "..", "examples", "run_occulter.jl"))
-include(joinpath(@__DIR__, "..", "..", "examples", "run_coronagraph.jl"))
-include(joinpath(@__DIR__, "..", "..", "examples", "run_coronagraph_dm.jl"))
-include(joinpath(@__DIR__, "..", "..", "examples", "multi_example.jl"))
+include(joinpath(@__DIR__, "..", "example_loader.jl"))
+
+const EXDIR = joinpath(@__DIR__, "..", "..", "examples")
+const EXAMPLE_MODULES = Dict{Symbol,Module}(
+    :simple_prescription => load_example_module(joinpath(EXDIR, "simple_prescription.jl")),
+    :simple_telescope => load_example_module(joinpath(EXDIR, "simple_telescope.jl")),
+    :hubble_simple => load_example_module(joinpath(EXDIR, "hubble_simple.jl")),
+    :microscope => load_example_module(joinpath(EXDIR, "microscope.jl")),
+    :example_system => load_example_module(joinpath(EXDIR, "example_system.jl")),
+    :psdtest => load_example_module(joinpath(EXDIR, "psdtest.jl")),
+    :talbot => load_example_module(joinpath(EXDIR, "talbot.jl")),
+    :talbot_correct => load_example_module(joinpath(EXDIR, "talbot_correct.jl")),
+    :run_occulter => load_example_module(joinpath(EXDIR, "run_occulter.jl")),
+    :run_coronagraph => load_example_module(joinpath(EXDIR, "run_coronagraph.jl")),
+    :run_coronagraph_dm => load_example_module(joinpath(EXDIR, "run_coronagraph_dm.jl")),
+    :multi_example => load_example_module(joinpath(EXDIR, "multi_example.jl")),
+)
 
 function summarize(a, sampling)
     if eltype(a) <: Complex
@@ -44,18 +49,18 @@ end
 Random.seed!(12345)
 
 cases = Dict{String,Tuple{Any,Any}}(
-    "simple_prescription" => simple_prescription(0.55e-6, 256),
-    "simple_telescope" => simple_telescope(0.55e-6, 256),
-    "hubble_simple" => hubble_simple(0.55e-6, 256, Dict("delta_sec" => 0.0)),
-    "microscope" => microscope(0.55e-6, 256, Dict("focus_offset" => 0.0)),
-    "example_system" => example_system(0.55e-6, 256),
-    "psdtest" => psdtest(0.55e-6, 256, Dict("usepsdmap" => true)),
-    "talbot" => talbot(0.5e-6, 128, Dict("diam" => 0.1, "period" => 0.04, "dist" => 0.0)),
-    "talbot_correct" => talbot_correct(0.5e-6, 128, Dict("diam" => 0.1, "period" => 0.04, "dist" => 0.0)),
-    "run_occulter" => run_occulter(0.55e-6, 256, Dict("occulter_type" => "GAUSSIAN")),
-    "run_coronagraph" => run_coronagraph(0.55e-6, 256, Dict("use_errors" => false, "occulter_type" => "GAUSSIAN")),
-    "run_coronagraph_dm" => run_coronagraph_dm(0.55e-6, 256, Dict("use_errors" => false, "use_dm" => false, "occulter_type" => "GAUSSIAN")),
-    "multi_example" => multi_example(0.55e-6, 256, Dict("use_dm" => false, "dm" => zeros(48, 48))),
+    "simple_prescription" => getfield(EXAMPLE_MODULES[:simple_prescription], :simple_prescription)(0.55e-6, 256),
+    "simple_telescope" => getfield(EXAMPLE_MODULES[:simple_telescope], :simple_telescope)(0.55e-6, 256),
+    "hubble_simple" => getfield(EXAMPLE_MODULES[:hubble_simple], :hubble_simple)(0.55e-6, 256, Dict("delta_sec" => 0.0)),
+    "microscope" => getfield(EXAMPLE_MODULES[:microscope], :microscope)(0.55e-6, 256, Dict("focus_offset" => 0.0)),
+    "example_system" => getfield(EXAMPLE_MODULES[:example_system], :example_system)(0.55e-6, 256),
+    "psdtest" => getfield(EXAMPLE_MODULES[:psdtest], :psdtest)(0.55e-6, 256, Dict("usepsdmap" => true)),
+    "talbot" => getfield(EXAMPLE_MODULES[:talbot], :talbot)(0.5e-6, 128, Dict("diam" => 0.1, "period" => 0.04, "dist" => 0.0)),
+    "talbot_correct" => getfield(EXAMPLE_MODULES[:talbot_correct], :talbot_correct)(0.5e-6, 128, Dict("diam" => 0.1, "period" => 0.04, "dist" => 0.0)),
+    "run_occulter" => getfield(EXAMPLE_MODULES[:run_occulter], :run_occulter)(0.55e-6, 256, Dict("occulter_type" => "GAUSSIAN")),
+    "run_coronagraph" => getfield(EXAMPLE_MODULES[:run_coronagraph], :run_coronagraph)(0.55e-6, 256, Dict("use_errors" => false, "occulter_type" => "GAUSSIAN")),
+    "run_coronagraph_dm" => getfield(EXAMPLE_MODULES[:run_coronagraph_dm], :run_coronagraph_dm)(0.55e-6, 256, Dict("use_errors" => false, "use_dm" => false, "occulter_type" => "GAUSSIAN")),
+    "multi_example" => getfield(EXAMPLE_MODULES[:multi_example], :multi_example)(0.55e-6, 256, Dict("use_dm" => false, "dm" => zeros(48, 48))),
 )
 
 jl = Dict(name => summarize(psf, samp) for (name, (psf, samp)) in cases)
