@@ -143,6 +143,44 @@ using FFTW
         Proper.prop_elliptical_obscuration(wf_ref_dark, 0.22, 0.18, -0.04, 0.02; NORM=true, ROTATION=-9.0, DARK=true)
         @test isapprox(wf_loop_dark.field, wf_ref_dark.field; atol=0, rtol=0)
         @test isapprox(wf_ka_dark.field, wf_ref_dark.field; atol=0, rtol=0)
+
+        wf_ref_circle = prop_begin(1.0, 500e-9, 32)
+        wf_ka_circle = prop_begin(1.0, 500e-9, 32)
+        copts = Proper.CircleOptions{Float64}(true, false)
+        cgeom = Proper.circle_geometry(Float64, wf_ka_circle, 0.30, 0.05, -0.04, copts)
+        Proper.ka_apply_shifted_circle!(
+            wf_ka_circle.field,
+            cgeom.xoffset_pix,
+            cgeom.yoffset_pix,
+            cgeom.rad_pix,
+            cgeom.threshold_hi2,
+            cgeom.threshold_lo2,
+            cgeom.limit2;
+            dark=copts.dark,
+            invert=false,
+            nsub=Proper.antialias_subsampling(),
+        )
+        Proper.prop_circular_aperture(wf_ref_circle, 0.30, 0.05, -0.04; NORM=true)
+        @test isapprox(wf_ka_circle.field, wf_ref_circle.field; atol=1e-12, rtol=1e-12)
+
+        wf_ref_circle_dark = prop_begin(1.0, 500e-9, 32)
+        wf_ka_circle_dark = prop_begin(1.0, 500e-9, 32)
+        copts_dark = Proper.CircleOptions{Float64}(true, true)
+        cgeom_dark = Proper.circle_geometry(Float64, wf_ka_circle_dark, 0.22, -0.03, 0.02, copts_dark)
+        Proper.ka_apply_shifted_circle!(
+            wf_ka_circle_dark.field,
+            cgeom_dark.xoffset_pix,
+            cgeom_dark.yoffset_pix,
+            cgeom_dark.rad_pix,
+            cgeom_dark.threshold_hi2,
+            cgeom_dark.threshold_lo2,
+            cgeom_dark.limit2;
+            dark=copts_dark.dark,
+            invert=true,
+            nsub=Proper.antialias_subsampling(),
+        )
+        Proper.prop_circular_obscuration(wf_ref_circle_dark, 0.22, -0.03, 0.02; NORM=true, DARK=true)
+        @test isapprox(wf_ka_circle_dark.field, wf_ref_circle_dark.field; atol=1e-12, rtol=1e-12)
     end
 
     @testset "Mutating wrapper parity" begin

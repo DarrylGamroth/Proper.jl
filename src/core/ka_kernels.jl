@@ -247,6 +247,60 @@ end
     end
 end
 
+@kernel function _ka_apply_shifted_circle_kernel!(
+    field,
+    xoffset_pix,
+    yoffset_pix,
+    rad_pix,
+    threshold_hi2,
+    threshold_lo2,
+    limit2,
+    nsub::Int,
+    dark::Bool,
+    invert::Bool,
+    ny::Int,
+    nx::Int,
+)
+    I = @index(Global, NTuple)
+    i = I[1]
+    j = I[2]
+
+    if i <= ny && j <= nx
+        @uniform begin
+            T = typeof(rad_pix)
+            inv_nsub2 = inv(T(nsub * nsub))
+            outside_factor = xor(dark, invert) ? one(T) : zero(T)
+            inside_factor = xor(dark, invert) ? zero(T) : one(T)
+        end
+        x0 = T(_ka_shifted_index_0based(j - 1, nx)) - xoffset_pix
+        y0 = T(_ka_shifted_index_0based(i - 1, ny)) - yoffset_pix
+        r2 = x0 * x0 + y0 * y0
+
+        factor = outside_factor
+        if r2 <= threshold_lo2
+            factor = inside_factor
+        elseif r2 <= threshold_hi2
+            cnt = 0
+            for oy_i in 1:nsub
+                ys = y0 + _ka_subsample_offset(oy_i, nsub, one(T))
+                for ox_i in 1:nsub
+                    xs = x0 + _ka_subsample_offset(ox_i, nsub, one(T))
+                    cnt += ((xs * xs + ys * ys) <= limit2)
+                end
+            end
+            pixval = T(cnt) * inv_nsub2
+            maskval = dark ? (one(T) - pixval) : pixval
+            factor = invert ? (one(T) - maskval) : maskval
+        end
+
+        if factor == zero(T)
+            field[i, j] = zero(eltype(field))
+        elseif factor != one(T)
+            field[i, j] *= factor
+        end
+    end
+end
+
 @kernel function _ka_copy_shifted_complex_kernel!(
     out,
     @Const(field),
@@ -760,6 +814,41 @@ end
         maxy_pix,
         ny ÷ 2,
         nx ÷ 2,
+        ny,
+        nx;
+        ndrange=(ny, nx),
+    )
+    return field
+end
+
+@inline function ka_apply_shifted_circle!(
+    field::AbstractMatrix{<:Complex},
+    xoffset_pix,
+    yoffset_pix,
+    rad_pix,
+    threshold_hi2,
+    threshold_lo2,
+    limit2;
+    dark::Bool=false,
+    invert::Bool=false,
+    nsub::Int=1,
+)
+    ny, nx = size(field)
+    backend = AK.get_backend(field)
+    _ka_apply_shifted_circle_kernel!(
+        backend,
+        (16, 16),
+    )(
+        field,
+        xoffset_pix,
+        yoffset_pix,
+        rad_pix,
+        threshold_hi2,
+        threshold_lo2,
+        limit2,
+        nsub,
+        dark,
+        invert,
         ny,
         nx;
         ndrange=(ny, nx),
