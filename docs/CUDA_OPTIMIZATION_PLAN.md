@@ -70,7 +70,7 @@ Acceptance:
 - CPU benchmark suite remains green.
 
 ### C2: Backend-Aware Workspace State
-Status: In Progress
+Status: Completed
 - Make workspace storage backend-aware instead of CPU-only.
 - Preserve device buffers for:
   - interpolation axes
@@ -83,10 +83,11 @@ Completed in this slice:
 - `MaskWorkspace.mask` is now backend-aware.
 - `WaveFront` and `RunContext` now construct workspaces from the field/output backend type.
 - `prop_magnify!` and `prop_resamplemap!` now fill interpolation axes through typed loop/KA dispatch instead of host scalar loops.
+- `ProperWorkspace` now builds backend-consistent FFT scratch state instead of defaulting to CPU scratch for non-CPU backends.
 
 Remaining in C2:
-- backend-aware FFT/cache state remains deferred to `C3`
 - polygon vertex scratch remains host-owned because the vectors are small and not a measured hotspot
+- `rho2` remains host-owned for the generic path; CUDA `prop_ptp` computes frequency phase directly on device and no longer relies on a staged `rho2` map
 
 Targets:
 - Eliminate repeated `backend_adapt(...)` staging on hot CUDA paths.
@@ -116,11 +117,14 @@ Targets:
 - Reduce gap between CPU and CUDA in the end-to-end workload.
 
 ### C4: Remove Remaining Host Staging in Mask/Map Paths
-Status: Pending
+Status: In Progress
 - Audit and convert remaining CUDA-visible host staging in:
   - `prop_circular_aperture`
   - other mask wrappers using CPU workspace scratch
   - map-generation helpers that still materialize host intermediates
+
+Completed in this slice:
+- circular/elliptical aperture and obscuration wrappers now route through a direct shifted-ellipse application path on KA backends, avoiding the old materialize-mask-then-apply sequence on CUDA-visible fields
 
 Targets:
 - Avoid device-host-device round-trips in common aperture workflows.
@@ -168,4 +172,13 @@ Targets:
     - steady-state CPU: `27.89 ms -> 26.92 ms`
     - phase-2 `prop_ptp`: `12.85 ms -> 10.76 ms`
     - example allocations unchanged from C2 slice (`3.50 MiB` / `3.50 MiB` / `1.51 MiB`)
-- 2026-03-13: Awaiting rerun on CUDA hardware for updated C1/C2/C3 benchmark data.
+- 2026-03-13: follow-up runtime pass implemented.
+  - fixed backend-consistent FFT workspace construction so non-CPU workspaces no longer default to CPU FFT scratch.
+  - added direct shifted-ellipse application for circular/elliptical aperture wrappers on KA backends.
+  - added scoped `RunContext` reuse through `prop_run` so repeated runs can reuse backend/workspace state without changing prescription signatures.
+  - added explicit FFT planning policy types (`FFTEstimateStyle`, `FFTMeasureStyle`) and cached CPU plan-flag tracking.
+  - local validation:
+    - `julia --project=. test/runtests.jl`: pass
+    - `julia --project=. test/parity/compare_examples.jl`: pass (`num_failed = 0`)
+    - `./scripts/benchmark_all.sh`: pass on non-CUDA machine, CUDA lane skipped cleanly
+- 2026-03-13: Awaiting rerun on CUDA hardware for updated C2/C3/C4 benchmark data after backend-consistent FFT scratch and direct aperture application changes.

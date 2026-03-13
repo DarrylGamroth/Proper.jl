@@ -19,6 +19,10 @@ struct GenericFFTStyle <: FFTStyle end
 
 fft_style(::Type{<:AbstractArray}) = FFTWStyle()
 
+abstract type FFTPlanningStyle end
+struct FFTEstimateStyle <: FFTPlanningStyle end
+struct FFTMeasureStyle <: FFTPlanningStyle end
+
 abstract type InterpStyle end
 struct GenericInterpStyle <: InterpStyle end
 struct CubicInterpStyle <: InterpStyle end

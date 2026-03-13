@@ -9,35 +9,60 @@ using Base.ScopedValues: ScopedValue, with
     return Float64
 end
 
-struct RunContext{RNGT,B<:BackendStyle,FS<:FFTStyle,IS<:InterpStyle,WS}
+struct RunContext{RNGT,B<:BackendStyle,FS<:FFTStyle,IS<:InterpStyle,PS<:FFTPlanningStyle,WS}
     rng::RNGT
     backend::B
     fft::FS
     interp::IS
+    planning::PS
     workspace::WS
     verbose::Bool
 end
 
 const ACTIVE_RUN_CONTEXT = ScopedValue{Any}(nothing)
 
-function RunContext(; rng=Random.default_rng(), verbose::Bool=false)
-    return RunContext(Matrix; rng=rng, verbose=verbose)
+function RunContext(; rng=Random.default_rng(), verbose::Bool=false, fft_planning::FFTPlanningStyle=FFTEstimateStyle())
+    return RunContext(Matrix; rng=rng, verbose=verbose, fft_planning=fft_planning)
 end
 
-function RunContext(::Type{A}, ws::WS; rng=Random.default_rng(), verbose::Bool=false) where {A<:AbstractArray,WS}
+function RunContext(
+    ::Type{A},
+    ws::WS;
+    rng=Random.default_rng(),
+    verbose::Bool=false,
+    fft_planning::FFTPlanningStyle=FFTEstimateStyle(),
+) where {A<:AbstractArray,WS}
     b = backend_style(A)
     f = fft_style(A)
     i = interp_style(A)
-    return RunContext{typeof(rng),typeof(b),typeof(f),typeof(i),typeof(ws)}(rng, b, f, i, ws, verbose)
+    return RunContext{typeof(rng),typeof(b),typeof(f),typeof(i),typeof(fft_planning),typeof(ws)}(
+        rng,
+        b,
+        f,
+        i,
+        fft_planning,
+        ws,
+        verbose,
+    )
 end
 
-function RunContext(::Type{A}; rng=Random.default_rng(), verbose::Bool=false) where {A<:AbstractArray}
+function RunContext(
+    ::Type{A};
+    rng=Random.default_rng(),
+    verbose::Bool=false,
+    fft_planning::FFTPlanningStyle=FFTEstimateStyle(),
+) where {A<:AbstractArray}
     T = _workspace_float_type(A)
-    return RunContext(A, ProperWorkspace(A, T); rng=rng, verbose=verbose)
+    return RunContext(A, ProperWorkspace(A, T); rng=rng, verbose=verbose, fft_planning=fft_planning)
 end
 
-@inline function RunContext(wf::WaveFront; rng=Random.default_rng(), verbose::Bool=false)
-    return RunContext(typeof(wf.field), wf.workspace; rng=rng, verbose=verbose)
+@inline function RunContext(
+    wf::WaveFront;
+    rng=Random.default_rng(),
+    verbose::Bool=false,
+    fft_planning::FFTPlanningStyle=FFTEstimateStyle(),
+)
+    return RunContext(typeof(wf.field), wf.workspace; rng=rng, verbose=verbose, fft_planning=fft_planning)
 end
 
 @inline active_run_context() = getindex(ACTIVE_RUN_CONTEXT)
@@ -64,6 +89,7 @@ end
 
 @inline fft_style(ctx::RunContext) = ctx.fft
 @inline interp_style(ctx::RunContext) = ctx.interp
+@inline fft_planning_style(ctx::RunContext) = ctx.planning
 @inline interp_workspace(ctx::RunContext) = ctx.workspace.interp
 @inline mask_workspace(ctx::RunContext) = ctx.workspace.mask
 @inline fft_workspace(ctx::RunContext) = ctx.workspace.fft

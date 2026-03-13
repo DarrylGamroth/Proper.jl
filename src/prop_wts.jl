@@ -9,7 +9,7 @@
 ) where {T<:AbstractFloat}
     ny, nx = size(wf.field)
     f = ensure_fft_scratch!(ws, ny, nx)
-    pfft, pbfft = ensure_fft_plans!(ws, ny, nx)
+    pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
     copyto!(f, wf.field)
 
     if d >= zero(T)

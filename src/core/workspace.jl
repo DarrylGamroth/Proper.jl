@@ -96,6 +96,7 @@ mutable struct FFTWorkspace{
     nx::Int
     ny::Int
     dx::T
+    plan_flags::UInt32
     valid::Bool
     scratch_valid::Bool
     real_scratch_valid::Bool
@@ -114,6 +115,7 @@ function FFTWorkspace(::Type{T}=Float64) where {T<:AbstractFloat}
         0,
         0,
         zero(T),
+        zero(UInt32),
         false,
         false,
         false,
@@ -133,6 +135,7 @@ function FFTWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:A
         0,
         0,
         zero(T),
+        zero(UInt32),
         false,
         false,
         false,
@@ -170,6 +173,10 @@ end
     return ws.real_scratch
 end
 
+@inline fftw_flags(::FFTEstimateStyle) = FFTW.ESTIMATE
+@inline fftw_flags(::FFTMeasureStyle) = FFTW.MEASURE
+@inline fftw_flags(::FFTPlanningStyle) = FFTW.ESTIMATE
+
 abstract type FFTPlanExecStyle end
 struct FFTPlanAvailableStyle <: FFTPlanExecStyle end
 struct FFTPlanUnavailableStyle <: FFTPlanExecStyle end
@@ -182,18 +189,21 @@ struct FFTPlanUnavailableStyle <: FFTPlanExecStyle end
     ws::FFTWorkspace{T},
     ny::Integer,
     nx::Integer,
+    planning::FFTPlanningStyle,
 ) where {T}
     ensure_fft_scratch!(ws, ny, nx)
-    if !(ws.plans_valid && ws.forward_plan !== nothing && ws.backward_plan !== nothing)
-        ws.forward_plan = FFTW.plan_fft!(ws.scratch; flags=FFTW.ESTIMATE)
-        ws.backward_plan = FFTW.plan_bfft!(ws.scratch; flags=FFTW.ESTIMATE)
+    flags = fftw_flags(planning)
+    if !(ws.plans_valid && ws.forward_plan !== nothing && ws.backward_plan !== nothing && ws.plan_flags == flags)
+        ws.forward_plan = FFTW.plan_fft!(ws.scratch; flags=flags)
+        ws.backward_plan = FFTW.plan_bfft!(ws.scratch; flags=flags)
+        ws.plan_flags = flags
         ws.plans_valid = true
     end
     return ws.forward_plan::FFTWFwdPlan2D{T}, ws.backward_plan::FFTWBwdPlan2D{T}
 end
 
-@inline function ensure_fft_plans!(ws::FFTWorkspace, ny::Integer, nx::Integer)
-    return _ensure_fft_plans!(fft_plan_exec_style(typeof(ws.scratch)), ws, ny, nx)
+@inline function ensure_fft_plans!(ws::FFTWorkspace, ny::Integer, nx::Integer, planning::FFTPlanningStyle=FFTEstimateStyle())
+    return _ensure_fft_plans!(fft_plan_exec_style(typeof(ws.scratch)), ws, ny, nx, planning)
 end
 
 @inline function _ensure_fft_plans!(
@@ -201,10 +211,12 @@ end
     ws::FFTWorkspace,
     ny::Integer,
     nx::Integer,
+    planning::FFTPlanningStyle,
 )
     _ = ws
     _ = ny
     _ = nx
+    _ = planning
     throw(ArgumentError("FFT plans are only available for strided CPU workspaces"))
 end
 
@@ -267,6 +279,7 @@ end
     ws.nx = 0
     ws.ny = 0
     ws.dx = zero(eltype(ws.rho2))
+    ws.plan_flags = zero(UInt32)
     return ws
 end
 

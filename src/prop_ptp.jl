@@ -19,7 +19,7 @@ function _prop_ptp_fft!(
     kphase,
 )
     f = ensure_fft_scratch!(ws, ny, nx)
-    pfft, pbfft = ensure_fft_plans!(ws, ny, nx)
+    pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
     copyto!(f, wf.field)
     LinearAlgebra.mul!(f, pfft, f)
     f ./= n

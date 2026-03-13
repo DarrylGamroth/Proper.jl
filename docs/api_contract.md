@@ -40,6 +40,10 @@ Stable entry points:
 Notes:
 - Keep PROPER-style names for user familiarity.
 - Internals may be refactored freely if behavior contract is preserved.
+- Reusable runtime state may be supplied explicitly:
+  - `prop_run(...; context=ctx)`
+  - `prop_begin(...; context=ctx)` / `prop_begin(...; workspace=ws)`
+  - `prop_wavefront(...; context=ctx)` / `prop_wavefront(...; workspace=ws)`
 
 ## 3. Parity Baseline
 - Behavior targets the patched Python 3.3.4 executable baseline used by the parity harness.
@@ -47,7 +51,7 @@ Notes:
 
 ### 3.1 Context Constructor Contract
 - Canonical constructor entry point (name subject to implementation details):
-  - `RunContext(; backend=..., rng=..., workspace=...)`
+  - `RunContext(; backend=..., rng=..., workspace=..., fft_planning=...)`
 - `prop_*` public APIs should consume `RunContext` (or equivalent typed config) without compatibility mode flags.
 
 ## 4. Keyword Argument Contract

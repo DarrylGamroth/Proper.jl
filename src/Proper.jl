@@ -104,7 +104,7 @@ include("switch_set.jl")
 export BackendStyle, CPUBackend, CUDABackend, UnknownBackend, FFTStyle, FFTWStyle, CUFFTStyle, GenericFFTStyle
 export InterpStyle, GenericInterpStyle, CubicInterpStyle, RNGStyle, GenericRNGStyle
 export ShiftKernelStyle, ShiftLoopStyle, ShiftKAStyle
-export RunContext, ProperConfig, ProperRuntime, WaveFront
+export RunContext, FFTEstimateStyle, FFTMeasureStyle, ProperConfig, ProperRuntime, WaveFront
 export prop_wavefront, prop_begin, prop_end, prop_add_phase, prop_add_wavefront
 export prop_multiply, prop_divide, prop_shift_center
 export prop_radius, prop_ellipse, prop_rectangle

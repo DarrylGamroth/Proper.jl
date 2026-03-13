@@ -172,6 +172,31 @@ Status: Completed
   - reduce temporary transform allocations on CUDA propagation paths
   - keep propagation dispatch type-stable and backend-specific
 
+### O14: Scoped Run-Context Reuse
+Status: Completed
+- Add task-scoped `RunContext` reuse through `prop_run` so existing prescriptions can reuse backend/workspace state without signature changes.
+- Extend `prop_begin` / `prop_wavefront` to honor explicit or scoped workspace/context injection.
+- Targets:
+  - preserve familiar `prop_run` usage while enabling repeated-run cache reuse
+  - keep workspace reuse explicit at the entry-point boundary rather than hidden in hot kernels
+
+### O15: Explicit FFT Planning Policy
+Status: Completed
+- Make FFT planning an explicit typed policy on `RunContext`.
+- Track cached plan flags in `FFTWorkspace` so CPU FFTW plans rebuild when planning mode changes.
+- Keep default behavior parity-safe (`FFTEstimateStyle()`), with an opt-in `FFTMeasureStyle()`.
+- Targets:
+  - make FFT planning behavior visible and testable
+  - preserve concrete hot-path dispatch
+
+### O16: Direct Shifted-Ellipse Aperture Path
+Status: Completed
+- Factor ellipse geometry into a typed descriptor reused by mask-generation and field-application paths.
+- Route circular/elliptical aperture and obscuration wrappers through a direct shifted-ellipse path on KA backends.
+- Targets:
+  - remove redundant mask materialization on CUDA-visible aperture workflows
+  - keep wrapper semantics identical to the existing mask path
+
 ## Execution Log
 - 2026-03-05: Plan created. Starting O1.
 - 2026-03-05: O1 completed.
@@ -218,6 +243,15 @@ Status: Completed
   - updated kernel allocation metrics (`bench/julia/steady_state/refactor_kernels.jl`):
     - `psd_errormap_no_apply`: `~941,344 B -> ~154,224 B`
     - `ellipse` mutating: `~1,328 B -> ~832 B`
+- 2026-03-13: O14 completed.
+  - added scoped `RunContext` reuse via `prop_run(...; context=ctx)`.
+  - `prop_begin` and `prop_wavefront` now honor explicit/scoped workspace injection and preserve backend/type through reusable workspace state.
+- 2026-03-13: O15 completed.
+  - `RunContext` now carries typed FFT planning policy (`FFTEstimateStyle` / `FFTMeasureStyle`).
+  - `FFTWorkspace` now tracks cached FFTW plan flags and rebuilds plans when policy changes.
+- 2026-03-13: O16 completed.
+  - circular/elliptical aperture and obscuration wrappers now use a direct shifted-ellipse application path on KA backends.
+  - added regression coverage to prove the direct path matches the old mask semantics.
     - `polygon` mutating: `~6,400 B -> ~832 B`
     - `irregular_polygon` mutating: `~5,408 B -> ~544 B`
 - 2026-03-05: O7 KA/AK pilot implemented for shifted kernels.

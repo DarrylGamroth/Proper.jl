@@ -5,6 +5,8 @@
     @test Proper.interp_style(AbstractMatrix{Float64}) isa GenericInterpStyle
     ctx_f32 = RunContext(Matrix{Float32})
     @test ctx_f32.interp isa CubicInterpStyle
+    @test Proper.fft_planning_style(ctx_default) isa Proper.FFTEstimateStyle
+    @test Proper.fft_planning_style(RunContext(Matrix{Float64}; fft_planning=Proper.FFTMeasureStyle())) isa Proper.FFTMeasureStyle
 
     wf = prop_begin(2.0, 550e-9, 16)
     @test wf isa WaveFront

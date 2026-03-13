@@ -1,5 +1,6 @@
 using Test
 using Random
+using FFTW
 
 @testset "R3 mutating kernels and workspace reuse" begin
     @testset "Mutating interpolation kernels" begin
@@ -54,6 +55,12 @@ using Random
         @test pointer(fws.scratch) == scratchptr
         @test fws.forward_plan !== nothing
         @test fws.backward_plan !== nothing
+        @test fws.plan_flags == FFTW.ESTIMATE
+
+        wfmeasure = prop_begin(1.0, 500e-9, 32)
+        ctx_measure = RunContext(typeof(wfmeasure.field), wfmeasure.workspace; fft_planning=Proper.FFTMeasureStyle())
+        Proper.prop_ptp(wfmeasure, 0.01, ctx_measure)
+        @test Proper.fft_workspace(ctx_measure).plan_flags == FFTW.MEASURE
 
         # Wavefront-owned mask buffer is reused by aperture wrappers.
         wfmask = prop_begin(1.0, 500e-9, 32)
