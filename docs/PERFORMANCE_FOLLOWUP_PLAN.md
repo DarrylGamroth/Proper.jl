@@ -124,9 +124,12 @@ Default answer: Somewhat, so the core should keep getting cleaner.
 - Confirm no remaining internal hot-path calls recreate default context unnecessarily.
 
 ### N2: Evaluate a specialized `prop_end!` fast path only if it appears in real workflow profiles
-- Current kernel-level loss does not justify speculative redesign.
+Status: In Progress
+- Common full-frame `prop_end!` now uses direct quadrant copy/broadcast paths instead of the generic shifted-copy kernel.
+- Remaining question is CUDA-specific performance on hardware after this fast path lands.
 
 ### N3: Evaluate interpolation tiling only if F4 profiling shows global-memory reuse pressure
+Status: Gated
 - Likely candidates: cubic convolution / rotate / resample.
 - Non-candidates: FFT propagation.
 
@@ -153,3 +156,7 @@ Default answer: Somewhat, so the core should keep getting cleaner.
 - 2026-03-13: F4 completed.
   - added `bench/julia/cuda/profile_interpolation.jl` to gate any future tiling/shared-memory work on actual profile evidence.
   - current candidate set remains interpolation-family kernels only.
+- 2026-03-13: follow-up optimization slice implemented.
+  - host-side CUDA interpolation profiling now synchronizes once after the profiled loop, so the host profile reflects launch/wrapper overhead instead of per-iteration blocking.
+  - common full-frame `prop_end!` now uses direct quadrant copies / broadcasts for both complex and intensity outputs.
+  - circular aperture now has a centered-circle KA specialization in addition to the general shifted-circle path.

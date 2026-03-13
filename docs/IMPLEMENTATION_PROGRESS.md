@@ -39,6 +39,9 @@
 - [x] Standalone CUDA steady-state precision workloads: FP64/FP32 workload timings now come from dedicated scripts instead of mixed-process precision-split timing.
 - [x] Circle-specific KA aperture path: circular aperture/obscuration wrappers now use a direct circle kernel on KA backends.
 - [x] CUDA interpolation profiling harness: `bench/julia/cuda/profile_interpolation.jl` added to gate any tiling/shared-memory work on measured interpolation hotspots.
+- [x] Host-side CUDA profiling fix: interpolation profiling now measures launch/wrapper overhead without per-iteration synchronization.
+- [x] `prop_end!` full-frame fast path: common no-extract output now uses direct quadrant copy/broadcast routing instead of the generic shifted-copy kernel.
+- [x] Centered-circle KA specialization: circular aperture now has a centered common-case CUDA/KA path in addition to the general shifted-circle path.
 
 ## Current Workstream (Phase 1)
 - [x] Core policy/trait/context types created.
@@ -82,6 +85,7 @@
 - [x] Split CUDA benchmark interpretation by precision regime (`docs/CUDA_OPTIMIZATION_PLAN.md`, C5).
 - [ ] Review interpolation profiling output on CUDA hardware before committing to any tiling/shared-memory implementation (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, F4/N3).
 - [ ] Define the first prepared-simulation/core API layer on top of `RunContext`/`ProperWorkspace` while keeping `prop_*` wrappers thin (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
+- [ ] Validate the new `prop_end!` full-frame fast path and centered-circle specialization on CUDA hardware and retune priorities based on that data.
 
 ## Latest Pass (2026-03-04)
 - [x] Corrected `prop_sinc` to Python-compatible `sin(x)/x`.
