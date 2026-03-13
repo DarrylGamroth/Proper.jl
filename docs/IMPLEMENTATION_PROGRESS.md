@@ -1,8 +1,8 @@
 # Implementation Progress
 
 ## Status Snapshot
-- Date: 2026-03-11
-- Overall: Phase 9 complete; Refactor Track complete; backend extension work active
+- Date: 2026-03-12
+- Overall: Phase 9 complete; Refactor Track complete; backend extension and GPU-ready kernel coverage active
 
 ## Phase Checklist
 - [x] Phase 0: Preflight decisions and contracts accepted
@@ -24,6 +24,7 @@
 - [x] R5: Expanded inference/allocation gates and benchmark matrix updates (new R5 gate suite; benchmark matrix expanded for phase-2 kernels, refactor kernel deltas, and end-to-end example workflows; steady-state vs TTFx separation retained).
 - [x] GPU extension scaffold: optional `CUDA.jl` package extension with `CuArray` trait registration and public KA-routed interpolation/end-kernel entry points.
 - [x] Optional CUDA benchmark lane: separate availability-gated steady-state and supported-kernel reports integrated into `scripts/benchmark_all.sh`.
+- [x] Geometry/sampling KA pilot: trait-routed geometry mask kernels plus `prop_szoom!` / `prop_pixellate!`, with CPU pilot benchmarks and CUDA benchmark coverage.
 
 ## Current Workstream (Phase 1)
 - [x] Core policy/trait/context types created.

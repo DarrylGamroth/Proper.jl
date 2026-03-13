@@ -26,12 +26,16 @@ function bench_cuda_supported_kernels(cuda_mod)
     ctx_img = RunContext(typeof(img))
     rot_out = similar(img)
     mag_out = similar(img)
+    szoom_out = similar(img)
+    pix_out = similar(img, nmap ÷ 2, nmap ÷ 2)
 
     wf_map = cuda_wavefront_begin(cuda_mod, 1.0, 0.55e-6, nmap)
     dmap = cuda_mod.rand(Float32, nmap, nmap)
     ctx_map = RunContext(typeof(dmap))
     res_out = cuda_mod.zeros(Float64, nmap, nmap)
     res_opts = Proper.ResampleMapOptions(wf_map, wf_map.sampling_m, nmap / 2, nmap / 2)
+    rect_out = cuda_mod.zeros(Float64, nmap, nmap)
+    round_out = similar(rect_out)
 
     # Warmup
     prop_qphase(wf_q, 10.0, ctx_q)
@@ -41,7 +45,11 @@ function bench_cuda_supported_kernels(cuda_mod)
     prop_end!(out_end, wf_a)
     prop_rotate!(rot_out, img, 12.0, ctx_img)
     prop_magnify!(mag_out, img, 1.1, ctx_img; QUICK=true)
+    prop_szoom!(szoom_out, img, 1.1)
+    prop_pixellate!(pix_out, img, 2)
     prop_resamplemap!(res_out, wf_map, dmap, res_opts, ctx_map)
+    prop_rectangle!(rect_out, wf_map, 0.4, 0.2, 0.03, -0.05; ROTATION=22.0, NORM=true)
+    prop_rounded_rectangle!(round_out, wf_map, 0.05, 0.3, 0.2, 0.01, -0.02)
     cuda_mod.synchronize()
 
     q = run(@benchmarkable begin
@@ -75,8 +83,28 @@ function bench_cuda_supported_kernels(cuda_mod)
         $cuda_mod.synchronize()
     end evals=1 samples=samples)
 
+    sz = run(@benchmarkable begin
+        prop_szoom!($szoom_out, $img, 1.1)
+        $cuda_mod.synchronize()
+    end evals=1 samples=samples)
+
+    px = run(@benchmarkable begin
+        prop_pixellate!($pix_out, $img, 2)
+        $cuda_mod.synchronize()
+    end evals=1 samples=samples)
+
     rs = run(@benchmarkable begin
         prop_resamplemap!($res_out, $wf_map, $dmap, $res_opts, $ctx_map)
+        $cuda_mod.synchronize()
+    end evals=1 samples=samples)
+
+    rc = run(@benchmarkable begin
+        prop_rectangle!($rect_out, $wf_map, 0.4, 0.2, 0.03, -0.05; ROTATION=22.0, NORM=true)
+        $cuda_mod.synchronize()
+    end evals=1 samples=samples)
+
+    rr = run(@benchmarkable begin
+        prop_rounded_rectangle!($round_out, $wf_map, 0.05, 0.3, 0.2, 0.01, -0.02)
         $cuda_mod.synchronize()
     end evals=1 samples=samples)
 
@@ -90,7 +118,11 @@ function bench_cuda_supported_kernels(cuda_mod)
             "prop_end_mutating" => trial_stats(e),
             "prop_rotate_mutating" => trial_stats(r),
             "prop_magnify_quick_mutating" => trial_stats(m),
+            "prop_szoom_mutating" => trial_stats(sz),
+            "prop_pixellate_mutating" => trial_stats(px),
             "prop_resamplemap_mutating" => trial_stats(rs),
+            "prop_rectangle_mutating" => trial_stats(rc),
+            "prop_rounded_rectangle_mutating" => trial_stats(rr),
         ),
     )
 end

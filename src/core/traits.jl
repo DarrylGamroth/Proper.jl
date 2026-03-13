@@ -90,6 +90,32 @@ struct GeometryKAExecStyle <: GeometryExecStyle end
     return geometry_exec_style(Val(ka_geometry_enabled(A, ny, nx)))
 end
 
+abstract type SamplingKernelStyle end
+struct SamplingLoopStyle <: SamplingKernelStyle end
+struct SamplingKAStyle <: SamplingKernelStyle end
+
+sampling_kernel_style(::Type{<:AbstractArray}) = SamplingLoopStyle()
+
+const KA_SAMPLING_MIN_ELEMS = typemax(Int)
+
+@inline ka_enabled(::SamplingKAStyle, ny::Integer, nx::Integer, min_elems::Int) = (ny * nx) >= min_elems
+@inline ka_enabled(::SamplingKernelStyle, ny::Integer, nx::Integer, min_elems::Int) = false
+
+@inline function ka_sampling_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
+    return ka_enabled(sampling_kernel_style(A), ny, nx, KA_SAMPLING_MIN_ELEMS)
+end
+
+abstract type SamplingExecStyle end
+struct SamplingLoopExecStyle <: SamplingExecStyle end
+struct SamplingKAExecStyle <: SamplingExecStyle end
+
+@inline sampling_exec_style(::Val{true}) = SamplingKAExecStyle()
+@inline sampling_exec_style(::Val{false}) = SamplingLoopExecStyle()
+
+@inline function sampling_exec_style(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
+    return sampling_exec_style(Val(ka_sampling_enabled(A, ny, nx)))
+end
+
 @inline function ka_cubic_grid_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
     return ka_enabled(interp_kernel_style(A), ny, nx, KA_CUBIC_GRID_MIN_ELEMS)
 end

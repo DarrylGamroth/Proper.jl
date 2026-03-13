@@ -90,6 +90,16 @@ using Random
         Proper.prop_magnify!(mout, img, 1.2, ctx; QUICK=true)
         mref = prop_magnify(img, 1.2, 16, ctx; QUICK=true)
         @test isapprox(mout, mref; atol=1e-6, rtol=1e-6)
+
+        sout = similar(img, 16, 16)
+        Proper.prop_szoom!(sout, img, 1.2)
+        sref = prop_szoom(img, 1.2, 16)
+        @test isapprox(sout, sref; atol=1e-6, rtol=1e-6)
+
+        pix_out = similar(img, 8, 8)
+        Proper.prop_pixellate!(pix_out, img, 2)
+        pix_ref = prop_pixellate(img, 2)
+        @test isapprox(pix_out, pix_ref; atol=0, rtol=0)
     end
 
     @testset "Mutating prop_end reuse" begin
@@ -173,5 +183,10 @@ using Random
         Proper.prop_irregular_polygon!(ipoly_out, wf, xverts, yverts; NORM=true)
         ipoly_ref = prop_irregular_polygon(wf, xverts, yverts; NORM=true)
         @test isapprox(ipoly_out, ipoly_ref; atol=0, rtol=0)
+
+        round_out = zeros(RT, n, n)
+        Proper.prop_rounded_rectangle!(round_out, wf, 0.05, 0.3, 0.2, 0.01, -0.02)
+        round_ref = prop_rounded_rectangle(wf, 0.05, 0.3, 0.2, 0.01, -0.02)
+        @test isapprox(round_out, round_ref; atol=0, rtol=0)
     end
 end

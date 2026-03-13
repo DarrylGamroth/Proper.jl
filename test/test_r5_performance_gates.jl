@@ -81,6 +81,16 @@ using Random
         prop_magnify!(mag_out, img, 1.1, ctx; QUICK=true) # warmup
         @test (@allocated prop_magnify!(mag_out, img, 1.1, ctx; QUICK=true)) < 20_000
 
+        szoom_out = similar(img, 48, 48)
+        @test (@inferred prop_szoom!(szoom_out, img, 0.95)) === szoom_out
+        prop_szoom!(szoom_out, img, 0.95) # warmup
+        @test (@allocated prop_szoom!(szoom_out, img, 0.95)) < 50_000
+
+        pix_out = similar(img, 32, 32)
+        @test (@inferred prop_pixellate!(pix_out, img, 2)) === pix_out
+        prop_pixellate!(pix_out, img, 2) # warmup
+        @test (@allocated prop_pixellate!(pix_out, img, 2)) == 0
+
         wf_psd = prop_begin(0.212, 500e-9, 64)
         m = prop_psd_errormap(wf_psd, 3.29e-23, 212.26, 7.8; no_apply=true, rng=MersenneTwister(7))
         @test m isa AbstractMatrix
@@ -121,6 +131,11 @@ using Random
         @test (@inferred Proper.prop_irregular_polygon!(ipoly_out, wf, xverts, yverts; NORM=true)) === ipoly_out
         Proper.prop_irregular_polygon!(ipoly_out, wf, xverts, yverts; NORM=true) # warmup
         @test (@allocated Proper.prop_irregular_polygon!(ipoly_out, wf, xverts, yverts; NORM=true)) < 100_000
+
+        round_out = zeros(RT, n, n)
+        @test (@inferred Proper.prop_rounded_rectangle!(round_out, wf, 0.05, 0.3, 0.2, 0.01, -0.02)) === round_out
+        Proper.prop_rounded_rectangle!(round_out, wf, 0.05, 0.3, 0.2, 0.01, -0.02) # warmup
+        @test (@allocated Proper.prop_rounded_rectangle!(round_out, wf, 0.05, 0.3, 0.2, 0.01, -0.02)) < 50_000
 
         wf_mask = prop_begin(1.0, 500e-9, 64)
         Proper.prop_circular_aperture(wf_mask, 0.2) # warmup

@@ -99,10 +99,14 @@ end
 
     pix = prop_pixellate(rand(32, 32), 2)
     @test size(pix) == (16, 16)
+    pix_out = similar(pix)
+    @test prop_pixellate!(pix_out, rand(32, 32), 2) === pix_out
 
     m1 = prop_polygon(wf, 6, 0.2)
     m2 = prop_irregular_polygon(wf, [-0.1, 0.1, 0.1, -0.1], [-0.1, -0.1, 0.1, 0.1])
     m3 = prop_rounded_rectangle(wf, 0.05, 0.2, 0.3)
+    m4 = similar(m3)
+    @test prop_rounded_rectangle!(m4, wf, 0.05, 0.2, 0.3) === m4
     @test size(m1) == size(wf.field)
     @test size(m2) == size(wf.field)
     @test size(m3) == size(wf.field)
@@ -116,6 +120,8 @@ end
     @test libcconvthread(rand(8, 8), 4.2, 3.7) isa Real
     @test size(prop_szoom(rand(8, 8), 2.0), 1) == 3
     @test size(prop_szoom(rand(8, 8), 2.0, 16), 1) == 16
+    szoom_out = zeros(16, 16)
+    @test prop_szoom!(szoom_out, rand(8, 8), 2.0) === szoom_out
 end
 
 @testset "Phase 8 geometry and zernike parity groundwork" begin

@@ -55,7 +55,7 @@ end
         end
         prop_cubic_conv_grid!(out, sty, image_in, xcoords, ycoords)
     else
-        copyto!(out, prop_szoom(image_in, mag, out_n))
+        prop_szoom!(out, image_in, mag)
     end
 
     return _apply_magnify_conserve!(out, image_in, mag, opts)

@@ -44,6 +44,10 @@ end
     return inside
 end
 
+@inline function _ka_szoom_round(x::T) where {T<:AbstractFloat}
+    return x < zero(T) ? floor(x) : ceil(x)
+end
+
 @inline function _ka_bilinear_sample(a::AbstractMatrix{T}, y::Real, x::Real) where {T}
     ny, nx = size(a)
     x0 = floor(Int, x)
@@ -442,6 +446,123 @@ end
     end
 end
 
+@kernel function _ka_szoom_table_kernel!(
+    table,
+    mag,
+    n_out::Int,
+    k::Int,
+    dk::Int,
+)
+    I = @index(Global, NTuple)
+    row = I[1]
+    idx = I[2]
+
+    if row <= n_out && idx <= k
+        T = typeof(mag)
+        xin = T(row - 1 - (n_out ÷ 2)) / mag
+        xphase = xin - _ka_szoom_round(xin)
+        x = T(idx - 1 - (k ÷ 2)) - xphase
+
+        if abs(x) <= T(dk)
+            xpi = x * T(pi)
+            if xpi == zero(T)
+                table[row, idx] = one(T)
+            else
+                table[row, idx] = (sin(xpi) / xpi) * (sin(xpi / T(dk)) / (xpi / T(dk)))
+            end
+        else
+            table[row, idx] = zero(T)
+        end
+    end
+end
+
+@kernel function _ka_szoom_apply_kernel!(
+    out,
+    image_in,
+    table,
+    mag,
+    n_in::Int,
+    n_out::Int,
+    k::Int,
+)
+    I = @index(Global, NTuple)
+    row_out = I[1]
+    col_out = I[2]
+
+    if row_out <= n_out && col_out <= n_out
+        T = typeof(float(real(zero(eltype(out)))))
+        yin = T(row_out - 1 - (n_out ÷ 2)) / mag
+        ypix = _ka_szoom_round(yin) + T(n_in ÷ 2)
+        y1 = Int(ypix) - (k ÷ 2)
+        y2_excl = Int(ypix) + (k ÷ 2) + 1
+
+        xin = T(col_out - 1 - (n_out ÷ 2)) / mag
+        xpix = _ka_szoom_round(xin) + T(n_in ÷ 2)
+        x1 = Int(xpix) - (k ÷ 2)
+        x2_excl = Int(xpix) + (k ÷ 2) + 1
+
+        if y1 < 0 || y2_excl > n_in || x1 < 0 || x2_excl > n_in
+            out[row_out, col_out] = zero(eltype(out))
+        elseif eltype(image_in) <: Complex
+            acc_re = zero(T)
+            acc_im = zero(T)
+            for co in 0:(k - 1)
+                col = x1 + co + 1
+                s_re = zero(T)
+                s_im = zero(T)
+                for ro in 0:(k - 1)
+                    row = y1 + ro + 1
+                    wrow = table[row_out, ro + 1]
+                    z = image_in[row, col]
+                    s_re += T(real(z)) * wrow
+                    s_im += T(imag(z)) * wrow
+                end
+                wcol = table[col_out, co + 1]
+                acc_re += s_re * wcol
+                acc_im += s_im * wcol
+            end
+            out[row_out, col_out] = complex(acc_re, acc_im)
+        else
+            acc = zero(T)
+            for co in 0:(k - 1)
+                col = x1 + co + 1
+                scol = zero(T)
+                for ro in 0:(k - 1)
+                    row = y1 + ro + 1
+                    scol += T(image_in[row, col]) * table[row_out, ro + 1]
+                end
+                acc += scol * table[col_out, co + 1]
+            end
+            out[row_out, col_out] = acc
+        end
+    end
+end
+
+@kernel function _ka_pixellate_kernel!(
+    out,
+    img,
+    f::Int,
+    scale,
+    ny2::Int,
+    nx2::Int,
+)
+    I = @index(Global, NTuple)
+    i = I[1]
+    j = I[2]
+
+    if i <= ny2 && j <= nx2
+        ys = (i - 1) * f + 1
+        xs = (j - 1) * f + 1
+        acc = zero(eltype(out))
+        for xoff in 0:(f - 1)
+            for yoff in 0:(f - 1)
+                acc += img[ys + yoff, xs + xoff]
+            end
+        end
+        out[i, j] = acc * scale
+    end
+end
+
 @inline function ka_apply_shifted_mask!(
     field::AbstractMatrix{<:Complex},
     mask::AbstractMatrix{<:Real};
@@ -647,6 +768,47 @@ end
     )
     AK.synchronize(backend)
     return image
+end
+
+@inline function ka_szoom_table!(
+    table::AbstractMatrix{T},
+    mag::T,
+    n_out::Int,
+    k::Int,
+    dk::Int,
+) where {T<:AbstractFloat}
+    backend = AK.get_backend(table)
+    _ka_szoom_table_kernel!(backend, (16, 16))(table, mag, n_out, k, dk; ndrange=size(table))
+    AK.synchronize(backend)
+    return table
+end
+
+@inline function ka_szoom_apply!(
+    out::AbstractMatrix,
+    image_in::AbstractMatrix,
+    table::AbstractMatrix,
+    mag,
+)
+    n_out = size(out, 1)
+    k = size(table, 2)
+    backend = AK.get_backend(out)
+    _ka_szoom_apply_kernel!(backend, (16, 16))(out, image_in, table, mag, size(image_in, 1), n_out, k; ndrange=size(out))
+    AK.synchronize(backend)
+    return out
+end
+
+@inline function ka_pixellate!(
+    out::AbstractMatrix,
+    img::AbstractMatrix,
+    f::Int,
+)
+    ny2, nx2 = size(out)
+    backend = AK.get_backend(out)
+    T = typeof(float(real(zero(eltype(out)))))
+    scale = inv(T(f * f))
+    _ka_pixellate_kernel!(backend, (16, 16))(out, img, f, scale, ny2, nx2; ndrange=(ny2, nx2))
+    AK.synchronize(backend)
+    return out
 end
 
 @inline function ka_copy_shifted_intensity!(

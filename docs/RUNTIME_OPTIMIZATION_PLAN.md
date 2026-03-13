@@ -210,3 +210,24 @@ Status: Completed
   - behavior is availability-gated:
     - CUDA available: record synchronized GPU timings for the currently supported GPU subset
     - CUDA unavailable: emit explicit skipped reports instead of failing the benchmark driver
+- 2026-03-12: O10 completed for geometry/sampling KA pilot.
+  - added trait-routed KA geometry kernels for:
+    - `prop_rectangle!`
+    - `prop_ellipse!`
+    - `prop_irregular_polygon!` / `prop_polygon!`
+    - `prop_rounded_rectangle!`
+  - added trait-routed sampling kernels for:
+    - `prop_szoom!`
+    - `prop_pixellate!`
+    - `prop_magnify!(; QUICK=false)` now uses `prop_szoom!` instead of allocate-and-copy wrapper flow.
+  - all public geometry mask wrappers now preserve the input backend via `similar(wf.field, ...)`.
+  - added direct KA-vs-loop equivalence tests in `test/test_r2_trait_routing.jl` and mutating API parity/allocation tests in `test/test_r3_mutating_workspace.jl` / `test/test_r5_performance_gates.jl`.
+  - added CPU pilot benchmark report `bench/julia/steady_state/ka_geometry_sampling_kernels.jl`.
+  - benchmark outcome on CPU:
+    - `rectangle`: loop/KA speed ratio `0.695` (KA slower)
+    - `ellipse`: loop/KA speed ratio `0.217` (KA slower)
+    - `irregular_polygon`: loop/KA speed ratio `0.988` (near-neutral, KA still slightly slower)
+    - `rounded_rectangle`: loop/KA speed ratio `0.516` (KA slower)
+    - `szoom`: loop/KA speed ratio `0.507` (KA slower)
+    - `pixellate`: loop/KA speed ratio `0.959` (near-neutral, KA still slightly slower)
+  - decision: keep geometry/sampling KA routes enabled for CUDA-capable backends and disabled by default on CPU.

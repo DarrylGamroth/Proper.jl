@@ -64,6 +64,91 @@ using Test
         @test isapprox(rl_ka, rl_loop; atol=0, rtol=0)
     end
 
+    @testset "KA geometry and sampling parity on large CPU arrays" begin
+        n = 256
+        @test !Proper.ka_geometry_enabled(Matrix{Float32}, n, n)
+        @test !Proper.ka_sampling_enabled(Matrix{Float32}, n, n)
+
+        wf = prop_begin(1.0, 500e-9, n)
+        RT = real(eltype(wf.field))
+
+        rect_loop = zeros(RT, n, n)
+        rect_ka = similar(rect_loop)
+        Proper.prop_rectangle!(rect_loop, wf, 0.4, 0.2, 0.03, -0.05; ROTATION=22.0, NORM=true)
+        dx = RT(prop_get_sampling(wf))
+        beamrad = RT(prop_get_beamradius(wf))
+        pr = beamrad / dx
+        θ = RT(deg2rad(22.0))
+        cθ = cos(θ)
+        sθ = sin(θ)
+        xcp = RT(n ÷ 2) + RT(0.03) * pr
+        ycp = RT(n ÷ 2) - RT(0.05) * pr
+        xrp = RT(0.4) * pr / RT(2)
+        yrp = RT(0.2) * pr / RT(2)
+        xp = (-xrp, -xrp, xrp, xrp)
+        yp = (-yrp, yrp, yrp, -yrp)
+        xbox = ntuple(i -> xp[i] * cθ - yp[i] * sθ + xcp, 4)
+        ybox = ntuple(i -> xp[i] * sθ + yp[i] * cθ + ycp, 4)
+        minx = max(0, floor(Int, minimum(xbox) - one(RT)))
+        maxx = min(n - 1, ceil(Int, maximum(xbox) + one(RT)))
+        miny = max(0, floor(Int, minimum(ybox) - one(RT)))
+        maxy = min(n - 1, ceil(Int, maximum(ybox) + one(RT)))
+        Proper.ka_rectangle_mask!(rect_ka, xcp, ycp, xrp, yrp, cθ, sθ, minx, maxx, miny, maxy; nsub=Proper.antialias_subsampling())
+        @test isapprox(rect_ka, rect_loop; atol=1e-12, rtol=1e-12)
+
+        ellipse_loop = zeros(RT, n, n)
+        ellipse_ka = similar(ellipse_loop)
+        Proper.prop_ellipse!(ellipse_loop, wf, 0.35, 0.25, 0.05, -0.03; ROTATION=13.0, DARK=true, NORM=true)
+        beamrad_pix = RT(prop_get_beamradius(wf)) / dx
+        xcenter_pix = RT(n ÷ 2) + RT(0.05) * beamrad_pix
+        ycenter_pix = RT(n ÷ 2) - RT(0.03) * beamrad_pix
+        xrad_pix = RT(0.35) * beamrad_pix
+        yrad_pix = RT(0.25) * beamrad_pix
+        t = RT(deg2rad(13.0))
+        sint = sin(t)
+        cost = cos(t)
+        delx = inv(xrad_pix)
+        dely = inv(yrad_pix)
+        drx = delx * cost - dely * sint
+        dry = delx * sint + dely * cost
+        dr = max(abs(drx), abs(dry))
+        Proper.ka_ellipse_mask!(ellipse_ka, xcenter_pix, ycenter_pix, xrad_pix, yrad_pix, sint, cost, one(RT) + dr, one(RT) - dr, RT(1 + 1e-10); dark=true, nsub=Proper.antialias_subsampling())
+        @test isapprox(ellipse_ka, ellipse_loop; atol=1e-12, rtol=1e-12)
+
+        xverts = RT[-0.20, 0.12, 0.28, -0.08]
+        yverts = RT[-0.18, -0.22, 0.19, 0.25]
+        ipoly_loop = zeros(RT, n, n)
+        ipoly_ka = similar(ipoly_loop)
+        Proper.prop_irregular_polygon!(ipoly_loop, wf, xverts, yverts; NORM=true)
+        xv = copy(xverts) .* beamrad
+        yv = copy(yverts) .* beamrad
+        Proper.ka_irregular_polygon_mask!(ipoly_ka, xv, yv, n ÷ 2, n ÷ 2, dx; nsub=Proper.antialias_subsampling())
+        @test isapprox(ipoly_ka, ipoly_loop; atol=1e-12, rtol=1e-12)
+
+        round_loop = Proper.prop_rounded_rectangle(wf, 0.05, 0.3, 0.2, 0.01, -0.02)
+        round_ka = similar(round_loop)
+        Proper.ka_rounded_rectangle_mask!(round_ka, dx, RT(0.01), RT(-0.02), RT(0.05), RT(0.3) / RT(2), RT(0.2) / RT(2))
+        @test isapprox(round_ka, round_loop; atol=1e-12, rtol=1e-12)
+
+        img = rand(Float32, n, n)
+        pix_loop = prop_pixellate(img, 2)
+        pix_ka = similar(pix_loop)
+        Proper.ka_pixellate!(pix_ka, img, 2)
+        @test isapprox(pix_ka, pix_loop; atol=0, rtol=0)
+
+        mag = Float32(1.35)
+        n_out = 128
+        szoom_loop = prop_szoom(img, mag, n_out)
+        szoom_ka = similar(szoom_loop)
+        table_loop = Matrix{Float32}(undef, n_out, Proper.SZOOM_K)
+        table_ka = similar(table_loop)
+        Proper._fill_szoom_table_loop!(table_loop, mag)
+        Proper.ka_szoom_table!(table_ka, mag, n_out, Proper.SZOOM_K, Proper.SZOOM_DK)
+        @test isapprox(table_ka, table_loop; atol=0, rtol=0)
+        Proper.ka_szoom_apply!(szoom_ka, img, table_ka, mag)
+        @test isapprox(szoom_ka, szoom_loop; atol=1e-6, rtol=1e-6)
+    end
+
     @testset "Context-routed propagation kernels" begin
         wf1 = prop_begin(1.0, 500e-9, 32)
         wf2 = prop_begin(1.0, 500e-9, 32)
@@ -96,16 +181,26 @@ using Test
             @test ctx.interp isa Proper.CubicInterpStyle
             @test Proper.ka_cubic_grid_enabled(typeof(a), 16, 16)
             @test Proper.ka_rotate_enabled(typeof(a), 16, 16)
+            @test Proper.ka_geometry_enabled(typeof(a), 16, 16)
+            @test Proper.ka_sampling_enabled(typeof(a), 16, 16)
 
             m = prop_magnify(a, 1.1, 16, ctx; QUICK=true)
             r = prop_rotate(a, 5.0, ctx)
+            s = prop_szoom(a, 1.1, 16)
+            p = prop_pixellate(a, 2)
             @test size(m) == (16, 16)
             @test size(r) == (16, 16)
+            @test size(s) == (16, 16)
+            @test size(p) == (8, 8)
 
             wf = Proper.WaveFront(CUDA.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
             prop_qphase(wf, 0.25f0, ctx)
             prop_circular_aperture(wf, 2.5f-4)
+            rect = prop_rectangle(wf, 5f-4, 4f-4)
+            round = prop_rounded_rectangle(wf, 2f-4, 5f-4, 4f-4)
             out, sampling = prop_end(wf)
+            @test size(rect) == (16, 16)
+            @test size(round) == (16, 16)
             @test size(out) == (16, 16)
             @test sampling == wf.sampling_m
         else

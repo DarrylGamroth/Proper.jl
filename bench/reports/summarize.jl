@@ -12,6 +12,7 @@ ttfx = loadjson(joinpath(root, "julia_cold_start.json"))
 phase2 = loadjson(joinpath(root, "phase2_kernels.json"))
 refactor = loadjson(joinpath(root, "refactor_kernels.json"))
 ka_interp = loadjson(joinpath(root, "ka_interp_kernels.json"))
+ka_geom = loadjson(joinpath(root, "ka_geometry_sampling_kernels.json"))
 examples = loadjson(joinpath(root, "example_workflows.json"))
 cuda_jl = loadjson(joinpath(root, "julia_cuda_steady_state.json"))
 cuda_kernels = loadjson(joinpath(root, "cuda_supported_kernels.json"))
@@ -92,6 +93,17 @@ if ka_interp !== nothing
     end
     for (name, stats) in pairs(ka_interp["public"])
         println(name, " median ns: ", stats["median_ns"], " median bytes: ", stats["median_bytes"])
+    end
+end
+
+if ka_geom !== nothing
+    println("\n# KA Geometry/Sampling Pilot")
+    for (name, payload) in pairs(ka_geom["pairs"])
+        println(
+            name,
+            " speedup(loop/ka): ",
+            payload["speedup_loop_over_ka"],
+        )
     end
 end
 

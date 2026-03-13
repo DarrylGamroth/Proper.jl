@@ -121,6 +121,7 @@ export prop_execute_multi, prop_use_fftw, prop_use_ffti, prop_fftw_wisdom, prop_
 export prop_set_antialiasing, prop_table
 export prop_dm, prop_sinc, prop_noll_zernikes, prop_zernikes, prop_fit_zernikes
 export prop_fit_dm, prop_pixellate, prop_polygon, prop_irregular_polygon, prop_rounded_rectangle
+export prop_pixellate!, prop_szoom!
 export prop_polygon!, prop_irregular_polygon!, prop_ellipse!, prop_rectangle!, prop_rounded_rectangle!
 export prop_dftidefs, prop_ffti, prop_fftw, prop_szoom
 export DftiErrorMessage

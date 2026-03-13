@@ -54,6 +54,7 @@ julia --project=. bench/julia/steady_state/run.jl
 julia --project=. bench/julia/steady_state/phase2_kernels.jl
 julia --project=. bench/julia/steady_state/refactor_kernels.jl
 julia --project=. bench/julia/steady_state/ka_interp_kernels.jl
+julia --project=. bench/julia/steady_state/ka_geometry_sampling_kernels.jl
 julia --project=. bench/julia/steady_state/example_workflows.jl
 julia --project=. bench/julia/cuda/steady_state.jl
 julia --project=. bench/julia/cuda/supported_kernels.jl
