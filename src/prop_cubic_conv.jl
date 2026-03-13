@@ -41,10 +41,16 @@ end
 
 function prop_cubic_conv_grid!(out::StridedMatrix, sty::InterpStyle, a::StridedMatrix, xval::AbstractVector, yval::AbstractVector)
     oy, ox = size(out)
-    if (sty isa CubicInterpStyle) && ka_cubic_grid_enabled(typeof(out), oy, ox)
-        return ka_cubic_conv_grid!(out, a, xval, yval)
+    if (sty isa CubicInterpStyle) && ka_cubic_grid_enabled(typeof(out), oy, ox) && same_backend_style(typeof(out), typeof(a))
+        return ka_cubic_conv_grid!(out, a, backend_adapt(out, xval), backend_adapt(out, yval))
     end
-    return _prop_cubic_conv_grid_loop!(out, sty, a, xval, yval)
+    if same_backend_style(typeof(out), typeof(a)) && (backend_style(typeof(out)) isa CPUBackend)
+        return _prop_cubic_conv_grid_loop!(out, sty, a, xval, yval)
+    end
+    host_out = Matrix{eltype(out)}(undef, size(out)...)
+    prop_cubic_conv_grid!(host_out, sty, Matrix(a), xval, yval)
+    copyto!(out, host_out)
+    return out
 end
 
 function prop_cubic_conv_grid!(out::AbstractMatrix, sty::InterpStyle, a::AbstractMatrix, xval::AbstractVector, yval::AbstractVector)
