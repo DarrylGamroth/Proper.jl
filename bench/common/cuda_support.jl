@@ -1,11 +1,17 @@
+const CUDA_PKGID = Base.PkgId(Base.UUID("052768ef-5323-5732-b1bb-66c8b64840ba"), "CUDA")
+
+@inline function _require_cuda_module()
+    return Base.require(CUDA_PKGID)
+end
+
 function load_cuda_backend()
     try
-        @eval using CUDA
-        if !CUDA.functional()
+        cuda_mod = Base.invokelatest(_require_cuda_module)
+        if !Base.invokelatest(getproperty(cuda_mod, :functional))
             return nothing, "CUDA.functional() returned false"
         end
-        CUDA.allowscalar(false)
-        return CUDA, nothing
+        Base.invokelatest(getproperty(cuda_mod, :allowscalar), false)
+        return cuda_mod, nothing
     catch err
         return nothing, sprint(showerror, err)
     end
@@ -13,9 +19,10 @@ end
 
 function cuda_device_label(CUDA)
     try
-        return CUDA.name(CUDA.device())
+        device = Base.invokelatest(getproperty(CUDA, :device))
+        return Base.invokelatest(getproperty(CUDA, :name), device)
     catch
-        return string(CUDA.device())
+        return string(Base.invokelatest(getproperty(CUDA, :device)))
     end
 end
 
