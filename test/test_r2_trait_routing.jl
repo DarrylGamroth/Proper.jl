@@ -188,16 +188,24 @@ using Test
             r = prop_rotate(a, 5.0, ctx)
             s = prop_szoom(a, 1.1, 16)
             p = prop_pixellate(a, 2)
+            wf_resample = Proper.WaveFront(CUDA.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
+            ropts = Proper.ResampleMapOptions(wf_resample, wf_resample.sampling_m, 8f0, 8f0)
+            res = similar(a)
+            Proper.prop_resamplemap!(res, wf_resample, a, ropts, ctx)
             @test size(m) == (16, 16)
             @test size(r) == (16, 16)
             @test size(s) == (16, 16)
             @test size(p) == (8, 8)
+            @test size(res) == (16, 16)
+            @test Proper.interp_workspace(ctx).xcoords isa CUDA.CuArray
+            @test Proper.interp_workspace(ctx).ycoords isa CUDA.CuArray
 
             wf = Proper.WaveFront(CUDA.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
             prop_qphase(wf, 0.25f0, ctx)
             wf.reference_surface = Proper.PLANAR
             prop_ptp(wf, 0.01f0, ctx)
             prop_circular_aperture(wf, 2.5f-4)
+            @test wf.workspace.mask.mask isa CUDA.CuArray
             rect = prop_rectangle(wf, 5f-4, 4f-4)
             round = prop_rounded_rectangle(wf, 2f-4, 5f-4, 4f-4)
             out, sampling = prop_end(wf)

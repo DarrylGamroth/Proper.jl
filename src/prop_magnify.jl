@@ -29,6 +29,7 @@ end
 @inline function _prop_magnify!(
     out::AbstractMatrix,
     sty::InterpStyle,
+    fillsty::AxisFillExecStyle,
     image_in::AbstractMatrix,
     mag::Real,
     opts::MagnifyOptions,
@@ -46,13 +47,8 @@ end
 
         xcoords, ycoords = ensure_interp_axes!(ws, out_n, out_n)
         invmag = inv(T(mag))
-
-        @inbounds for j in 1:out_n
-            xcoords[j] = (T(j - 1) - cx_out) * invmag + cx_in
-        end
-        @inbounds for i in 1:out_n
-            ycoords[i] = (T(i - 1) - cy_out) * invmag + cy_in
-        end
+        fill_affine_axis!(fillsty, xcoords, cx_out, invmag, cx_in)
+        fill_affine_axis!(fillsty, ycoords, cy_out, invmag, cy_in)
         prop_cubic_conv_grid!(out, sty, image_in, xcoords, ycoords)
     else
         prop_szoom!(out, image_in, mag)
@@ -68,7 +64,15 @@ end
     opts::MagnifyOptions,
     ctx::RunContext,
 )
-    return _prop_magnify!(out, interp_style(ctx), image_in, float(mag0), opts, interp_workspace(ctx))
+    return _prop_magnify!(
+        out,
+        interp_style(ctx),
+        axis_fill_exec_style(ctx.backend),
+        image_in,
+        float(mag0),
+        opts,
+        interp_workspace(ctx),
+    )
 end
 
 @inline function prop_magnify!(
@@ -79,7 +83,15 @@ end
 )
     Tin = typeof(real(zero(eltype(image_in))))
     T = float(promote_type(typeof(mag0), Tin))
-    return _prop_magnify!(out, interp_style(typeof(image_in)), image_in, float(mag0), opts, InterpWorkspace(T))
+    return _prop_magnify!(
+        out,
+        interp_style(typeof(image_in)),
+        axis_fill_exec_style(backend_style(typeof(out))),
+        image_in,
+        float(mag0),
+        opts,
+        InterpWorkspace(typeof(out), T),
+    )
 end
 
 function prop_magnify!(

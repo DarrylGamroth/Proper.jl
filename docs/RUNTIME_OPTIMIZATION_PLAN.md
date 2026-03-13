@@ -148,6 +148,17 @@ Status: Completed
   - remove CPU-staged map generation from the most obvious propagation hotspots
   - preserve existing CPU behavior and parity results
 
+### O12: Backend-Aware Interp/Mask Workspace Slice
+Status: Completed
+- Make interpolation-axis workspace buffers backend-aware.
+- Make reusable mask buffers backend-aware.
+- Update `WaveFront` and `RunContext` constructors to create workspace state from the field/output backend.
+- Add typed axis-fill execution routing so CuArray interpolation axes are filled without scalar indexing.
+- Keep FFT workspace CPU-owned in this slice; full device-side FFT/cache work stays in `docs/CUDA_OPTIMIZATION_PLAN.md` C3.
+- Targets:
+  - remove repeated host staging for interpolation axes and aperture mask buffers
+  - preserve CPU allocation/performance behavior while enabling backend-preserving scratch on CUDA-visible paths
+
 ## Execution Log
 - 2026-03-05: Plan created. Starting O1.
 - 2026-03-05: O1 completed.
@@ -270,3 +281,13 @@ Status: Completed
     - `julia --project=. test/runtests.jl`: pass
     - `./scripts/benchmark_all.sh`: pass on non-CUDA machine, CUDA lane skipped cleanly
   - follow-up work is tracked in `docs/CUDA_OPTIMIZATION_PLAN.md` for backend-aware workspace/device-cache refactors.
+- 2026-03-13: O12 completed.
+  - `InterpWorkspace` now preserves the requested backend type instead of always using `Vector`.
+  - `MaskWorkspace.mask` now preserves the requested backend type instead of always using `Matrix`.
+  - `WaveFront` and `RunContext` now construct these workspaces from the field/output backend.
+  - `prop_magnify!` and `prop_resamplemap!` now fill interpolation axes through typed loop/KA dispatch, avoiding host scalar loops for CUDA paths.
+  - added CUDA smoke coverage for backend-aware interpolation workspace and mask buffer preservation.
+  - local benchmark snapshot:
+    - `simple_prescription_256`: `4.01 MiB -> 3.50 MiB`
+    - `simple_telescope_256`: `5.02 MiB -> 3.50 MiB`
+    - `psdtest_128`: `1.64 MiB -> 1.51 MiB`

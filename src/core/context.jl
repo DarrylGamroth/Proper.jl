@@ -30,7 +30,7 @@ end
 
 function RunContext(::Type{A}; rng=Random.default_rng(), verbose::Bool=false) where {A<:AbstractArray}
     T = _workspace_float_type(A)
-    return RunContext(A, ProperWorkspace(T); rng=rng, verbose=verbose)
+    return RunContext(A, ProperWorkspace(A, T); rng=rng, verbose=verbose)
 end
 
 @inline function RunContext(wf::WaveFront; rng=Random.default_rng(), verbose::Bool=false)

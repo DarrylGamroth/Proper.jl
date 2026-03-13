@@ -70,13 +70,23 @@ Acceptance:
 - CPU benchmark suite remains green.
 
 ### C2: Backend-Aware Workspace State
-Status: Pending
+Status: In Progress
 - Make workspace storage backend-aware instead of CPU-only.
 - Preserve device buffers for:
   - interpolation axes
   - mask scratch
   - FFT scratch / cached maps
 - Ensure `WaveFront` and `RunContext` can carry backend-appropriate scratch state.
+
+Completed in this slice:
+- `InterpWorkspace` is now backend-aware.
+- `MaskWorkspace.mask` is now backend-aware.
+- `WaveFront` and `RunContext` now construct workspaces from the field/output backend type.
+- `prop_magnify!` and `prop_resamplemap!` now fill interpolation axes through typed loop/KA dispatch instead of host scalar loops.
+
+Remaining in C2:
+- backend-aware FFT/cache state remains deferred to `C3`
+- polygon vertex scratch remains host-owned because the vectors are small and not a measured hotspot
 
 Targets:
 - Eliminate repeated `backend_adapt(...)` staging on hot CUDA paths.
@@ -126,4 +136,16 @@ Targets:
   - Removed unconditional low-level KA synchronization.
   - Restricted rectangle and rounded-rectangle CUDA launches to computed bounding boxes.
   - Added CUDA smoke coverage for `prop_ptp`.
-- 2026-03-13: Awaiting rerun on CUDA hardware for updated C1 benchmark data.
+- 2026-03-13: C2 slice 1 implemented.
+  - `InterpWorkspace` now preserves the requested backend.
+  - `MaskWorkspace.mask` now preserves the wavefront/backend type.
+  - `WaveFront` and `RunContext` now build backend-aware workspace state for interpolation and mask paths.
+  - added device-safe affine-axis fill for interpolation coordinates and CUDA smoke coverage for `prop_resamplemap!`.
+  - local validation:
+    - `julia --project=. test/runtests.jl`: pass
+    - `./scripts/benchmark_all.sh`: pass on non-CUDA machine, CUDA lane skipped cleanly
+  - local benchmark snapshot:
+    - `simple_prescription_256`: `4.01 MiB -> 3.50 MiB`
+    - `simple_telescope_256`: `5.02 MiB -> 3.50 MiB`
+    - `psdtest_128`: `1.64 MiB -> 1.51 MiB`
+- 2026-03-13: Awaiting rerun on CUDA hardware for updated C1/C2 benchmark data.

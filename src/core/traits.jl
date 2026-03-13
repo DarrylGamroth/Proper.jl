@@ -124,6 +124,14 @@ end
     return ka_enabled(interp_kernel_style(A), ny, nx, KA_ROTATE_MIN_ELEMS)
 end
 
+abstract type AxisFillExecStyle end
+struct AxisFillLoopExecStyle <: AxisFillExecStyle end
+struct AxisFillKAExecStyle <: AxisFillExecStyle end
+
+@inline axis_fill_exec_style(::CPUBackend) = AxisFillLoopExecStyle()
+@inline axis_fill_exec_style(::CUDABackend) = AxisFillKAExecStyle()
+@inline axis_fill_exec_style(::BackendStyle) = AxisFillLoopExecStyle()
+
 @inline same_backend_style(::B, ::B) where {B<:BackendStyle} = true
 @inline same_backend_style(::BackendStyle, ::BackendStyle) = false
 @inline same_backend_style(::Type{A}, ::Type{B}) where {A<:AbstractArray,B<:AbstractArray} =

@@ -1,30 +1,74 @@
-mutable struct InterpWorkspace{T<:AbstractFloat}
-    xcoords::Vector{T}
-    ycoords::Vector{T}
+@inline workspace_vector(::Type{A}, ::Type{T}, n::Integer=0) where {A<:AbstractArray,T<:AbstractFloat} =
+    Vector{T}(undef, n)
+
+@inline workspace_matrix(::Type{A}, ::Type{T}, ny::Integer=0, nx::Integer=0) where {A<:AbstractArray,T<:AbstractFloat} =
+    Matrix{T}(undef, ny, nx)
+
+@inline workspace_complex_matrix(::Type{A}, ::Type{T}, ny::Integer=0, nx::Integer=0) where {A<:AbstractArray,T<:AbstractFloat} =
+    Matrix{Complex{T}}(undef, ny, nx)
+
+@inline function _ensure_workspace_vector(a::Vector{T}, n::Integer) where {T}
+    length(a) == n || resize!(a, n)
+    return a
 end
 
-InterpWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} =
-    InterpWorkspace{T}(Vector{T}(undef, 0), Vector{T}(undef, 0))
+@inline function _ensure_workspace_vector(a::AbstractVector{T}, n::Integer) where {T}
+    size(a, 1) == n && return a
+    return similar(a, T, n)
+end
+
+@inline function _ensure_workspace_matrix(a::Matrix{T}, ny::Integer, nx::Integer) where {T}
+    size(a) == (ny, nx) && return a
+    return Matrix{T}(undef, ny, nx)
+end
+
+@inline function _ensure_workspace_matrix(a::AbstractMatrix{T}, ny::Integer, nx::Integer) where {T}
+    size(a) == (ny, nx) && return a
+    return similar(a, T, ny, nx)
+end
+
+@inline function _fft_shifted_index_0based(p::Int, n::Int)
+    c = n ÷ 2
+    cut = n - c - 1
+    return p <= cut ? p : (p - n)
+end
+
+mutable struct InterpWorkspace{T<:AbstractFloat,VX<:AbstractVector{T},VY<:AbstractVector{T}}
+    xcoords::VX
+    ycoords::VY
+end
+
+InterpWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} = InterpWorkspace(Matrix, T)
+
+function InterpWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:AbstractFloat}
+    xcoords = workspace_vector(A, T, 0)
+    ycoords = workspace_vector(A, T, 0)
+    return InterpWorkspace{T,typeof(xcoords),typeof(ycoords)}(xcoords, ycoords)
+end
 
 @inline function ensure_interp_axes!(ws::InterpWorkspace, nx::Integer, ny::Integer)
-    resize!(ws.xcoords, nx)
-    resize!(ws.ycoords, ny)
+    ws.xcoords = _ensure_workspace_vector(ws.xcoords, nx)
+    ws.ycoords = _ensure_workspace_vector(ws.ycoords, ny)
     return ws.xcoords, ws.ycoords
 end
 
-mutable struct MaskWorkspace{T<:AbstractFloat}
-    mask::Matrix{T}
+mutable struct MaskWorkspace{T<:AbstractFloat,M<:AbstractMatrix{T}}
+    mask::M
     valid::Bool
     xverts::Vector{T}
     yverts::Vector{T}
 end
 
-MaskWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} =
-    MaskWorkspace{T}(Matrix{T}(undef, 0, 0), false, Vector{T}(undef, 0), Vector{T}(undef, 0))
+MaskWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} = MaskWorkspace(Matrix, T)
+
+function MaskWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:AbstractFloat}
+    mask = workspace_matrix(A, T, 0, 0)
+    return MaskWorkspace{T,typeof(mask)}(mask, false, Vector{T}(undef, 0), Vector{T}(undef, 0))
+end
 
 @inline function ensure_mask_buffer!(ws::MaskWorkspace{T}, ny::Integer, nx::Integer) where {T}
     if !(ws.valid && size(ws.mask) == (ny, nx))
-        ws.mask = Matrix{T}(undef, ny, nx)
+        ws.mask = _ensure_workspace_matrix(ws.mask, ny, nx)
         ws.valid = true
     end
     return ws.mask
@@ -54,8 +98,8 @@ mutable struct FFTWorkspace{T<:AbstractFloat}
     plans_valid::Bool
 end
 
-FFTWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} =
-    FFTWorkspace{T}(
+function FFTWorkspace(::Type{T}=Float64) where {T<:AbstractFloat}
+    return FFTWorkspace{T}(
         Matrix{T}(undef, 0, 0),
         Matrix{Complex{T}}(undef, 0, 0),
         Matrix{T}(undef, 0, 0),
@@ -69,11 +113,15 @@ FFTWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} =
         false,
         false,
     )
+end
+
+FFTWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:AbstractFloat} = FFTWorkspace(T)
 
 @inline function ensure_rho2_map!(ws::FFTWorkspace{T}, ny::Integer, nx::Integer, dx::Real) where {T}
     dxT = T(dx)
     if !(ws.valid && ws.nx == nx && ws.ny == ny && ws.dx == dxT)
-        ws.rho2 = fft_order_rho2_map(ny, nx, dxT)
+        ws.rho2 = _ensure_workspace_matrix(ws.rho2, ny, nx)
+        _fill_fft_order_rho2!(CPUBackend(), ws.rho2, dxT)
         ws.nx = nx
         ws.ny = ny
         ws.dx = dxT
@@ -84,7 +132,7 @@ end
 
 @inline function ensure_fft_scratch!(ws::FFTWorkspace{T}, ny::Integer, nx::Integer) where {T}
     if !(ws.scratch_valid && size(ws.scratch) == (ny, nx))
-        ws.scratch = Matrix{Complex{T}}(undef, ny, nx)
+        ws.scratch = _ensure_workspace_matrix(ws.scratch, ny, nx)
         ws.scratch_valid = true
         ws.plans_valid = false
     end
@@ -93,7 +141,7 @@ end
 
 @inline function ensure_fft_real_scratch!(ws::FFTWorkspace{T}, ny::Integer, nx::Integer) where {T}
     if !(ws.real_scratch_valid && size(ws.real_scratch) == (ny, nx))
-        ws.real_scratch = Matrix{T}(undef, ny, nx)
+        ws.real_scratch = _ensure_workspace_matrix(ws.real_scratch, ny, nx)
         ws.real_scratch_valid = true
     end
     return ws.real_scratch
@@ -109,9 +157,45 @@ end
     return ws.forward_plan::FFTWFwdPlan2D{T}, ws.backward_plan::FFTWBwdPlan2D{T}
 end
 
+@inline function _fill_fft_order_rho2!(::CPUBackend, rho2::AbstractMatrix{T}, dx::T) where {T<:AbstractFloat}
+    ny, nx = size(rho2)
+    inv_dy = inv(T(ny) * dx)
+    inv_dx = inv(T(nx) * dx)
+    @inbounds for j in 1:nx
+        fx = T(_fft_shifted_index_0based(j - 1, nx)) * inv_dx
+        fx2 = fx * fx
+        for i in 1:ny
+            fy = T(_fft_shifted_index_0based(i - 1, ny)) * inv_dy
+            rho2[i, j] = fx2 + fy * fy
+        end
+    end
+    return rho2
+end
+
+@inline function fill_affine_axis!(
+    ::AxisFillLoopExecStyle,
+    out::AbstractVector{T},
+    origin::T,
+    scale::T,
+    offset::T,
+) where {T<:AbstractFloat}
+    @inbounds for i in eachindex(out)
+        out[i] = (T(i - 1) - origin) * scale + offset
+    end
+    return out
+end
+
+@inline function fill_affine_axis!(
+    ::AxisFillKAExecStyle,
+    out::AbstractVector,
+    origin,
+    scale,
+    offset,
+)
+    return ka_fill_affine_axis!(out, origin, scale, offset)
+end
+
 @inline function reset_workspace!(ws::InterpWorkspace)
-    resize!(ws.xcoords, 0)
-    resize!(ws.ycoords, 0)
     return ws
 end
 
@@ -135,14 +219,25 @@ end
     return ws
 end
 
-mutable struct ProperWorkspace{T<:AbstractFloat}
-    interp::InterpWorkspace{T}
-    mask::MaskWorkspace{T}
-    fft::FFTWorkspace{T}
+mutable struct ProperWorkspace{
+    T<:AbstractFloat,
+    IW<:InterpWorkspace{T},
+    MW<:MaskWorkspace{T},
+    FW<:FFTWorkspace{T},
+}
+    interp::IW
+    mask::MW
+    fft::FW
 end
 
-ProperWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} =
-    ProperWorkspace{T}(InterpWorkspace(T), MaskWorkspace(T), FFTWorkspace(T))
+ProperWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} = ProperWorkspace(Matrix, T)
+
+function ProperWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:AbstractFloat}
+    interp = InterpWorkspace(A, T)
+    mask = MaskWorkspace(A, T)
+    fft = FFTWorkspace(T)
+    return ProperWorkspace{T,typeof(interp),typeof(mask),typeof(fft)}(interp, mask, fft)
+end
 
 @inline function reset_workspace!(ws::ProperWorkspace)
     reset_workspace!(ws.interp)

@@ -259,6 +259,20 @@ end
     end
 end
 
+@kernel function _ka_fill_affine_axis_kernel!(
+    out,
+    origin,
+    scale,
+    offset,
+    n::Int,
+)
+    i = @index(Global, Linear)
+    if i <= n
+        T = typeof(scale)
+        out[i] = (T(i - 1) - origin) * scale + offset
+    end
+end
+
 @kernel function _ka_cubic_conv_grid_kernel!(
     out,
     a,
@@ -652,6 +666,18 @@ end
     backend = AK.get_backend(field)
     _ka_apply_frequency_phase_kernel!(backend, (16, 16))(field, kphase, inv_dx_y, inv_dx_x, ny, nx; ndrange=(ny, nx))
     return field
+end
+
+@inline function ka_fill_affine_axis!(
+    out::AbstractVector,
+    origin,
+    scale,
+    offset,
+)
+    n = length(out)
+    backend = AK.get_backend(out)
+    _ka_fill_affine_axis_kernel!(backend, 256)(out, origin, scale, offset, n; ndrange=n)
+    return out
 end
 
 @inline function ka_cubic_conv_grid!(

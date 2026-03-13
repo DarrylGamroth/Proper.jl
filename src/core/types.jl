@@ -28,7 +28,7 @@ end
     return pt
 end
 
-mutable struct WaveFront{T,A<:AbstractMatrix{Complex{T}}}
+mutable struct WaveFront{T,A<:AbstractMatrix{Complex{T}},WS<:ProperWorkspace{T}}
     field::A
     wavelength_m::T
     sampling_m::T
@@ -42,12 +42,13 @@ mutable struct WaveFront{T,A<:AbstractMatrix{Complex{T}}}
     beam_type_old::BeamType
     propagator_type::PropagatorType
     rayleigh_factor::T
-    workspace::ProperWorkspace{T}
+    workspace::WS
 end
 
 function WaveFront(field::A, wavelength_m::T, sampling_m::T, z_m::T, beam_diameter_m::T) where {T<:AbstractFloat,A<:AbstractMatrix{Complex{T}}}
     w0_m = beam_diameter_m / 2
     z_ray = pi * w0_m^2 / wavelength_m
+    ws = ProperWorkspace(A, T)
     return WaveFront(
         field,
         wavelength_m,
@@ -62,6 +63,6 @@ function WaveFront(field::A, wavelength_m::T, sampling_m::T, z_m::T, beam_diamet
         INSIDE,
         INSIDE_TO_INSIDE,
         one(T),
-        ProperWorkspace(T),
+        ws,
     )
 end

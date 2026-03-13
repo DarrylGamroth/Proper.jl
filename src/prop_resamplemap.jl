@@ -21,6 +21,7 @@ end
 """Resample map to wavefront grid with cubic interpolation and physical shifts."""
 function _prop_resamplemap!(
     sty::InterpStyle,
+    fillsty::AxisFillExecStyle,
     out::AbstractMatrix,
     wf::WaveFront,
     dmap::AbstractMatrix,
@@ -36,12 +37,8 @@ function _prop_resamplemap!(
     xoff = T(opts.xc) - T(opts.xshift) / T(opts.pixscale)
     yoff = T(opts.yc) - T(opts.yshift) / T(opts.pixscale)
 
-    @inbounds for j in 1:nx
-        xcoords[j] = (T(j - 1 - (nx ÷ 2)) * scale) + xoff
-    end
-    @inbounds for i in 1:ny
-        ycoords[i] = (T(i - 1 - (ny ÷ 2)) * scale) + yoff
-    end
+    fill_affine_axis!(fillsty, xcoords, T(nx ÷ 2), scale, xoff)
+    fill_affine_axis!(fillsty, ycoords, T(ny ÷ 2), scale, yoff)
 
     return prop_cubic_conv_grid!(out, sty, dmap, xcoords, ycoords)
 end
@@ -53,7 +50,15 @@ function prop_resamplemap!(
     opts::ResampleMapOptions,
     ctx::RunContext,
 )
-    return _prop_resamplemap!(interp_style(ctx), out, wf, dmap, opts, interp_workspace(ctx))
+    return _prop_resamplemap!(
+        interp_style(ctx),
+        axis_fill_exec_style(ctx.backend),
+        out,
+        wf,
+        dmap,
+        opts,
+        interp_workspace(ctx),
+    )
 end
 
 function prop_resamplemap!(
@@ -64,11 +69,12 @@ function prop_resamplemap!(
 )
     return _prop_resamplemap!(
         interp_style(typeof(out)),
+        axis_fill_exec_style(backend_style(typeof(out))),
         out,
         wf,
         dmap,
         opts,
-        InterpWorkspace(float(typeof(opts.pixscale))),
+        InterpWorkspace(typeof(out), float(typeof(opts.pixscale))),
     )
 end
 
