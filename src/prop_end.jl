@@ -14,6 +14,50 @@ end
     return extract, extract, r0, c0
 end
 
+@inline function _prop_end_full_quadrants(ny::Int, nx::Int)
+    sy = ny ÷ 2
+    sx = nx ÷ 2
+    return sy, sx, ny - sy, nx - sx
+end
+
+@inline function _copy_shifted_complex_full!(
+    out::AbstractMatrix{Tout},
+    field::AbstractMatrix{Tin},
+) where {Tout<:Complex,Tin<:Complex}
+    ny, nx = size(field)
+    size(out) == (ny, nx) || throw(ArgumentError("full-copy path requires matching output size"))
+    sy, sx, top_h, left_w = _prop_end_full_quadrants(ny, nx)
+
+    @views begin
+        copyto!(out[1:top_h, 1:left_w], field[(sy + 1):ny, (sx + 1):nx])
+        sx == 0 || copyto!(out[1:top_h, (left_w + 1):nx], field[(sy + 1):ny, 1:sx])
+        sy == 0 || copyto!(out[(top_h + 1):ny, 1:left_w], field[1:sy, (sx + 1):nx])
+        (sy == 0 || sx == 0) || copyto!(out[(top_h + 1):ny, (left_w + 1):nx], field[1:sy, 1:sx])
+    end
+
+    return out
+end
+
+@inline function _copy_shifted_intensity_full!(
+    out::AbstractMatrix{Tout},
+    field::AbstractMatrix{Tin},
+) where {Tout<:Number,Tin<:Complex}
+    ny, nx = size(field)
+    size(out) == (ny, nx) || throw(ArgumentError("full-copy path requires matching output size"))
+    sy, sx, top_h, left_w = _prop_end_full_quadrants(ny, nx)
+
+    @views begin
+        broadcast!(abs2, out[1:top_h, 1:left_w], field[(sy + 1):ny, (sx + 1):nx])
+        sx == 0 || broadcast!(abs2, out[1:top_h, (left_w + 1):nx], field[(sy + 1):ny, 1:sx])
+        sy == 0 || broadcast!(abs2, out[(top_h + 1):ny, 1:left_w], field[1:sy, (sx + 1):nx])
+        (sy == 0 || sx == 0) || broadcast!(abs2, out[(top_h + 1):ny, (left_w + 1):nx], field[1:sy, 1:sx])
+    end
+
+    return out
+end
+
+@inline _prop_end_full_copy_enabled(::Type{A}, ::Type{B}) where {A<:AbstractArray,B<:AbstractArray} = same_backend_style(A, B)
+
 @inline function _copy_shifted_complex!(
     out::StridedMatrix{Tout},
     field::StridedMatrix{Tin},
@@ -158,13 +202,16 @@ function prop_end!(
     ny, nx = size(wf.field)
     oy, ox, r0, c0 = _prop_end_layout(ny, nx, extract)
     size(out) == (oy, ox) || throw(ArgumentError("output size must be ($(oy), $(ox))"))
+    fullcopy = extract === nothing && _prop_end_full_copy_enabled(typeof(out), typeof(wf.field))
 
     if noabs
         eltype(out) <: Complex || throw(ArgumentError("output eltype must be complex when noabs=true"))
+        fullcopy && return _copy_shifted_complex_full!(out, wf.field)
         return _prop_end_copy_noabs!(out, wf.field, r0, c0)
     end
 
     eltype(out) <: Number || throw(ArgumentError("output eltype must be numeric"))
+    fullcopy && return _copy_shifted_intensity_full!(out, wf.field)
     return _prop_end_copy_intensity!(out, wf.field, r0, c0)
 end
 

@@ -106,10 +106,16 @@ end
 abstract type ShiftedCircleApplyExecStyle end
 struct ShiftedCircleMaskExecStyle <: ShiftedCircleApplyExecStyle end
 struct ShiftedCircleKAExecStyle <: ShiftedCircleApplyExecStyle end
+abstract type CircleCenterExecStyle end
+struct CenteredCircleStyle <: CircleCenterExecStyle end
+struct ShiftedCircleStyle <: CircleCenterExecStyle end
 
 @inline shifted_circle_apply_exec_style(::GeometryKAStyle) = ShiftedCircleKAExecStyle()
 @inline shifted_circle_apply_exec_style(::GeometryKernelStyle) = ShiftedCircleMaskExecStyle()
 @inline shifted_circle_apply_exec_style(::Type{A}) where {A<:AbstractArray} = shifted_circle_apply_exec_style(geometry_kernel_style(A))
+@inline circle_center_exec_style(::Val{true}) = CenteredCircleStyle()
+@inline circle_center_exec_style(::Val{false}) = ShiftedCircleStyle()
+@inline circle_center_exec_style(geom::CircleGeometry) = circle_center_exec_style(Val(iszero(geom.xoffset_pix) && iszero(geom.yoffset_pix)))
 
 @inline ellipse_options(opts::CircleOptions{T}) where {T<:AbstractFloat} = EllipseOptions{T}(opts.norm, opts.dark, zero(T))
 
@@ -135,6 +141,35 @@ end
     invert::Bool,
 ) where {T<:AbstractFloat}
     geom = circle_geometry(T, wf, radius, xc, yc, opts)
+    return _apply_shifted_circle!(circle_center_exec_style(geom), wf, geom, opts.dark, invert)
+end
+
+@inline function _apply_shifted_circle!(
+    ::CenteredCircleStyle,
+    wf::WaveFront,
+    geom::CircleGeometry,
+    dark::Bool,
+    invert::Bool,
+)
+    ka_apply_centered_circle!(
+        wf.field,
+        geom.threshold_hi2,
+        geom.threshold_lo2,
+        geom.limit2;
+        dark=dark,
+        invert=invert,
+        nsub=antialias_subsampling(),
+    )
+    return wf
+end
+
+@inline function _apply_shifted_circle!(
+    ::ShiftedCircleStyle,
+    wf::WaveFront,
+    geom::CircleGeometry,
+    dark::Bool,
+    invert::Bool,
+)
     ka_apply_shifted_circle!(
         wf.field,
         geom.xoffset_pix,
@@ -143,7 +178,7 @@ end
         geom.threshold_hi2,
         geom.threshold_lo2,
         geom.limit2;
-        dark=opts.dark,
+        dark=dark,
         invert=invert,
         nsub=antialias_subsampling(),
     )
