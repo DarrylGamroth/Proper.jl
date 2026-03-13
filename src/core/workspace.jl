@@ -286,7 +286,7 @@ ProperWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} = ProperWorkspace(Ma
 function ProperWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:AbstractFloat}
     interp = InterpWorkspace(A, T)
     mask = MaskWorkspace(A, T)
-    fft = FFTWorkspace(T)
+    fft = FFTWorkspace(A, T)
     return ProperWorkspace{T,typeof(interp),typeof(mask),typeof(fft)}(interp, mask, fft)
 end
 
