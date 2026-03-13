@@ -47,6 +47,7 @@ run_cuda_benchmarks() {
   if probe_output=$(julia --project=. bench/julia/cuda/probe.jl 2>&1); then
     run_step "Julia CUDA steady-state workload" julia --project=. bench/julia/cuda/steady_state.jl
     run_step "Julia CUDA supported kernels" julia --project=. bench/julia/cuda/supported_kernels.jl
+    run_step "Julia CUDA precision split" julia --project=. bench/julia/cuda/precision_split.jl
   else
     echo "[bench] CUDA benchmarks skipped"
     CUDA_SKIP_REASON="${probe_output}" julia --project=. bench/julia/cuda/write_skipped_reports.jl >/dev/null

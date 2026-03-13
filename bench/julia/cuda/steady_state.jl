@@ -15,7 +15,7 @@ CUDA.allowscalar(false)
 
 function workload()
     wf = cuda_wavefront_begin(2.4, 0.55e-6, GRID_N; beam_diam_fraction=0.5)
-    ctx = RunContext(typeof(wf.field))
+    ctx = RunContext(wf)
     prop_circular_aperture(wf, 0.6)
     prop_lens(wf, 20.0)
     prop_propagate(wf, 20.0, ctx)

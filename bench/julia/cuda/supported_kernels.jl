@@ -17,10 +17,10 @@ function bench_cuda_supported_kernels()
     samples = 20
 
     wf_q = cuda_wavefront_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
-    ctx_q = RunContext(typeof(wf_q.field))
+    ctx_q = RunContext(wf_q)
 
     wf_p = cuda_wavefront_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
-    ctx_p = RunContext(typeof(wf_p.field))
+    ctx_p = RunContext(wf_p)
 
     wf_a = cuda_wavefront_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
     out_end = cuda_zeros(Float64, nprop, nprop)
@@ -34,7 +34,7 @@ function bench_cuda_supported_kernels()
 
     wf_map = cuda_wavefront_begin(1.0, 0.55e-6, nmap)
     dmap = cuda_rand(Float32, nmap, nmap)
-    ctx_map = RunContext(typeof(dmap))
+    ctx_map = RunContext(wf_map)
     res_out = cuda_zeros(Float64, nmap, nmap)
     res_opts = Proper.ResampleMapOptions(wf_map, wf_map.sampling_m, nmap / 2, nmap / 2)
     rect_out = cuda_zeros(Float64, nmap, nmap)

@@ -168,6 +168,7 @@ ka_geom = loadjson(joinpath(root, "ka_geometry_sampling_kernels.json"))
 examples = loadjson(joinpath(root, "example_workflows.json"))
 cuda_jl = loadjson(joinpath(root, "julia_cuda_steady_state.json"))
 cuda_kernels = loadjson(joinpath(root, "cuda_supported_kernels.json"))
+cuda_precision = loadjson(joinpath(root, "cuda_precision_split.json"))
 
 summary_md_path = joinpath(root, "benchmark_summary.md")
 generated_paths = String[]
@@ -267,6 +268,62 @@ if cpu_kernel_data !== nothing
     append_ascii_section!(term, "Supported Kernels: CPU vs CUDA", kernel_headers, kernel_rows; aligns=[:l, :r, :r, :r, :r, :r, :r, :r])
     append_markdown_section!(md, "Supported Kernels: CPU vs CUDA", kernel_headers, kernel_rows)
     push!(generated_paths, write_csv(joinpath(root, "supported_kernels_comparison.csv"), kernel_headers, kernel_rows))
+end
+
+cuda_precision_available = maybe_bool(getpath(cuda_precision, "meta", "available"))
+if cuda_precision_available
+    precision_headers = ["Metric", "FP64", "FP32", "FP64/FP32", "FP64 allocs", "FP32 allocs", "FP64 bytes", "FP32 bytes"]
+    precision_rows = Vector{Vector{String}}()
+
+    workload_fp64 = getpath(cuda_precision, "workloads", "steady_state_fp64")
+    workload_fp32 = getpath(cuda_precision, "workloads", "steady_state_fp32")
+    if workload_fp64 !== nothing || workload_fp32 !== nothing
+        fp64_ns = maybe_float(getpath(workload_fp64, "median_ns"))
+        fp32_ns = maybe_float(getpath(workload_fp32, "median_ns"))
+        push!(precision_rows, [
+            "steady_state_workload",
+            fmt_ns(fp64_ns),
+            fmt_ns(fp32_ns),
+            fp64_ns === nothing || fp32_ns === nothing ? "-" : fmt_ratio(fp64_ns / fp32_ns),
+            fmt_int(getpath(workload_fp64, "median_allocs")),
+            fmt_int(getpath(workload_fp32, "median_allocs")),
+            fmt_bytes(getpath(workload_fp64, "median_bytes")),
+            fmt_bytes(getpath(workload_fp32, "median_bytes")),
+        ])
+    end
+
+    for name in ordered_names(
+        ["prop_qphase", "prop_ptp", "prop_circular_aperture", "prop_end_mutating"],
+        getpath(cuda_precision, "kernels"),
+    )
+        payload = getpath(cuda_precision, "kernels", name)
+        fp64 = getpath(payload, "fp64")
+        fp32 = getpath(payload, "fp32")
+        local fp64_ns = maybe_float(getpath(fp64, "median_ns"))
+        local fp32_ns = maybe_float(getpath(fp32, "median_ns"))
+        push!(precision_rows, [
+            name,
+            fmt_ns(fp64_ns),
+            fmt_ns(fp32_ns),
+            fp64_ns === nothing || fp32_ns === nothing ? "-" : fmt_ratio(fp64_ns / fp32_ns),
+            fmt_int(getpath(fp64, "median_allocs")),
+            fmt_int(getpath(fp32, "median_allocs")),
+            fmt_bytes(getpath(fp64, "median_bytes")),
+            fmt_bytes(getpath(fp32, "median_bytes")),
+        ])
+    end
+
+    precision_notes = ["Ratio column is FP64/FP32, so values greater than 1.00x mean the FP32 row is faster."]
+    append_ascii_section!(term, "CUDA Precision Split", precision_headers, precision_rows; aligns=[:l, :r, :r, :r, :r, :r, :r, :r], notes=precision_notes)
+    append_markdown_section!(md, "CUDA Precision Split", precision_headers, precision_rows; notes=precision_notes)
+    push!(generated_paths, write_csv(joinpath(root, "cuda_precision_split.csv"), precision_headers, precision_rows))
+elseif cuda_precision !== nothing
+    reason = replace(String(getpath(cuda_precision, "reason")), '\n' => ' ')
+    precision_headers = ["Metric", "Status"]
+    precision_rows = [["cuda_precision_split", "skipped"]]
+    precision_notes = ["Reason: $reason"]
+    append_ascii_section!(term, "CUDA Precision Split", precision_headers, precision_rows; aligns=[:l, :l], notes=precision_notes)
+    append_markdown_section!(md, "CUDA Precision Split", precision_headers, precision_rows; notes=precision_notes)
 end
 
 if phase2 !== nothing

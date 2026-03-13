@@ -46,13 +46,18 @@ end
 @inline cuda_zeros(::Type{T}, dims...) where {T} = CUDA.zeros(T, dims...)
 @inline cuda_rand(::Type{T}, dims...) where {T} = CUDA.rand(T, dims...)
 
-function cuda_wavefront_begin(diam::Real, wavelength_m::Real, gridsize::Integer; beam_diam_fraction::Real=0.5)
+function cuda_wavefront_begin(::Type{T}, diam::Real, wavelength_m::Real, gridsize::Integer; beam_diam_fraction::Real=0.5) where {T<:AbstractFloat}
     n = Int(gridsize)
     n > 0 || throw(ArgumentError("gridsize must be positive"))
-    λ = float(wavelength_m)
-    d = float(diam)
-    ndiam = n * float(beam_diam_fraction)
+    λ = T(wavelength_m)
+    d = T(diam)
+    ndiam = T(n) * T(beam_diam_fraction)
     sampling = d / ndiam
     field = CUDA.fill(complex(one(λ), zero(λ)), n, n)
     return WaveFront(field, λ, sampling, zero(λ), d)
+end
+
+function cuda_wavefront_begin(diam::Real, wavelength_m::Real, gridsize::Integer; beam_diam_fraction::Real=0.5)
+    T = float(typeof(wavelength_m))
+    return cuda_wavefront_begin(T, diam, wavelength_m, gridsize; beam_diam_fraction=beam_diam_fraction)
 end
