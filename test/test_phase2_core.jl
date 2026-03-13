@@ -40,6 +40,28 @@ end
     stack, samplings = prop_run_multi(dummy, 0.55, 16; PASSVALUE=passvals)
     @test size(stack) == (16, 16, 3)
     @test length(samplings) == 3
+
+    let ctx = RunContext(Matrix{Float32})
+        function dummy_scoped(λm, n; kwargs...)
+            wf = prop_begin(1.0, λm, n)
+            @test eltype(wf.field) == ComplexF32
+            @test wf.workspace === ctx.workspace
+            return wf
+        end
+
+        out_ctx, s_ctx = prop_run(dummy_scoped, 0.55f0, 16; context=ctx)
+        @test size(out_ctx) == (16, 16)
+        @test eltype(out_ctx) == Float32
+        @test s_ctx > 0
+
+        wf_begin = prop_begin(1.0, 500f-9, 16; context=ctx)
+        @test eltype(wf_begin.field) == ComplexF32
+        @test wf_begin.workspace === ctx.workspace
+
+        wf_wavefront = prop_wavefront(16, 500f-9, 1.0f0; sampling_m=1f-3, workspace=ctx.workspace)
+        @test eltype(wf_wavefront.field) == ComplexF32
+        @test wf_wavefront.workspace === ctx.workspace
+    end
 end
 
 @testset "Phase 3 FITS/map basics" begin

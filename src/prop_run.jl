@@ -1,5 +1,12 @@
 """Run a prescription function by function object or global name."""
-function prop_run(routine_name, lambda0_microns::Real, gridsize::Integer; PASSVALUE=nothing, kwargs...)
+function prop_run(
+    routine_name,
+    lambda0_microns::Real,
+    gridsize::Integer;
+    PASSVALUE=nothing,
+    context::Union{Nothing,RunContext}=nothing,
+    kwargs...,
+)
     λm = float(lambda0_microns) * 1e-6
     fn = if routine_name isa Function
         routine_name
@@ -11,16 +18,18 @@ function prop_run(routine_name, lambda0_microns::Real, gridsize::Integer; PASSVA
         throw(ArgumentError("routine_name must be Function, Symbol, or String"))
     end
 
-    result = if PASSVALUE === nothing
-        fn(λm, gridsize; kwargs...)
-    else
-        try
-            fn(λm, gridsize, PASSVALUE; kwargs...)
-        catch err
-            if err isa MethodError
-                fn(λm, gridsize; PASSVALUE=PASSVALUE, kwargs...)
-            else
-                rethrow(err)
+    result = with_run_context(context) do
+        if PASSVALUE === nothing
+            fn(λm, gridsize; kwargs...)
+        else
+            try
+                fn(λm, gridsize, PASSVALUE; kwargs...)
+            catch err
+                if err isa MethodError
+                    fn(λm, gridsize; PASSVALUE=PASSVALUE, kwargs...)
+                else
+                    rethrow(err)
+                end
             end
         end
     end
