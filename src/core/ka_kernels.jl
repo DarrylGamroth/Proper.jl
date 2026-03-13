@@ -149,7 +149,7 @@ end
 
 @kernel function _ka_apply_shifted_mask_kernel!(
     field,
-    mask,
+    @Const(mask),
     sy::Int,
     sx::Int,
     ny::Int,
@@ -198,7 +198,12 @@ end
     j = I[2]
 
     if i <= ny && j <= nx
-        T = typeof(xcenter_pix)
+        @uniform begin
+            T = typeof(xcenter_pix)
+            inv_nsub2 = inv(T(nsub * nsub))
+            outside_factor = xor(dark, invert) ? one(T) : zero(T)
+            inside_factor = xor(dark, invert) ? zero(T) : one(T)
+        end
         is = i + sy
         js = j + sx
         is = ifelse(is > ny, is - ny, is)
@@ -206,8 +211,6 @@ end
         is0 = is - 1
         js0 = js - 1
 
-        outside_factor = xor(dark, invert) ? one(T) : zero(T)
-        inside_factor = xor(dark, invert) ? zero(T) : one(T)
         factor = outside_factor
 
         if !(js0 < minx_pix || js0 > maxx_pix || is0 < miny_pix || is0 > maxy_pix)
@@ -231,7 +234,7 @@ end
                         cnt += ((xsv * xsv + ysv * ysv) <= limit)
                     end
                 end
-                pixval = T(cnt) / T(nsub * nsub)
+                pixval = T(cnt) * inv_nsub2
                 maskval = dark ? (one(T) - pixval) : pixval
                 factor = invert ? (one(T) - maskval) : maskval
             end
@@ -246,7 +249,7 @@ end
 
 @kernel function _ka_copy_shifted_complex_kernel!(
     out,
-    field,
+    @Const(field),
     r0::Int,
     c0::Int,
     sy::Int,
@@ -271,7 +274,7 @@ end
 
 @kernel function _ka_copy_shifted_intensity_kernel!(
     out,
-    field,
+    @Const(field),
     r0::Int,
     c0::Int,
     sy::Int,
@@ -349,9 +352,9 @@ end
 
 @kernel function _ka_cubic_conv_grid_kernel!(
     out,
-    a,
-    xval,
-    yval,
+    @Const(a),
+    @Const(xval),
+    @Const(yval),
     oy::Int,
     ox::Int,
 )
@@ -366,7 +369,7 @@ end
 
 @kernel function _ka_rotate_linear_kernel!(
     out,
-    old_image,
+    @Const(old_image),
     c,
     s,
     cx,
@@ -391,7 +394,7 @@ end
 
 @kernel function _ka_rotate_cubic_kernel!(
     out,
-    old_image,
+    @Const(old_image),
     c,
     s,
     cx,
@@ -433,7 +436,10 @@ end
     bj = I[2]
 
     if bi <= boxny && bj <= boxnx
-        T = typeof(xcp)
+        @uniform begin
+            T = typeof(xcp)
+            inv_nsub2 = inv(T(nsub * nsub))
+        end
         i = ystart + bi - 1
         j = xstart + bj - 1
         xpix = j - 1
@@ -452,7 +458,7 @@ end
             end
         end
 
-        image[i, j] = T(cnt) / T(nsub * nsub)
+        image[i, j] = T(cnt) * inv_nsub2
     end
 end
 
@@ -477,7 +483,10 @@ end
     j = I[2]
 
     if i <= ny && j <= nx
-        T = typeof(xcenter_pix)
+        @uniform begin
+            T = typeof(xcenter_pix)
+            inv_nsub2 = inv(T(nsub * nsub))
+        end
         x0 = T(j - 1) - xcenter_pix
         y0 = T(i - 1) - ycenter_pix
 
@@ -500,7 +509,7 @@ end
                     cnt += ((xsv * xsv + ysv * ysv) <= limit)
                 end
             end
-            T(cnt) / T(nsub * nsub)
+            T(cnt) * inv_nsub2
         end
 
         image[i, j] = dark ? (one(T) - pixval) : pixval
@@ -509,8 +518,8 @@ end
 
 @kernel function _ka_irregular_polygon_mask_kernel!(
     image,
-    xv,
-    yv,
+    @Const(xv),
+    @Const(yv),
     cx::Int,
     cy::Int,
     dx,
@@ -524,7 +533,10 @@ end
     j = I[2]
 
     if i <= ny && j <= nx
-        T = typeof(dx)
+        @uniform begin
+            T = typeof(dx)
+            inv_nsub2 = inv(T(nsub * nsub))
+        end
         x0 = T(j - 1 - cx) * dx
         y0 = T(i - 1 - cy) * dx
         cnt = 0
@@ -537,7 +549,7 @@ end
             end
         end
 
-        pixval = T(cnt) / T(nsub * nsub)
+        pixval = T(cnt) * inv_nsub2
         image[i, j] = dark ? (one(T) - pixval) : pixval
     end
 end
@@ -608,8 +620,8 @@ end
 
 @kernel function _ka_szoom_apply_kernel!(
     out,
-    image_in,
-    table,
+    @Const(image_in),
+    @Const(table),
     mag,
     n_in::Int,
     n_out::Int,
@@ -670,7 +682,7 @@ end
 
 @kernel function _ka_pixellate_kernel!(
     out,
-    img,
+    @Const(img),
     f::Int,
     scale,
     ny2::Int,
