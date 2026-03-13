@@ -29,6 +29,17 @@ Interpreter override:
 EOF
 }
 
+run_cuda_benchmarks() {
+  local probe_output=""
+
+  if probe_output=$(julia --project=. bench/julia/cuda/probe.jl 2>&1); then
+    julia --project=. bench/julia/cuda/steady_state.jl
+    julia --project=. bench/julia/cuda/supported_kernels.jl
+  else
+    CUDA_SKIP_REASON="${probe_output}" julia --project=. bench/julia/cuda/write_skipped_reports.jl
+  fi
+}
+
 PYTHON_BIN="${PYTHON_BIN:-}"
 if [[ -z "${PYTHON_BIN}" ]]; then
   if [[ -x ".venv-parity/bin/python" ]]; then
@@ -56,7 +67,6 @@ julia --project=. bench/julia/steady_state/refactor_kernels.jl
 julia --project=. bench/julia/steady_state/ka_interp_kernels.jl
 julia --project=. bench/julia/steady_state/ka_geometry_sampling_kernels.jl
 julia --project=. bench/julia/steady_state/example_workflows.jl
-julia --project=. bench/julia/cuda/steady_state.jl
-julia --project=. bench/julia/cuda/supported_kernels.jl
+run_cuda_benchmarks
 julia --project=. bench/julia/cold_start/run.jl
 julia --project=. bench/reports/summarize.jl
