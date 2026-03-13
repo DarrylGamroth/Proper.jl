@@ -167,6 +167,8 @@ ka_interp = loadjson(joinpath(root, "ka_interp_kernels.json"))
 ka_geom = loadjson(joinpath(root, "ka_geometry_sampling_kernels.json"))
 examples = loadjson(joinpath(root, "example_workflows.json"))
 cuda_jl = loadjson(joinpath(root, "julia_cuda_steady_state.json"))
+cuda_jl_fp64 = loadjson(joinpath(root, "julia_cuda_steady_state_fp64.json"))
+cuda_jl_fp32 = loadjson(joinpath(root, "julia_cuda_steady_state_fp32.json"))
 cuda_kernels = loadjson(joinpath(root, "cuda_supported_kernels.json"))
 cuda_precision = loadjson(joinpath(root, "cuda_precision_split.json"))
 
@@ -277,8 +279,8 @@ if cuda_precision_available
     precision_headers = ["Metric", "FP64", "FP32", "FP64/FP32", "FP64 allocs", "FP32 allocs", "FP64 bytes", "FP32 bytes"]
     precision_rows = Vector{Vector{String}}()
 
-    workload_fp64 = getpath(cuda_precision, "workloads", "steady_state_fp64")
-    workload_fp32 = getpath(cuda_precision, "workloads", "steady_state_fp32")
+    workload_fp64 = maybe_bool(getpath(cuda_jl_fp64, "meta", "available")) ? getpath(cuda_jl_fp64, "stats") : nothing
+    workload_fp32 = maybe_bool(getpath(cuda_jl_fp32, "meta", "available")) ? getpath(cuda_jl_fp32, "stats") : nothing
     if workload_fp64 !== nothing || workload_fp32 !== nothing
         fp64_ns = maybe_float(getpath(workload_fp64, "median_ns"))
         fp32_ns = maybe_float(getpath(workload_fp32, "median_ns"))

@@ -46,6 +46,8 @@ run_cuda_benchmarks() {
 
   if probe_output=$(julia --project=. bench/julia/cuda/probe.jl 2>&1); then
     run_step "Julia CUDA steady-state workload" julia --project=. bench/julia/cuda/steady_state.jl
+    run_step "Julia CUDA steady-state FP64" julia --project=. bench/julia/cuda/steady_state_fp64.jl
+    run_step "Julia CUDA steady-state FP32" julia --project=. bench/julia/cuda/steady_state_fp32.jl
     run_step "Julia CUDA supported kernels" julia --project=. bench/julia/cuda/supported_kernels.jl
     run_step "Julia CUDA precision split" julia --project=. bench/julia/cuda/precision_split.jl
   else

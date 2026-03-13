@@ -14,17 +14,6 @@ const N_SAMPLES = 20
 
 CUDA.allowscalar(false)
 
-function steady_state_workload(::Type{T}) where {T<:AbstractFloat}
-    wf = cuda_wavefront_begin(T, 2.4, 0.55e-6, GRID_N; beam_diam_fraction=T(0.5))
-    ctx = RunContext(wf)
-    prop_circular_aperture(wf, T(0.6))
-    prop_lens(wf, T(20.0))
-    prop_propagate(wf, T(20.0), ctx)
-    prop_end(wf)
-    cuda_sync()
-    return nothing
-end
-
 function benchmark_precision_split()
     wf_q64 = cuda_wavefront_begin(Float64, 2.4, 0.55e-6, GRID_N; beam_diam_fraction=0.5)
     ctx_q64 = RunContext(wf_q64)
@@ -73,8 +62,6 @@ function benchmark_precision_split()
     cuda_sync()
 
     # Warmup: exclude compilation and initial CUDA context setup.
-    steady_state_workload(Float64)
-    steady_state_workload(Float32)
     prop_qphase(wf_q64, 10.0, ctx_q64)
     prop_qphase(wf_q32, 10.0f0, ctx_q32)
     wf_p64.reference_surface = Proper.PLANAR
@@ -90,16 +77,6 @@ function benchmark_precision_split()
     prop_end!(out_end64, wf_e64)
     prop_end!(out_end32, wf_e32)
     cuda_sync()
-
-    workload64 = run(@benchmarkable begin
-        steady_state_workload(Float64)
-        cuda_sync()
-    end evals=1 samples=N_SAMPLES)
-
-    workload32 = run(@benchmarkable begin
-        steady_state_workload(Float32)
-        cuda_sync()
-    end evals=1 samples=N_SAMPLES)
 
     q64 = run(@benchmarkable begin
         prop_qphase($wf_q64, 10.0, $ctx_q64)
@@ -164,10 +141,6 @@ function benchmark_precision_split()
     report = Dict(
         "meta" => merge(cuda_report_meta(RUN_TAG; device=cuda_device_label()), Dict("grid_n" => GRID_N)),
         "policy" => "CUDA precision-split timing for steady-state propagation-heavy workload and selected kernels with per-sample wavefront state restore; TTFx excluded; per-sample synchronization included",
-        "workloads" => Dict(
-            "steady_state_fp64" => trial_stats(workload64),
-            "steady_state_fp32" => trial_stats(workload32),
-        ),
         "kernels" => Dict(
             "prop_qphase" => Dict("fp64" => trial_stats(q64), "fp32" => trial_stats(q32)),
             "prop_ptp" => Dict("fp64" => trial_stats(p64), "fp32" => trial_stats(p32)),
