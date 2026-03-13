@@ -13,6 +13,8 @@ phase2 = loadjson(joinpath(root, "phase2_kernels.json"))
 refactor = loadjson(joinpath(root, "refactor_kernels.json"))
 ka_interp = loadjson(joinpath(root, "ka_interp_kernels.json"))
 examples = loadjson(joinpath(root, "example_workflows.json"))
+cuda_jl = loadjson(joinpath(root, "julia_cuda_steady_state.json"))
+cuda_kernels = loadjson(joinpath(root, "cuda_supported_kernels.json"))
 
 if py !== nothing && jl !== nothing
     py_med = Float64(py["stats"]["median_ns"])
@@ -97,5 +99,28 @@ if examples !== nothing
     println("\n# Example Workflow Matrix")
     for (name, stats) in pairs(examples["examples"])
         println(name, " median ns: ", stats["median_ns"], " median bytes: ", stats["median_bytes"])
+    end
+end
+
+if cuda_jl !== nothing
+    println("\n# CUDA Steady-State")
+    if Bool(cuda_jl["meta"]["available"])
+        println("CUDA Julia median ns: ", cuda_jl["stats"]["median_ns"])
+        if haskey(cuda_jl["meta"], "device")
+            println("CUDA device: ", cuda_jl["meta"]["device"])
+        end
+    else
+        println("Skipped: ", cuda_jl["reason"])
+    end
+end
+
+if cuda_kernels !== nothing
+    println("\n# CUDA Supported Kernels")
+    if Bool(cuda_kernels["meta"]["available"])
+        for (name, stats) in pairs(cuda_kernels["kernels"])
+            println(name, " median ns: ", stats["median_ns"], " median bytes: ", stats["median_bytes"])
+        end
+    else
+        println("Skipped: ", cuda_kernels["reason"])
     end
 end

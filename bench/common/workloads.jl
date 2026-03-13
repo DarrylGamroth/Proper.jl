@@ -6,7 +6,7 @@ function workload_matrix()
     return (
         grids=(256, 512, 1024),
         modes=(:python334, :corrected),
-        backends=(:cpu,),
+        backends=(:cpu, :cuda),
     )
 end
 

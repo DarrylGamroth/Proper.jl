@@ -23,6 +23,7 @@
 - [x] R4: WaveFront state typing and dispatch simplification (state enums + typed transition selectors for propagation/lens paths; strict typed state transitions).
 - [x] R5: Expanded inference/allocation gates and benchmark matrix updates (new R5 gate suite; benchmark matrix expanded for phase-2 kernels, refactor kernel deltas, and end-to-end example workflows; steady-state vs TTFx separation retained).
 - [x] GPU extension scaffold: optional `CUDA.jl` package extension with `CuArray` trait registration and public KA-routed interpolation/end-kernel entry points.
+- [x] Optional CUDA benchmark lane: separate availability-gated steady-state and supported-kernel reports integrated into `scripts/benchmark_all.sh`.
 
 ## Current Workstream (Phase 1)
 - [x] Core policy/trait/context types created.

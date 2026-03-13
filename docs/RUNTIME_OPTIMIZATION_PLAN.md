@@ -202,3 +202,11 @@ Status: Completed
     - `rotate_cubic`: loop/KA speed ratio `0.963` (KA slower)
     - `rotate_linear`: loop/KA speed ratio `0.921` (KA slower)
   - decision: keep KA interpolation routes implemented but disabled by default on CPU until CUDA or another backend justifies enabling them.
+- 2026-03-12: optional CUDA benchmark lane added.
+  - `scripts/benchmark_all.sh` now runs separate CUDA benchmark scripts after the CPU benchmark set.
+  - new reports:
+    - `bench/reports/julia_cuda_steady_state.json`
+    - `bench/reports/cuda_supported_kernels.json`
+  - behavior is availability-gated:
+    - CUDA available: record synchronized GPU timings for the currently supported GPU subset
+    - CUDA unavailable: emit explicit skipped reports instead of failing the benchmark driver
