@@ -42,6 +42,7 @@
 - [x] Host-side CUDA profiling fix: interpolation profiling now measures launch/wrapper overhead without per-iteration synchronization.
 - [x] `prop_end!` full-frame fast path: common no-extract output now uses direct quadrant copy/broadcast routing instead of the generic shifted-copy kernel.
 - [x] Centered-circle KA specialization: circular aperture now has a centered common-case CUDA/KA path in addition to the general shifted-circle path.
+- [x] CUDA steady-state report reconciliation: the benchmark driver now uses the standalone FP64 workload as the source of truth for the standard CUDA steady-state row, with summary warnings if manual runs generate divergent reports.
 
 ## Current Workstream (Phase 1)
 - [x] Core policy/trait/context types created.

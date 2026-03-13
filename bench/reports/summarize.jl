@@ -24,6 +24,14 @@ maybe_float(x) = x === nothing ? nothing : Float64(x)
 maybe_int(x) = x === nothing ? nothing : Int(round(Float64(x)))
 maybe_bool(x) = x === nothing ? false : Bool(x)
 
+function fractional_difference(a, b)
+    (a === nothing || b === nothing) && return nothing
+    fa = Float64(a)
+    fb = Float64(b)
+    denom = max(abs(fa), abs(fb), eps(Float64))
+    return abs(fa - fb) / denom
+end
+
 function fmt_ns(x)
     x === nothing && return "-"
     v = Float64(x)
@@ -219,6 +227,9 @@ if cuda_available
 end
 push!(steady_notes, "Note: steady-state rows exclude Julia TTFx by construction.")
 push!(steady_notes, "Ratio columns are reference/row, so values greater than 1.00x mean the row is faster.")
+if cuda_available
+    push!(steady_notes, "Standard CUDA steady-state row is sourced from the standalone FP64 workload report.")
+end
 if ttfx !== nothing
     push!(steady_notes, "Julia cold start / TTFx: $(fmt_ns(getpath(ttfx, "first_call_ns")))")
 end
@@ -228,6 +239,13 @@ elseif cuda_jl !== nothing
     reason = replace(String(getpath(cuda_jl, "reason")), '\n' => ' ')
     push!(steady_notes, "CUDA status: skipped")
     push!(steady_notes, "Reason: $reason")
+end
+if cuda_available && maybe_bool(getpath(cuda_jl_fp64, "meta", "available"))
+    fp64_med = maybe_float(getpath(cuda_jl_fp64, "stats", "median_ns"))
+    drift = fractional_difference(cuda_med, fp64_med)
+    if drift !== nothing && drift > 0.20
+        push!(steady_notes, @sprintf("Warning: standard CUDA steady-state and standalone FP64 workload differ by %.0f%%; check for stale or manually generated reports.", 100 * drift))
+    end
 end
 append_ascii_section!(term, "Steady-State Workload", steady_headers, steady_rows; aligns=[:l, :r, :r, :r, :r], notes=steady_notes)
 append_markdown_section!(md, "Steady-State Workload", steady_headers, steady_rows; notes=steady_notes)

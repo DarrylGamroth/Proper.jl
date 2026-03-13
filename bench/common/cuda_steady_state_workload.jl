@@ -15,7 +15,7 @@ function cuda_steady_state_workload(::Type{T}, grid_n::Integer=CUDA_STEADY_GRID_
     return nothing
 end
 
-function run_cuda_steady_state_report(::Type{T}, run_tag::String, report_path::AbstractString; grid_n::Integer=CUDA_STEADY_GRID_N, samples::Integer=CUDA_STEADY_SAMPLES) where {T<:AbstractFloat}
+function _run_cuda_steady_state_report(::Type{T}, run_tag::String, report_path::AbstractString; grid_n::Integer=CUDA_STEADY_GRID_N, samples::Integer=CUDA_STEADY_SAMPLES) where {T<:AbstractFloat}
     cuda_steady_state_workload(T, grid_n)
 
     trial = run(@benchmarkable begin
@@ -30,4 +30,33 @@ function run_cuda_steady_state_report(::Type{T}, run_tag::String, report_path::A
     )
 
     return write_benchmark_report(report_path, report)
+end
+
+function aliased_cuda_report(report, run_tag::AbstractString)
+    aliased = copy(report)
+    meta = copy(report["meta"])
+    meta["run_tag"] = run_tag
+    aliased["meta"] = meta
+    return aliased
+end
+
+function write_cuda_report_aliases(report, alias_specs::Pair{<:AbstractString,<:AbstractString}...)
+    for alias in alias_specs
+        path, run_tag = alias
+        write_benchmark_report(path, aliased_cuda_report(report, run_tag))
+    end
+    return report
+end
+
+function run_cuda_steady_state_report(
+    ::Type{T},
+    run_tag::String,
+    report_path::AbstractString;
+    grid_n::Integer=CUDA_STEADY_GRID_N,
+    samples::Integer=CUDA_STEADY_SAMPLES,
+    alias_specs=(),
+) where {T<:AbstractFloat}
+    report = _run_cuda_steady_state_report(T, run_tag, report_path; grid_n=grid_n, samples=samples)
+    isempty(alias_specs) || write_cuda_report_aliases(report, alias_specs...)
+    return report
 end

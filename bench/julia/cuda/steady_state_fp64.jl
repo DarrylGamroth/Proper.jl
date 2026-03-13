@@ -8,6 +8,13 @@ using .BenchMetadata
 
 const RUN_TAG = "steady_state_cuda_fp64"
 const REPORT_PATH = joinpath(@__DIR__, "..", "..", "reports", "julia_cuda_steady_state_fp64.json")
+const DEFAULT_REPORT_PATH = joinpath(@__DIR__, "..", "..", "reports", "julia_cuda_steady_state.json")
+const DEFAULT_RUN_TAG = "steady_state_cuda"
 
 CUDA.allowscalar(false)
-run_cuda_steady_state_report(Float64, RUN_TAG, REPORT_PATH)
+run_cuda_steady_state_report(
+    Float64,
+    RUN_TAG,
+    REPORT_PATH;
+    alias_specs=(DEFAULT_REPORT_PATH => DEFAULT_RUN_TAG,),
+)

@@ -160,3 +160,7 @@ Status: Gated
   - host-side CUDA interpolation profiling now synchronizes once after the profiled loop, so the host profile reflects launch/wrapper overhead instead of per-iteration blocking.
   - common full-frame `prop_end!` now uses direct quadrant copies / broadcasts for both complex and intensity outputs.
   - circular aperture now has a centered-circle KA specialization in addition to the general shifted-circle path.
+- 2026-03-13: CUDA steady-state benchmark reconciliation completed.
+  - the benchmark driver now uses the standalone FP64 workload run as the single source of truth for the compatibility-facing CUDA steady-state row.
+  - the standard CUDA steady-state report is now emitted as an alias of the FP64 workload report rather than a second independent run.
+  - summary reporting now warns if the standard CUDA steady-state and standalone FP64 reports diverge materially, which protects against stale manual runs.
