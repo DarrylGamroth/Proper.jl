@@ -127,6 +127,9 @@ Status: In Progress
 Completed in this slice:
 - circular/elliptical aperture and obscuration wrappers now route through a direct shifted-ellipse application path on KA backends, avoiding the old materialize-mask-then-apply sequence on CUDA-visible fields
 - shifted-ellipse KA application now uses bbox/outside fast paths so trivially outside pixels avoid full rotated-ellipse math
+- circular aperture/obscuration wrappers now use a circle-specific KA application path on KA backends instead of routing through the generic ellipse kernel
+- CUDA steady-state precision reporting now uses standalone FP64/FP32 workload scripts so propagation-heavy timing is no longer mixed inside the general precision-split script
+- CUDA interpolation profiling harness added at `bench/julia/cuda/profile_interpolation.jl`; tiling/shared-memory work is now explicitly gated on profile evidence
 
 Targets:
 - Avoid device-host-device round-trips in common aperture workflows.

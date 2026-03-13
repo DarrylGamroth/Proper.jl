@@ -26,7 +26,7 @@ Scope: resolve the remaining GPU/CPU design questions, implement the immediate r
 ## Immediate Work Items
 
 ### F1: Thread Context Through Remaining Hot Internal Callers
-Status: Planned
+Status: Completed
 - Add `RunContext`-aware `prop_lens` overloads.
 - Keep the existing public API unchanged.
 - Make `prop_lens` call `prop_qphase(..., ctx)` instead of constructing a fresh default path.
@@ -38,7 +38,7 @@ Acceptance:
 - Parity and regression tests stay green.
 
 ### F2: Reconcile CUDA Steady-State Benchmark Methodology
-Status: Planned
+Status: Completed
 - Split CUDA steady-state FP64 and FP32 workload timings into standalone scripts.
 - Keep the existing CUDA steady-state report as the default compatibility-facing row.
 - Remove mixed steady-state workload timing from the general precision-split script.
@@ -50,7 +50,7 @@ Acceptance:
 - Standard CUDA steady-state output remains available for CPU/Python/CUDA comparison.
 
 ### F3: Specialize Circular Aperture/Obscuration GPU Execution
-Status: Planned
+Status: Completed
 - Add a direct circle-specific shifted-field kernel for KA backends.
 - Keep the generic ellipse implementation as the fallback path.
 - Route `prop_circular_aperture` and `prop_circular_obscuration` through the circle path on KA-capable backends.
@@ -67,7 +67,7 @@ Acceptance:
 - CPU behavior remains unchanged unless the new direct path is explicitly chosen by dispatch.
 
 ### F4: Add Profiling Gate For Interpolation Tiling / Shared Memory Work
-Status: Planned
+Status: Completed
 - Add a dedicated CUDA interpolation profiling harness.
 - Cover:
   - `prop_cubic_conv_grid!`
@@ -136,3 +136,20 @@ Default answer: Somewhat, so the core should keep getting cleaner.
 ## Tracking
 - This plan supplements `docs/CUDA_OPTIMIZATION_PLAN.md` and `docs/RUNTIME_OPTIMIZATION_PLAN.md`.
 - Immediate work in this pass: F1-F4.
+
+## Execution Log
+- 2026-03-13: Plan created.
+- 2026-03-13: F1 completed.
+  - `prop_lens` now has context-aware overloads and threads `ctx` into `prop_qphase`.
+  - regression coverage added for context-routed lens behavior.
+- 2026-03-13: F2 completed.
+  - CUDA steady-state FP64/FP32 workload timing now comes from standalone scripts.
+  - the mixed precision-split script now benchmarks kernels only.
+  - skip handling and summary reporting now include the standalone workload reports.
+- 2026-03-13: F3 completed.
+  - circular aperture/obscuration now use a circle-specific KA execution path on KA backends.
+  - the generic ellipse implementation remains the fallback path.
+  - parity regression coverage added for the direct circle kernel.
+- 2026-03-13: F4 completed.
+  - added `bench/julia/cuda/profile_interpolation.jl` to gate any future tiling/shared-memory work on actual profile evidence.
+  - current candidate set remains interpolation-family kernels only.
