@@ -74,12 +74,13 @@ end
 
 function host_profile!(name::AbstractString, action)
     println("== Host Profile: ", name, " ==")
+    println("Measures Julia launch/wrapper overhead; GPU execution is synchronized once after the profiled loop.")
     Profile.clear()
     Profile.@profile begin
         for _ in 1:HOST_PROFILE_ITERS
             action()
-            cuda_sync()
         end
+        cuda_sync()
     end
     Profile.print()
     println()
