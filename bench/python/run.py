@@ -22,7 +22,9 @@ def load_proper():
     except Exception as exc:  # pragma: no cover - benchmark harness guardrail
         raise RuntimeError(
             "Unable to import Python PROPER baseline. "
-            "Use .venv-parity with numpy/scipy/astropy/matplotlib installed."
+            f"Interpreter: {sys.executable}. "
+            "Use .venv-parity with numpy/scipy/astropy/matplotlib installed "
+            "or run ./scripts/setup_parity_venv.sh."
         ) from exc
 
     proper.print_it = False
