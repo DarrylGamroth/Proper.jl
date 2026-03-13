@@ -235,10 +235,13 @@ using Test
             rect = prop_rectangle(wf, 5f-4, 4f-4)
             round = prop_rounded_rectangle(wf, 2f-4, 5f-4, 4f-4)
             out, sampling = prop_end(wf)
+            out_ref, sampling_ref = prop_end(wf_ref)
             @test size(rect) == (16, 16)
             @test size(round) == (16, 16)
             @test size(out) == (16, 16)
             @test sampling == wf.sampling_m
+            @test sampling == sampling_ref
+            @test isapprox(Array(out), out_ref; atol=1f-5, rtol=1f-5)
         else
             @test true
         end

@@ -402,6 +402,72 @@ end
     end
 end
 
+@kernel function _ka_fill_box_kernel!(
+    field,
+    value,
+    row0::Int,
+    col0::Int,
+    boxny::Int,
+    boxnx::Int,
+)
+    I = @index(Global, NTuple)
+    bi = I[1]
+    bj = I[2]
+
+    if bi <= boxny && bj <= boxnx
+        field[row0 + bi - 1, col0 + bj - 1] = value
+    end
+end
+
+@kernel function _ka_apply_centered_circle_aperture_box_kernel!(
+    field,
+    threshold_hi2,
+    threshold_lo2,
+    limit2,
+    nsub::Int,
+    row0::Int,
+    col0::Int,
+    boxny::Int,
+    boxnx::Int,
+    ny::Int,
+    nx::Int,
+)
+    I = @index(Global, NTuple)
+    bi = I[1]
+    bj = I[2]
+
+    if bi <= boxny && bj <= boxnx
+        @uniform begin
+            T = typeof(threshold_hi2)
+            inv_nsub2 = inv(T(nsub * nsub))
+        end
+        i = row0 + bi - 1
+        j = col0 + bj - 1
+        x0 = T(_ka_shifted_index_0based(j - 1, nx))
+        y0 = T(_ka_shifted_index_0based(i - 1, ny))
+        r2 = x0 * x0 + y0 * y0
+
+        if r2 > threshold_hi2
+            field[i, j] = zero(eltype(field))
+        elseif r2 > threshold_lo2
+            cnt = 0
+            for oy_i in 1:nsub
+                ys = y0 + _ka_subsample_offset(oy_i, nsub, one(T))
+                for ox_i in 1:nsub
+                    xs = x0 + _ka_subsample_offset(ox_i, nsub, one(T))
+                    cnt += ((xs * xs + ys * ys) <= limit2)
+                end
+            end
+            pixval = T(cnt) * inv_nsub2
+            if pixval == zero(T)
+                field[i, j] = zero(eltype(field))
+            elseif pixval != one(T)
+                field[i, j] *= pixval
+            end
+        end
+    end
+end
+
 @kernel function _ka_apply_qphase_kernel!(
     field,
     k,
@@ -933,6 +999,55 @@ end
         nx;
         ndrange=(ny, nx),
     )
+    return field
+end
+
+@inline function ka_fill_box!(
+    field::AbstractMatrix,
+    value,
+    row0::Int,
+    col0::Int,
+    boxny::Int,
+    boxnx::Int,
+)
+    boxny <= 0 && return field
+    boxnx <= 0 && return field
+    backend = AK.get_backend(field)
+    _ka_fill_box_kernel!(backend, (16, 16))(field, value, row0, col0, boxny, boxnx; ndrange=(boxny, boxnx))
+    return field
+end
+
+@inline function ka_apply_centered_circle_aperture!(
+    field::AbstractMatrix{<:Complex},
+    threshold_hi2,
+    threshold_lo2,
+    limit2;
+    nsub::Int=1,
+)
+    ny, nx = size(field)
+    box = min(min(ny, nx) ÷ 2, ceil(Int, sqrt(Float64(threshold_hi2))))
+    2 * box + 1 < min(ny, nx) || return ka_apply_centered_circle!(field, threshold_hi2, threshold_lo2, limit2; dark=false, invert=false, nsub=nsub)
+
+    corner_h = box + 1
+    corner_w = box + 1
+    mid_row0 = corner_h + 1
+    mid_col0 = corner_w + 1
+    mid_h = ny - 2 * corner_h
+    mid_w = nx - 2 * corner_w
+    bottom_row0 = ny - box
+    right_col0 = nx - box
+
+    ka_fill_box!(field, zero(eltype(field)), mid_row0, 1, mid_h, nx)
+    ka_fill_box!(field, zero(eltype(field)), 1, mid_col0, corner_h, mid_w)
+    ka_fill_box!(field, zero(eltype(field)), bottom_row0, mid_col0, corner_h, mid_w)
+
+    backend = AK.get_backend(field)
+    launcher = _ka_apply_centered_circle_aperture_box_kernel!(backend, (16, 16))
+
+    launcher(field, threshold_hi2, threshold_lo2, limit2, nsub, 1, 1, corner_h, corner_w, ny, nx; ndrange=(corner_h, corner_w))
+    launcher(field, threshold_hi2, threshold_lo2, limit2, nsub, 1, right_col0, corner_h, corner_w, ny, nx; ndrange=(corner_h, corner_w))
+    launcher(field, threshold_hi2, threshold_lo2, limit2, nsub, bottom_row0, 1, corner_h, corner_w, ny, nx; ndrange=(corner_h, corner_w))
+    launcher(field, threshold_hi2, threshold_lo2, limit2, nsub, bottom_row0, right_col0, corner_h, corner_w, ny, nx; ndrange=(corner_h, corner_w))
     return field
 end
 

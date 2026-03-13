@@ -201,3 +201,9 @@ Targets:
   - the benchmark driver now runs the standalone FP64 steady-state workload as the single source of truth for the standard CUDA steady-state report.
   - `bench/common/cuda_steady_state_workload.jl` now emits alias reports with adjusted `run_tag`, so the compatibility-facing `julia_cuda_steady_state.json` and the explicit FP64 report stay numerically aligned.
   - summary reporting now warns if the standard CUDA steady-state report and the standalone FP64 report drift materially, which protects against stale manual runs.
+- 2026-03-13: CUDA hot-path follow-up implemented.
+  - `prop_end!` full-frame output selection is now trait-routed by backend/layout so CUDA no longer uses the CPU-oriented quadrant view path.
+  - centered standard circular aperture on KA backends now uses a box-specialized aperture path instead of a full-frame centered-circle kernel.
+  - local validation:
+    - `julia --project=. test/runtests.jl`: pass
+    - `./scripts/benchmark_all.sh`: pass on non-CUDA machine, CUDA lane skipped cleanly

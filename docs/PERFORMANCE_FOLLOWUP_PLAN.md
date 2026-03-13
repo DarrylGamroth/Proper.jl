@@ -164,3 +164,7 @@ Status: Gated
   - the benchmark driver now uses the standalone FP64 workload run as the single source of truth for the compatibility-facing CUDA steady-state row.
   - the standard CUDA steady-state report is now emitted as an alias of the FP64 workload report rather than a second independent run.
   - summary reporting now warns if the standard CUDA steady-state and standalone FP64 reports diverge materially, which protects against stale manual runs.
+- 2026-03-13: GPU follow-up slice implemented after benchmark reconciliation.
+  - `prop_end!` full-frame dispatch is now backend-specific: CPU keeps the quadrant copy/broadcast fast path, while CUDA-compatible backends route the same case through the single-kernel shifted-copy path instead of four view-based operations.
+  - centered standard circular aperture on KA backends now uses a dedicated aperture path: zero the obvious outside region cheaply, then run circle math only on the four corner boxes that can contain the centered aperture in FFT-order storage.
+  - regression coverage now checks the centered aperture helper directly and compares CUDA `prop_end` output against the CPU reference path in the smoke test.
