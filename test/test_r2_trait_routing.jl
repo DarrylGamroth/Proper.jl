@@ -159,6 +159,16 @@ using Test
 
         @test wf1.z_m == wf2.z_m
         @test isapprox(wf1.field, wf2.field; atol=0, rtol=0)
+
+        lens1 = prop_begin(1.0, 500e-9, 32)
+        lens2 = prop_begin(1.0, 500e-9, 32)
+        lensctx = RunContext(lens2)
+        prop_lens(lens1, 0.35)
+        prop_lens(lens2, 0.35, lensctx)
+        @test lens1.reference_surface === lens2.reference_surface
+        @test lens1.beam_type_old === lens2.beam_type_old
+        @test lens1.propagator_type === lens2.propagator_type
+        @test isapprox(lens1.field, lens2.field; atol=0, rtol=0)
     end
 
     @testset "Optional CUDA smoke (no scalar indexing)" begin

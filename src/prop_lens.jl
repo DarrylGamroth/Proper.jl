@@ -21,7 +21,7 @@ end
     return _lens_phase(Val(pt), lens_fl, r_beam_old, r_beam)
 end
 
-@inline function _prop_lens!(wf::WaveFront, lens_fl::Real, opts::LensOptions)
+@inline function _prop_lens!(wf::WaveFront, lens_fl::Real, opts::LensOptions, ctx::RunContext)
     _ = opts
     iszero(lens_fl) && throw(ArgumentError("lens_fl must be non-zero"))
 
@@ -65,7 +65,7 @@ end
 
     if !iszero(lens_phase)
         # lens phase term is equivalent to quadratic phase with curvature c = -1/lens_phase.
-        prop_qphase(wf, -inv(lens_phase))
+        prop_qphase(wf, -inv(lens_phase), ctx)
     end
 
     wf.reference_surface = beam_type_new === INSIDE ? PLANAR : SPHERICAL
@@ -77,5 +77,15 @@ end
 
 """Alter the current wavefront as a perfect thin lens would."""
 function prop_lens(wf::WaveFront, lens_fl::Real, surface_name::AbstractString="")
-    return _prop_lens!(wf, lens_fl, LensOptions(surface_name))
+    return _prop_lens!(wf, lens_fl, LensOptions(surface_name), RunContext(wf))
+end
+
+"""Alter the current wavefront as a perfect thin lens would using the supplied run context."""
+function prop_lens(wf::WaveFront, lens_fl::Real, ctx::RunContext, surface_name::AbstractString="")
+    return _prop_lens!(wf, lens_fl, LensOptions(surface_name), ctx)
+end
+
+"""Alter the current wavefront as a perfect thin lens would using the supplied run context."""
+function prop_lens(wf::WaveFront, lens_fl::Real, surface_name::AbstractString, ctx::RunContext)
+    return _prop_lens!(wf, lens_fl, LensOptions(surface_name), ctx)
 end
