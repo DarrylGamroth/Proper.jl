@@ -1,4 +1,5 @@
 Manifest.toml
+__pycache__/
 # Generated benchmark artifacts
 bench/reports/*.json
 
