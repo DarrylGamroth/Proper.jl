@@ -195,6 +195,8 @@ using Test
 
             wf = Proper.WaveFront(CUDA.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
             prop_qphase(wf, 0.25f0, ctx)
+            wf.reference_surface = Proper.PLANAR
+            prop_ptp(wf, 0.01f0, ctx)
             prop_circular_aperture(wf, 2.5f-4)
             rect = prop_rectangle(wf, 5f-4, 4f-4)
             round = prop_rounded_rectangle(wf, 2f-4, 5f-4, 4f-4)

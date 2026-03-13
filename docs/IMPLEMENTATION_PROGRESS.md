@@ -1,8 +1,8 @@
 # Implementation Progress
 
 ## Status Snapshot
-- Date: 2026-03-12
-- Overall: Phase 9 complete; Refactor Track complete; backend extension and GPU-ready kernel coverage active
+- Date: 2026-03-13
+- Overall: Phase 9 complete; Refactor Track complete; backend extension and CUDA optimization workstream active
 
 ## Phase Checklist
 - [x] Phase 0: Preflight decisions and contracts accepted
@@ -25,6 +25,7 @@
 - [x] GPU extension scaffold: optional `CUDA.jl` package extension with `CuArray` trait registration and public KA-routed interpolation/end-kernel entry points.
 - [x] Optional CUDA benchmark lane: separate availability-gated steady-state and supported-kernel reports integrated into `scripts/benchmark_all.sh`.
 - [x] Geometry/sampling KA pilot: trait-routed geometry mask kernels plus `prop_szoom!` / `prop_pixellate!`, with CPU pilot benchmarks and CUDA benchmark coverage.
+- [x] CUDA hot-path cleanup pass: direct CUDA phase kernels for `prop_qphase` / `prop_ptp`, async KA helper routing, and bounded geometry launches.
 
 ## Current Workstream (Phase 1)
 - [x] Core policy/trait/context types created.
@@ -62,6 +63,10 @@
 - [x] Document Phase 8 closure evidence (`docs/PHASE8_CLOSURE.md`).
 - [x] Perform MATLAB/manual semantic reconciliation on known disagreement hotspots.
 - [x] Publish Phase 9 reconciliation report (`docs/PHASE9_RECONCILIATION.md`) and migration guide (`docs/MIGRATION_GUIDE.md`).
+- [ ] Complete backend-aware workspace/device cache refactor for CUDA (`docs/CUDA_OPTIMIZATION_PLAN.md`, C2).
+- [ ] Reuse CUDA scratch/FFT state in propagation hot paths (`docs/CUDA_OPTIMIZATION_PLAN.md`, C3).
+- [ ] Remove remaining host-staged mask/map paths on CUDA (`docs/CUDA_OPTIMIZATION_PLAN.md`, C4).
+- [ ] Split CUDA benchmark interpretation by precision regime (`docs/CUDA_OPTIMIZATION_PLAN.md`, C5).
 
 ## Latest Pass (2026-03-04)
 - [x] Corrected `prop_sinc` to Python-compatible `sin(x)/x`.
@@ -96,3 +101,4 @@
 ## Notes
 - Runtime compatibility mode flags were removed; parity behavior is anchored to the patched Python baseline (`D-0035`).
 - Benchmark policy keeps steady-state comparisons separate from TTFx (`D-0029`).
+- CUDA optimization is now tracked separately in `docs/CUDA_OPTIMIZATION_PLAN.md` to keep backend work distinct from the completed parity/refactor milestones.

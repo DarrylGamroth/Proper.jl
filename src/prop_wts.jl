@@ -25,6 +25,23 @@
 end
 
 @inline function _prop_wts_fft_step!(
+    ::CUFFTStyle,
+    wf::WaveFront,
+    d::Real,
+    n::Int,
+    ctx::RunContext,
+    ws::FFTWorkspace,
+)
+    _ = ws
+    if d >= 0
+        wf.field .= fft_forward(wf.field, ctx) ./ n
+    else
+        wf.field .= fft_inverse(wf.field, ctx) .* n
+    end
+    return wf
+end
+
+@inline function _prop_wts_fft_step!(
     ::FFTStyle,
     wf::WaveFront,
     d::Real,

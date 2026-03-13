@@ -120,6 +120,34 @@ Status: Completed
   - explicit benchmark evidence for CPU enable/disable policy
   - trait-routed scaffolding ready for future GPU/backend work
 
+### O10: KA Geometry and Sampling Pilot
+Status: Completed
+- Add KA-backed pilot kernels for:
+  - `prop_rectangle!`
+  - `prop_ellipse!`
+  - `prop_irregular_polygon!` / `prop_polygon!`
+  - `prop_rounded_rectangle!`
+  - `prop_szoom!`
+  - `prop_pixellate!`
+- Keep loop baselines as the correctness and CPU-performance reference.
+- Benchmark KA vs loop directly before enabling any CPU default route.
+- Targets:
+  - exact parity against current loop implementations
+  - GPU-ready geometry/sampling kernels without regressing CPU defaults
+
+### O11: CUDA Hot-Path Cleanup Pass
+Status: Completed
+- Implement the first CUDA-focused runtime cleanup slice:
+  - direct KA phase application for `prop_qphase`
+  - direct KA frequency-domain phase application for CUDA `prop_ptp`
+  - remove unconditional synchronization from low-level KA helpers
+  - restrict rectangle / rounded-rectangle KA launches to the affected bounding box
+- Keep deeper device-workspace refactors separate and tracked in `docs/CUDA_OPTIMIZATION_PLAN.md`.
+- Targets:
+  - reduce CUDA launch overhead on small kernels
+  - remove CPU-staged map generation from the most obvious propagation hotspots
+  - preserve existing CPU behavior and parity results
+
 ## Execution Log
 - 2026-03-05: Plan created. Starting O1.
 - 2026-03-05: O1 completed.
@@ -231,3 +259,14 @@ Status: Completed
     - `szoom`: loop/KA speed ratio `0.507` (KA slower)
     - `pixellate`: loop/KA speed ratio `0.959` (near-neutral, KA still slightly slower)
   - decision: keep geometry/sampling KA routes enabled for CUDA-capable backends and disabled by default on CPU.
+- 2026-03-13: O11 completed.
+  - added direct CUDA KA kernels for `prop_qphase` and CUDA `prop_ptp` phase application.
+  - replaced generic CUDA `prop_qphase` host-staged `rsqr` map generation with direct device-side phase application.
+  - replaced CUDA `prop_ptp` frequency-domain broadcast phase application with direct device-side phase application.
+  - removed unconditional `AK.synchronize` from low-level KA helpers so synchronization occurs at API/benchmark boundaries.
+  - restricted `prop_rectangle!` and `prop_rounded_rectangle!` KA launches to computed bounding boxes rather than the full image.
+  - added CUDA smoke coverage for `prop_ptp`.
+  - local validation:
+    - `julia --project=. test/runtests.jl`: pass
+    - `./scripts/benchmark_all.sh`: pass on non-CUDA machine, CUDA lane skipped cleanly
+  - follow-up work is tracked in `docs/CUDA_OPTIMIZATION_PLAN.md` for backend-aware workspace/device-cache refactors.

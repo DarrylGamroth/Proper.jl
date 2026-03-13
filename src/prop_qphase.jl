@@ -31,14 +31,24 @@ end
     return wf
 end
 
+@inline function _prop_qphase_ka!(wf::WaveFront, c::Real)
+    c == 0 && return wf
+    k = pi / (wf.wavelength_m * float(c))
+    ka_apply_qphase!(wf.field, k, wf.sampling_m)
+    return wf
+end
+
 abstract type QPhaseExecStyle end
 struct QPhaseLoopExecStyle <: QPhaseExecStyle end
+struct QPhaseKAExecStyle <: QPhaseExecStyle end
 struct QPhaseBroadcastExecStyle <: QPhaseExecStyle end
 
 @inline qphase_exec_style(::StridedLayout, ::CPUBackend) = QPhaseLoopExecStyle()
+@inline qphase_exec_style(::ArrayLayoutStyle, ::CUDABackend) = QPhaseKAExecStyle()
 @inline qphase_exec_style(::ArrayLayoutStyle, ::BackendStyle) = QPhaseBroadcastExecStyle()
 
 @inline _prop_qphase!(::QPhaseLoopExecStyle, wf::WaveFront, c::Real) = _prop_qphase_strided!(wf, c)
+@inline _prop_qphase!(::QPhaseKAExecStyle, wf::WaveFront, c::Real) = _prop_qphase_ka!(wf, c)
 @inline _prop_qphase!(::QPhaseBroadcastExecStyle, wf::WaveFront, c::Real) = _prop_qphase_generic!(wf, c)
 
 """Apply quadratic phase for curvature c (meters)."""

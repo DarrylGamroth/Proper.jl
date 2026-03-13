@@ -1,8 +1,10 @@
 abstract type PTPExecStyle end
 struct PTPPlannedExecStyle <: PTPExecStyle end
+struct PTPKAExecStyle <: PTPExecStyle end
 struct PTPGenericExecStyle <: PTPExecStyle end
 
 @inline ptp_exec_style(::StridedLayout, ::CPUBackend, ::FFTWStyle) = PTPPlannedExecStyle()
+@inline ptp_exec_style(::ArrayLayoutStyle, ::CUDABackend, ::CUFFTStyle) = PTPKAExecStyle()
 @inline ptp_exec_style(::ArrayLayoutStyle, ::BackendStyle, ::FFTStyle) = PTPGenericExecStyle()
 
 function _prop_ptp_fft!(
@@ -30,6 +32,27 @@ function _prop_ptp_fft!(
     LinearAlgebra.mul!(f, pbfft, f)
     f ./= n
     copyto!(wf.field, f)
+    return wf
+end
+
+function _prop_ptp_fft!(
+    ::PTPKAExecStyle,
+    wf::WaveFront,
+    ctx::RunContext,
+    ws::FFTWorkspace,
+    n::Int,
+    ny::Int,
+    nx::Int,
+    dx,
+    kphase,
+)
+    _ = ws
+    _ = ny
+    _ = nx
+    f = fft_forward(wf.field, ctx)
+    f ./= n
+    ka_apply_frequency_phase!(f, kphase, dx)
+    wf.field .= fft_inverse(f, ctx) .* n
     return wf
 end
 

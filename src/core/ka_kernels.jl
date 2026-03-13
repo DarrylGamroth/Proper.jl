@@ -22,6 +22,12 @@ end
     return ifelse(i < 1, 1, ifelse(i > n, n, i))
 end
 
+@inline function _ka_shifted_index_0based(p::Int, n::Int)
+    c = n ÷ 2
+    cut = n - c - 1
+    return ifelse(p <= cut, p, p - n)
+end
+
 @inline function _ka_subsample_offset(idx::Int, nsub::Int, scale)
     T = typeof(scale)
     return (T(idx) - (T(nsub) + one(T)) / T(2)) / T(nsub) * scale
@@ -214,6 +220,45 @@ end
     end
 end
 
+@kernel function _ka_apply_qphase_kernel!(
+    field,
+    k,
+    dx,
+    ny::Int,
+    nx::Int,
+)
+    I = @index(Global, NTuple)
+    i = I[1]
+    j = I[2]
+
+    if i <= ny && j <= nx
+        T = typeof(dx)
+        x = T(_ka_shifted_index_0based(j - 1, nx)) * dx
+        y = T(_ka_shifted_index_0based(i - 1, ny)) * dx
+        field[i, j] *= cis(k * (x * x + y * y))
+    end
+end
+
+@kernel function _ka_apply_frequency_phase_kernel!(
+    field,
+    kphase,
+    inv_dx_y,
+    inv_dx_x,
+    ny::Int,
+    nx::Int,
+)
+    I = @index(Global, NTuple)
+    i = I[1]
+    j = I[2]
+
+    if i <= ny && j <= nx
+        T = typeof(inv_dx_y)
+        fy = T(_ka_shifted_index_0based(i - 1, ny)) * inv_dx_y
+        fx = T(_ka_shifted_index_0based(j - 1, nx)) * inv_dx_x
+        field[i, j] *= cis(kphase * (fx * fx + fy * fy))
+    end
+end
+
 @kernel function _ka_cubic_conv_grid_kernel!(
     out,
     a,
@@ -289,44 +334,37 @@ end
     yrp,
     cθ,
     sθ,
-    minx::Int,
-    maxx::Int,
-    miny::Int,
-    maxy::Int,
+    ystart::Int,
+    xstart::Int,
+    boxny::Int,
+    boxnx::Int,
     nsub::Int,
-    dark::Bool,
-    ny::Int,
-    nx::Int,
 )
     I = @index(Global, NTuple)
-    i = I[1]
-    j = I[2]
+    bi = I[1]
+    bj = I[2]
 
-    if i <= ny && j <= nx
+    if bi <= boxny && bj <= boxnx
         T = typeof(xcp)
+        i = ystart + bi - 1
+        j = xstart + bj - 1
         xpix = j - 1
         ypix = i - 1
-        pixval = zero(T)
+        x0 = T(xpix) - xcp
+        y0 = T(ypix) - ycp
+        cnt = 0
 
-        if minx <= xpix <= maxx && miny <= ypix <= maxy
-            x0 = T(xpix) - xcp
-            y0 = T(ypix) - ycp
-            cnt = 0
-
-            for ys in 1:nsub
-                yo = y0 + _ka_subsample_offset(ys, nsub, one(T))
-                for xs in 1:nsub
-                    xo = x0 + _ka_subsample_offset(xs, nsub, one(T))
-                    xr = xo * cθ - yo * sθ
-                    yr = xo * sθ + yo * cθ
-                    cnt += (abs(xr) <= xrp && abs(yr) <= yrp)
-                end
+        for ys in 1:nsub
+            yo = y0 + _ka_subsample_offset(ys, nsub, one(T))
+            for xs in 1:nsub
+                xo = x0 + _ka_subsample_offset(xs, nsub, one(T))
+                xr = xo * cθ - yo * sθ
+                yr = xo * sθ + yo * cθ
+                cnt += (abs(xr) <= xrp && abs(yr) <= yrp)
             end
-
-            pixval = T(cnt) / T(nsub * nsub)
         end
 
-        image[i, j] = dark ? (one(T) - pixval) : pixval
+        image[i, j] = T(cnt) / T(nsub * nsub)
     end
 end
 
@@ -426,15 +464,19 @@ end
     hh,
     cy::Int,
     cx::Int,
-    ny::Int,
-    nx::Int,
+    ystart::Int,
+    xstart::Int,
+    boxny::Int,
+    boxnx::Int,
 )
     I = @index(Global, NTuple)
-    i = I[1]
-    j = I[2]
+    bi = I[1]
+    bj = I[2]
 
-    if i <= ny && j <= nx
+    if bi <= boxny && bj <= boxnx
         T = typeof(dx)
+        i = ystart + bi - 1
+        j = xstart + bj - 1
         x = T(j - 1 - cx) * dx - xc
         y = T(i - 1 - cy) * dx - yc
         qx = abs(x) - (hw - r)
@@ -571,7 +613,6 @@ end
     ny, nx = size(field)
     backend = AK.get_backend(field)
     _ka_apply_shifted_mask_kernel!(backend, (16, 16))(field, mask, ny ÷ 2, nx ÷ 2, ny, nx, invert; ndrange=(ny, nx))
-    AK.synchronize(backend)
     return field
 end
 
@@ -585,8 +626,32 @@ end
     oy, ox = size(out)
     backend = AK.get_backend(out)
     _ka_copy_shifted_complex_kernel!(backend, (16, 16))(out, field, r0, c0, ny ÷ 2, nx ÷ 2, ny, nx, oy, ox; ndrange=(oy, ox))
-    AK.synchronize(backend)
     return out
+end
+
+@inline function ka_apply_qphase!(
+    field::AbstractMatrix{<:Complex},
+    k,
+    dx,
+)
+    ny, nx = size(field)
+    backend = AK.get_backend(field)
+    _ka_apply_qphase_kernel!(backend, (16, 16))(field, k, dx, ny, nx; ndrange=(ny, nx))
+    return field
+end
+
+@inline function ka_apply_frequency_phase!(
+    field::AbstractMatrix{<:Complex},
+    kphase,
+    dx,
+)
+    ny, nx = size(field)
+    T = typeof(dx)
+    inv_dx_y = inv(T(ny) * T(dx))
+    inv_dx_x = inv(T(nx) * T(dx))
+    backend = AK.get_backend(field)
+    _ka_apply_frequency_phase_kernel!(backend, (16, 16))(field, kphase, inv_dx_y, inv_dx_x, ny, nx; ndrange=(ny, nx))
+    return field
 end
 
 @inline function ka_cubic_conv_grid!(
@@ -598,7 +663,6 @@ end
     oy, ox = size(out)
     backend = AK.get_backend(out)
     _ka_cubic_conv_grid_kernel!(backend, (16, 16))(out, a, xval, yval, oy, ox; ndrange=(oy, ox))
-    AK.synchronize(backend)
     return out
 end
 
@@ -615,7 +679,6 @@ end
     ny, nx = size(old_image)
     backend = AK.get_backend(out)
     _ka_rotate_linear_kernel!(backend, (16, 16))(out, old_image, c, s, cx, cy, sx, sy, ny, nx; ndrange=(ny, nx))
-    AK.synchronize(backend)
     return out
 end
 
@@ -632,7 +695,6 @@ end
     ny, nx = size(old_image)
     backend = AK.get_backend(out)
     _ka_rotate_cubic_kernel!(backend, (16, 16))(out, old_image, c, s, cx, cy, sx, sy, ny, nx; ndrange=(ny, nx))
-    AK.synchronize(backend)
     return out
 end
 
@@ -651,7 +713,11 @@ end
     dark::Bool=false,
     nsub::Int=1,
 ) where {T<:AbstractFloat}
-    ny, nx = size(image)
+    fill!(image, dark ? one(T) : zero(T))
+    boxny = max(maxy - miny + 1, 0)
+    boxnx = max(maxx - minx + 1, 0)
+    boxny == 0 && return image
+    boxnx == 0 && return image
     backend = AK.get_backend(image)
     _ka_rectangle_mask_kernel!(backend, (16, 16))(
         image,
@@ -661,17 +727,13 @@ end
         yrp,
         cθ,
         sθ,
-        minx,
-        maxx,
-        miny,
-        maxy,
+        miny + 1,
+        minx + 1,
+        boxny,
+        boxnx,
         nsub,
-        dark,
-        ny,
-        nx;
-        ndrange=(ny, nx),
+        ndrange=(boxny, boxnx),
     )
-    AK.synchronize(backend)
     return image
 end
 
@@ -708,7 +770,6 @@ end
         nx;
         ndrange=(ny, nx),
     )
-    AK.synchronize(backend)
     return image
 end
 
@@ -737,7 +798,6 @@ end
         nx;
         ndrange=(ny, nx),
     )
-    AK.synchronize(backend)
     return image
 end
 
@@ -751,6 +811,19 @@ end
     hh::T,
 ) where {T<:AbstractFloat}
     ny, nx = size(image)
+    cx_pix = T(nx ÷ 2) + xc / dx
+    cy_pix = T(ny ÷ 2) + yc / dx
+    halfw_pix = hw / dx
+    halfh_pix = hh / dx
+    minx = max(0, floor(Int, cx_pix - halfw_pix - one(T)))
+    maxx = min(nx - 1, ceil(Int, cx_pix + halfw_pix + one(T)))
+    miny = max(0, floor(Int, cy_pix - halfh_pix - one(T)))
+    maxy = min(ny - 1, ceil(Int, cy_pix + halfh_pix + one(T)))
+    boxny = max(maxy - miny + 1, 0)
+    boxnx = max(maxx - minx + 1, 0)
+    fill!(image, zero(T))
+    boxny == 0 && return image
+    boxnx == 0 && return image
     backend = AK.get_backend(image)
     _ka_rounded_rectangle_mask_kernel!(backend, (16, 16))(
         image,
@@ -762,11 +835,12 @@ end
         hh,
         ny ÷ 2,
         nx ÷ 2,
-        ny,
-        nx;
-        ndrange=(ny, nx),
+        miny + 1,
+        minx + 1,
+        boxny,
+        boxnx;
+        ndrange=(boxny, boxnx),
     )
-    AK.synchronize(backend)
     return image
 end
 
@@ -779,7 +853,6 @@ end
 ) where {T<:AbstractFloat}
     backend = AK.get_backend(table)
     _ka_szoom_table_kernel!(backend, (16, 16))(table, mag, n_out, k, dk; ndrange=size(table))
-    AK.synchronize(backend)
     return table
 end
 
@@ -793,7 +866,6 @@ end
     k = size(table, 2)
     backend = AK.get_backend(out)
     _ka_szoom_apply_kernel!(backend, (16, 16))(out, image_in, table, mag, size(image_in, 1), n_out, k; ndrange=size(out))
-    AK.synchronize(backend)
     return out
 end
 
@@ -807,7 +879,6 @@ end
     T = typeof(float(real(zero(eltype(out)))))
     scale = inv(T(f * f))
     _ka_pixellate_kernel!(backend, (16, 16))(out, img, f, scale, ny2, nx2; ndrange=(ny2, nx2))
-    AK.synchronize(backend)
     return out
 end
 
@@ -821,6 +892,5 @@ end
     oy, ox = size(out)
     backend = AK.get_backend(out)
     _ka_copy_shifted_intensity_kernel!(backend, (16, 16))(out, field, r0, c0, ny ÷ 2, nx ÷ 2, ny, nx, oy, ox; ndrange=(oy, ox))
-    AK.synchronize(backend)
     return out
 end
