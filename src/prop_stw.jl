@@ -77,7 +77,7 @@ function prop_stw(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
 
     _prop_stw_fft_step!(fft_style(ctx), wf, d, n, ctx, ws)
 
-    prop_qphase(wf, d)
+    prop_qphase(wf, d, ctx)
     wf.reference_surface = PLANAR
     return wf
 end

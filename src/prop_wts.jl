@@ -72,7 +72,7 @@ function prop_wts(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
     n = size(wf.field, 1)
 
     wf.z_m += d
-    prop_qphase(wf, d)
+    prop_qphase(wf, d, ctx)
 
     _prop_wts_fft_step!(fft_style(ctx), wf, d, n, ctx, ws)
 
