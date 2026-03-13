@@ -39,14 +39,68 @@ function _prop_cubic_conv_grid_loop!(
     return out
 end
 
-function prop_cubic_conv_grid!(out::StridedMatrix, sty::InterpStyle, a::StridedMatrix, xval::AbstractVector, yval::AbstractVector)
-    oy, ox = size(out)
-    if (sty isa CubicInterpStyle) && ka_cubic_grid_enabled(typeof(out), oy, ox) && same_backend_style(typeof(out), typeof(a))
-        return ka_cubic_conv_grid!(out, a, backend_adapt(out, xval), backend_adapt(out, yval))
-    end
-    if same_backend_style(typeof(out), typeof(a)) && (backend_style(typeof(out)) isa CPUBackend)
-        return _prop_cubic_conv_grid_loop!(out, sty, a, xval, yval)
-    end
+abstract type CubicGridExecStyle end
+struct CubicGridLoopExecStyle <: CubicGridExecStyle end
+struct CubicGridKAExecStyle <: CubicGridExecStyle end
+struct CubicGridHostExecStyle <: CubicGridExecStyle end
+
+@inline cubic_grid_exec_style(
+    ::StridedLayout,
+    ::StridedLayout,
+    ::CPUBackend,
+    ::CPUBackend,
+    ::InterpStyle,
+    ::Val{false},
+) = CubicGridLoopExecStyle()
+
+@inline cubic_grid_exec_style(
+    ::ArrayLayoutStyle,
+    ::ArrayLayoutStyle,
+    ::B,
+    ::B,
+    ::CubicInterpStyle,
+    ::Val{true},
+) where {B<:BackendStyle} = CubicGridKAExecStyle()
+
+@inline cubic_grid_exec_style(
+    ::ArrayLayoutStyle,
+    ::ArrayLayoutStyle,
+    ::BackendStyle,
+    ::BackendStyle,
+    ::InterpStyle,
+    ::Val,
+) = CubicGridHostExecStyle()
+
+@inline function _prop_cubic_conv_grid!(
+    ::CubicGridLoopExecStyle,
+    out::StridedMatrix,
+    sty::InterpStyle,
+    a::StridedMatrix,
+    xval::AbstractVector,
+    yval::AbstractVector,
+)
+    return _prop_cubic_conv_grid_loop!(out, sty, a, xval, yval)
+end
+
+@inline function _prop_cubic_conv_grid!(
+    ::CubicGridKAExecStyle,
+    out::AbstractMatrix,
+    ::CubicInterpStyle,
+    a::AbstractMatrix,
+    xval::AbstractVector,
+    yval::AbstractVector,
+)
+    return ka_cubic_conv_grid!(out, a, backend_adapt(out, xval), backend_adapt(out, yval))
+end
+
+@inline function _prop_cubic_conv_grid!(
+    ::CubicGridHostExecStyle,
+    out::AbstractMatrix,
+    sty::InterpStyle,
+    a::AbstractMatrix,
+    xval::AbstractVector,
+    yval::AbstractVector,
+)
     host_out = Matrix{eltype(out)}(undef, size(out)...)
     prop_cubic_conv_grid!(host_out, sty, Matrix(a), xval, yval)
     copyto!(out, host_out)
@@ -56,16 +110,15 @@ end
 function prop_cubic_conv_grid!(out::AbstractMatrix, sty::InterpStyle, a::AbstractMatrix, xval::AbstractVector, yval::AbstractVector)
     size(out) == (length(yval), length(xval)) || throw(ArgumentError("output size mismatch for grid interpolation"))
     oy, ox = size(out)
-    if (sty isa CubicInterpStyle) && ka_cubic_grid_enabled(typeof(out), oy, ox) && same_backend_style(typeof(out), typeof(a))
-        return ka_cubic_conv_grid!(out, a, backend_adapt(out, xval), backend_adapt(out, yval))
-    end
-    if out isa StridedMatrix && a isa StridedMatrix
-        return prop_cubic_conv_grid!(out, sty, a, xval, yval)
-    end
-    host_out = Matrix{eltype(out)}(undef, size(out)...)
-    prop_cubic_conv_grid!(host_out, sty, Matrix(a), xval, yval)
-    copyto!(out, host_out)
-    return out
+    sty_exec = cubic_grid_exec_style(
+        array_layout_style(typeof(out)),
+        array_layout_style(typeof(a)),
+        backend_style(typeof(out)),
+        backend_style(typeof(a)),
+        sty,
+        Val(ka_cubic_grid_enabled(typeof(out), oy, ox)),
+    )
+    return _prop_cubic_conv_grid!(sty_exec, out, sty, a, xval, yval)
 end
 
 @inline function prop_cubic_conv_grid!(out::AbstractMatrix, a::AbstractMatrix, xval::AbstractVector, yval::AbstractVector)
@@ -88,7 +141,29 @@ function _prop_cubic_conv(sty::InterpStyle, ::PointwiseTopology, a::StridedMatri
 end
 
 function prop_cubic_conv(sty::InterpStyle, a::AbstractMatrix, y::Real, x::Real)
-    return a isa StridedMatrix ? _cubic_sample(sty, a, y, x) : _cubic_sample(sty, Matrix(a), y, x)
+    return _prop_cubic_conv_point(array_layout_style(typeof(a)), backend_style(typeof(a)), sty, a, y, x)
+end
+
+@inline function _prop_cubic_conv_point(
+    ::StridedLayout,
+    ::CPUBackend,
+    sty::InterpStyle,
+    a::StridedMatrix,
+    y::Real,
+    x::Real,
+)
+    return _cubic_sample(sty, a, y, x)
+end
+
+@inline function _prop_cubic_conv_point(
+    ::ArrayLayoutStyle,
+    ::BackendStyle,
+    sty::InterpStyle,
+    a::AbstractMatrix,
+    y::Real,
+    x::Real,
+)
+    return _cubic_sample(sty, Matrix(a), y, x)
 end
 
 function prop_cubic_conv(a::AbstractMatrix, y::Real, x::Real)
@@ -104,9 +179,28 @@ function prop_cubic_conv(sty::InterpStyle, a::AbstractMatrix, xval::AbstractVect
         out = similar(a, length(yval), length(xval))
         return prop_cubic_conv_grid!(out, sty, a, xval, yval)
     end
-    if a isa StridedMatrix
-        return _prop_cubic_conv(sty, PointwiseTopology(), a, xval, yval)
-    end
+    return _prop_cubic_conv_pointwise(array_layout_style(typeof(a)), backend_style(typeof(a)), sty, a, xval, yval)
+end
+
+@inline function _prop_cubic_conv_pointwise(
+    ::StridedLayout,
+    ::CPUBackend,
+    sty::InterpStyle,
+    a::StridedMatrix,
+    xval::AbstractVector,
+    yval::AbstractVector,
+)
+    return _prop_cubic_conv(sty, PointwiseTopology(), a, xval, yval)
+end
+
+@inline function _prop_cubic_conv_pointwise(
+    ::ArrayLayoutStyle,
+    ::BackendStyle,
+    sty::InterpStyle,
+    a::AbstractMatrix,
+    xval::AbstractVector,
+    yval::AbstractVector,
+)
     host_out = _prop_cubic_conv(sty, PointwiseTopology(), Matrix(a), xval, yval)
     out = similar(a, eltype(host_out), size(host_out)...)
     copyto!(out, host_out)
@@ -122,9 +216,28 @@ function prop_cubic_conv(ctx::RunContext, a::AbstractMatrix, xval::AbstractVecto
 end
 
 function prop_cubic_conv(sty::InterpStyle, a::AbstractMatrix, xgrid::AbstractMatrix, ygrid::AbstractMatrix; threaded::Bool=true, grid::Bool=false)
-    if a isa StridedMatrix
-        return _prop_cubic_conv(sty, PointwiseTopology(), a, xgrid, ygrid)
-    end
+    return _prop_cubic_conv_coordinate_grid(array_layout_style(typeof(a)), backend_style(typeof(a)), sty, a, xgrid, ygrid)
+end
+
+@inline function _prop_cubic_conv_coordinate_grid(
+    ::StridedLayout,
+    ::CPUBackend,
+    sty::InterpStyle,
+    a::StridedMatrix,
+    xgrid::AbstractMatrix,
+    ygrid::AbstractMatrix,
+)
+    return _prop_cubic_conv(sty, PointwiseTopology(), a, xgrid, ygrid)
+end
+
+@inline function _prop_cubic_conv_coordinate_grid(
+    ::ArrayLayoutStyle,
+    ::BackendStyle,
+    sty::InterpStyle,
+    a::AbstractMatrix,
+    xgrid::AbstractMatrix,
+    ygrid::AbstractMatrix,
+)
     host_out = _prop_cubic_conv(sty, PointwiseTopology(), Matrix(a), xgrid, ygrid)
     out = similar(a, eltype(host_out), size(host_out)...)
     copyto!(out, host_out)

@@ -71,6 +71,143 @@ end
     return out
 end
 
+abstract type RotateExecStyle end
+struct RotateLoopExecStyle <: RotateExecStyle end
+struct RotateKAExecStyle <: RotateExecStyle end
+struct RotateHostExecStyle <: RotateExecStyle end
+
+@inline rotate_ka_support(::Val{ROTATE_LINEAR}, ::InterpStyle) = Val(true)
+@inline rotate_ka_support(::Val{ROTATE_CUBIC}, ::CubicInterpStyle) = Val(true)
+@inline rotate_ka_support(::Val{ROTATE_CUBIC}, ::InterpStyle) = Val(false)
+
+@inline rotate_exec_style(
+    ::StridedLayout,
+    ::StridedLayout,
+    ::CPUBackend,
+    ::CPUBackend,
+    ::Val{false},
+    ::Val,
+) = RotateLoopExecStyle()
+
+@inline rotate_exec_style(
+    ::StridedLayout,
+    ::StridedLayout,
+    ::CPUBackend,
+    ::CPUBackend,
+    ::Val{true},
+    ::Val{false},
+) = RotateLoopExecStyle()
+
+@inline rotate_exec_style(
+    ::ArrayLayoutStyle,
+    ::ArrayLayoutStyle,
+    ::B,
+    ::B,
+    ::Val{true},
+    ::Val{true},
+) where {B<:BackendStyle} = RotateKAExecStyle()
+
+@inline rotate_exec_style(
+    ::ArrayLayoutStyle,
+    ::ArrayLayoutStyle,
+    ::BackendStyle,
+    ::BackendStyle,
+    ::Val,
+    ::Val,
+) = RotateHostExecStyle()
+
+@inline function _prop_rotate_ka!(
+    ::Val{ROTATE_LINEAR},
+    out::AbstractMatrix,
+    old_image::AbstractMatrix,
+    c::Real,
+    s::Real,
+    opts::RotateOptions,
+    sty::InterpStyle,
+)
+    _ = sty
+    return ka_rotate_linear!(out, old_image, c, s, opts.cx, opts.cy, opts.sx, opts.sy)
+end
+
+@inline function _prop_rotate_ka!(
+    ::Val{ROTATE_CUBIC},
+    out::AbstractMatrix,
+    old_image::AbstractMatrix,
+    c::Real,
+    s::Real,
+    opts::RotateOptions,
+    ::CubicInterpStyle,
+)
+    return ka_rotate_cubic!(out, old_image, c, s, opts.cx, opts.cy, opts.sx, opts.sy)
+end
+
+@inline function _prop_rotate_loop!(
+    ::Val{ROTATE_LINEAR},
+    sty::InterpStyle,
+    out::StridedMatrix,
+    old_image::StridedMatrix,
+    c::Real,
+    s::Real,
+    opts::RotateOptions,
+)
+    _ = sty
+    return _prop_rotate_linear!(out, old_image, c, s, opts)
+end
+
+@inline function _prop_rotate_loop!(
+    ::Val{ROTATE_CUBIC},
+    sty::InterpStyle,
+    out::StridedMatrix,
+    old_image::StridedMatrix,
+    c::Real,
+    s::Real,
+    opts::RotateOptions,
+)
+    return _prop_rotate_cubic!(sty, out, old_image, c, s, opts)
+end
+
+@inline function _prop_rotate_exec!(
+    ::RotateKAExecStyle,
+    sty::InterpStyle,
+    out::AbstractMatrix,
+    old_image::AbstractMatrix,
+    theta::Real,
+    opts::RotateOptions,
+)
+    ang = deg2rad(-float(theta))
+    c = cos(ang)
+    s = sin(ang)
+    return _prop_rotate_ka!(Val(opts.method), out, old_image, c, s, opts, sty)
+end
+
+@inline function _prop_rotate_exec!(
+    ::RotateLoopExecStyle,
+    sty::InterpStyle,
+    out::StridedMatrix,
+    old_image::StridedMatrix,
+    theta::Real,
+    opts::RotateOptions,
+)
+    ang = deg2rad(-float(theta))
+    c = cos(ang)
+    s = sin(ang)
+    return _prop_rotate_loop!(Val(opts.method), sty, out, old_image, c, s, opts)
+end
+
+@inline function _prop_rotate_exec!(
+    ::RotateHostExecStyle,
+    sty::InterpStyle,
+    out::AbstractMatrix,
+    old_image::AbstractMatrix,
+    theta::Real,
+    opts::RotateOptions,
+)
+    host_out = Matrix{eltype(out)}(undef, size(out)...)
+    _prop_rotate!(sty, host_out, Matrix(old_image), theta, opts)
+    copyto!(out, host_out)
+    return out
+end
+
 @inline function _prop_rotate!(
     sty::InterpStyle,
     out::AbstractMatrix,
@@ -80,46 +217,15 @@ end
 )
     size(out) == size(old_image) || throw(ArgumentError("output size must match input image"))
     ny, nx = size(out)
-    can_use_ka = ka_rotate_enabled(typeof(out), ny, nx) && same_backend_style(typeof(out), typeof(old_image))
-    if can_use_ka && (opts.method === ROTATE_LINEAR || sty isa CubicInterpStyle)
-        ang = deg2rad(-float(theta))
-        c = cos(ang)
-        s = sin(ang)
-        return opts.method === ROTATE_LINEAR ?
-            ka_rotate_linear!(out, old_image, c, s, opts.cx, opts.cy, opts.sx, opts.sy) :
-            ka_rotate_cubic!(out, old_image, c, s, opts.cx, opts.cy, opts.sx, opts.sy)
-    end
-
-    if !(old_image isa StridedMatrix && out isa StridedMatrix)
-        host_out = Matrix{eltype(out)}(undef, size(out)...)
-        _prop_rotate!(sty, host_out, Matrix(old_image), theta, opts)
-        copyto!(out, host_out)
-        return out
-    end
-
-    return _prop_rotate_strided!(sty, out, old_image, theta, opts)
-end
-
-@inline function _prop_rotate_strided!(
-    sty::InterpStyle,
-    out::StridedMatrix,
-    old_image::StridedMatrix,
-    theta::Real,
-    opts::RotateOptions,
-)
-    size(out) == size(old_image) || throw(ArgumentError("output size must match input image"))
-    ang = deg2rad(-float(theta))
-    c = cos(ang)
-    s = sin(ang)
-    ny, nx = size(out)
-    if ka_rotate_enabled(typeof(out), ny, nx) && (opts.method === ROTATE_LINEAR || sty isa CubicInterpStyle)
-        return opts.method === ROTATE_LINEAR ?
-            ka_rotate_linear!(out, old_image, c, s, opts.cx, opts.cy, opts.sx, opts.sy) :
-            ka_rotate_cubic!(out, old_image, c, s, opts.cx, opts.cy, opts.sx, opts.sy)
-    end
-    return opts.method === ROTATE_LINEAR ?
-        _prop_rotate_linear!(out, old_image, c, s, opts) :
-        _prop_rotate_cubic!(sty, out, old_image, c, s, opts)
+    sty_exec = rotate_exec_style(
+        array_layout_style(typeof(out)),
+        array_layout_style(typeof(old_image)),
+        backend_style(typeof(out)),
+        backend_style(typeof(old_image)),
+        Val(ka_rotate_enabled(typeof(out), ny, nx)),
+        rotate_ka_support(Val(opts.method), sty),
+    )
+    return _prop_rotate_exec!(sty_exec, sty, out, old_image, theta, opts)
 end
 
 @inline function prop_rotate!(out::AbstractMatrix, old_image::AbstractMatrix, theta::Real, opts::RotateOptions, ctx::RunContext)

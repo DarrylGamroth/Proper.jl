@@ -5,6 +5,13 @@ struct UnknownBackend <: BackendStyle end
 
 backend_style(::Type{<:AbstractArray}) = CPUBackend()
 
+abstract type ArrayLayoutStyle end
+struct GenericLayout <: ArrayLayoutStyle end
+struct StridedLayout <: ArrayLayoutStyle end
+
+array_layout_style(::Type{<:AbstractArray}) = GenericLayout()
+array_layout_style(::Type{<:StridedArray}) = StridedLayout()
+
 abstract type FFTStyle end
 struct FFTWStyle <: FFTStyle end
 struct CUFFTStyle <: FFTStyle end
@@ -44,25 +51,31 @@ interp_kernel_style(::Type{<:StridedMatrix}) = InterpKAStyle()
 const KA_CUBIC_GRID_MIN_ELEMS = typemax(Int)
 const KA_ROTATE_MIN_ELEMS = typemax(Int)
 
+@inline ka_enabled(::ShiftKAStyle, ny::Integer, nx::Integer, min_elems::Int) = (ny * nx) >= min_elems
+@inline ka_enabled(::InterpKAStyle, ny::Integer, nx::Integer, min_elems::Int) = (ny * nx) >= min_elems
+@inline ka_enabled(::ShiftKernelStyle, ny::Integer, nx::Integer, min_elems::Int) = false
+@inline ka_enabled(::InterpKernelStyle, ny::Integer, nx::Integer, min_elems::Int) = false
+
 @inline function ka_mask_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
-    return (shift_kernel_style(A) isa ShiftKAStyle) && (ny * nx >= KA_MASK_MIN_ELEMS)
+    return ka_enabled(shift_kernel_style(A), ny, nx, KA_MASK_MIN_ELEMS)
 end
 
 @inline function ka_end_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
-    return (shift_kernel_style(A) isa ShiftKAStyle) && (ny * nx >= KA_END_MIN_ELEMS)
+    return ka_enabled(shift_kernel_style(A), ny, nx, KA_END_MIN_ELEMS)
 end
 
 @inline function ka_cubic_grid_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
-    return (interp_kernel_style(A) isa InterpKAStyle) && (ny * nx >= KA_CUBIC_GRID_MIN_ELEMS)
+    return ka_enabled(interp_kernel_style(A), ny, nx, KA_CUBIC_GRID_MIN_ELEMS)
 end
 
 @inline function ka_rotate_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
-    return (interp_kernel_style(A) isa InterpKAStyle) && (ny * nx >= KA_ROTATE_MIN_ELEMS)
+    return ka_enabled(interp_kernel_style(A), ny, nx, KA_ROTATE_MIN_ELEMS)
 end
 
-@inline function same_backend_style(::Type{A}, ::Type{B}) where {A<:AbstractArray,B<:AbstractArray}
-    return typeof(backend_style(A)) === typeof(backend_style(B))
-end
+@inline same_backend_style(::B, ::B) where {B<:BackendStyle} = true
+@inline same_backend_style(::BackendStyle, ::BackendStyle) = false
+@inline same_backend_style(::Type{A}, ::Type{B}) where {A<:AbstractArray,B<:AbstractArray} =
+    same_backend_style(backend_style(A), backend_style(B))
 
 @inline function backend_adapt(template::AbstractArray, src::AbstractArray)
     if same_backend_style(typeof(template), typeof(src))

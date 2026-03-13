@@ -31,13 +31,20 @@ end
     return wf
 end
 
+abstract type QPhaseExecStyle end
+struct QPhaseLoopExecStyle <: QPhaseExecStyle end
+struct QPhaseBroadcastExecStyle <: QPhaseExecStyle end
+
+@inline qphase_exec_style(::StridedLayout, ::CPUBackend) = QPhaseLoopExecStyle()
+@inline qphase_exec_style(::ArrayLayoutStyle, ::BackendStyle) = QPhaseBroadcastExecStyle()
+
+@inline _prop_qphase!(::QPhaseLoopExecStyle, wf::WaveFront, c::Real) = _prop_qphase_strided!(wf, c)
+@inline _prop_qphase!(::QPhaseBroadcastExecStyle, wf::WaveFront, c::Real) = _prop_qphase_generic!(wf, c)
+
 """Apply quadratic phase for curvature c (meters)."""
 function prop_qphase(wf::WaveFront, c::Real, ctx::RunContext)
-    if wf.field isa StridedMatrix
-        return _prop_qphase_strided!(wf, c)
-    end
-    _ = ctx
-    return _prop_qphase_generic!(wf, c)
+    sty = qphase_exec_style(array_layout_style(typeof(wf.field)), ctx.backend)
+    return _prop_qphase!(sty, wf, c)
 end
 
 """Apply quadratic phase for curvature c (meters)."""

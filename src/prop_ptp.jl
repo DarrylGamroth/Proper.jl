@@ -1,3 +1,60 @@
+abstract type PTPExecStyle end
+struct PTPPlannedExecStyle <: PTPExecStyle end
+struct PTPGenericExecStyle <: PTPExecStyle end
+
+@inline ptp_exec_style(::StridedLayout, ::CPUBackend, ::FFTWStyle) = PTPPlannedExecStyle()
+@inline ptp_exec_style(::ArrayLayoutStyle, ::BackendStyle, ::FFTStyle) = PTPGenericExecStyle()
+
+function _prop_ptp_fft!(
+    ::PTPPlannedExecStyle,
+    wf::WaveFront,
+    ctx::RunContext,
+    ws::FFTWorkspace,
+    n::Int,
+    ny::Int,
+    nx::Int,
+    dx,
+    kphase,
+)
+    f = ensure_fft_scratch!(ws, ny, nx)
+    pfft, pbfft = ensure_fft_plans!(ws, ny, nx)
+    copyto!(f, wf.field)
+    LinearAlgebra.mul!(f, pfft, f)
+    f ./= n
+
+    rho2 = ensure_rho2_map!(ws, ny, nx, dx)
+    @inbounds @simd for idx in eachindex(f, rho2)
+        f[idx] *= cis(kphase * rho2[idx])
+    end
+
+    LinearAlgebra.mul!(f, pbfft, f)
+    f ./= n
+    copyto!(wf.field, f)
+    return wf
+end
+
+function _prop_ptp_fft!(
+    ::PTPGenericExecStyle,
+    wf::WaveFront,
+    ctx::RunContext,
+    ws::FFTWorkspace,
+    n::Int,
+    ny::Int,
+    nx::Int,
+    dx,
+    kphase,
+)
+    f = fft_forward(wf.field, ctx) ./ length(wf.field)
+    f .*= n
+
+    rho2 = backend_adapt(f, ensure_rho2_map!(ws, ny, nx, dx))
+    f .*= cis.(kphase .* rho2)
+
+    wf.field .= fft_inverse(f, ctx) .* length(wf.field)
+    wf.field ./= n
+    return wf
+end
+
 """Planar-to-planar Fresnel propagation while keeping planar reference."""
 function prop_ptp(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
     abs(dz) < 1e-12 && return wf
@@ -11,34 +68,8 @@ function prop_ptp(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
 
     ny, nx = size(wf.field)
     kphase = -pi * λ * float(dz)
-
-    if wf.field isa StridedMatrix && fft_style(ctx) isa FFTWStyle
-        f = ensure_fft_scratch!(ws, ny, nx)
-        pfft, pbfft = ensure_fft_plans!(ws, ny, nx)
-        copyto!(f, wf.field)
-        LinearAlgebra.mul!(f, pfft, f)
-        f ./= n
-
-        rho2 = ensure_rho2_map!(ws, ny, nx, dx)
-        @inbounds @simd for idx in eachindex(f, rho2)
-            f[idx] *= cis(kphase * rho2[idx])
-        end
-
-        LinearAlgebra.mul!(f, pbfft, f)
-        f ./= n
-        copyto!(wf.field, f)
-    else
-        f = fft_forward(wf.field, ctx) ./ length(wf.field)
-        f .*= n
-
-        rho2 = backend_adapt(f, ensure_rho2_map!(ws, ny, nx, dx))
-        f .*= cis.(kphase .* rho2)
-
-        wf.field .= fft_inverse(f, ctx) .* length(wf.field)
-        wf.field ./= n
-    end
-
-    return wf
+    sty = ptp_exec_style(array_layout_style(typeof(wf.field)), ctx.backend, fft_style(ctx))
+    return _prop_ptp_fft!(sty, wf, ctx, ws, n, ny, nx, dx, kphase)
 end
 
 @inline function prop_ptp(wf::WaveFront, dz::Real, ctx::RunContext)
