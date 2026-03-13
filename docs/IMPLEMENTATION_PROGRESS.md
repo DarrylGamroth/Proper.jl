@@ -27,6 +27,7 @@
 - [x] Geometry/sampling KA pilot: trait-routed geometry mask kernels plus `prop_szoom!` / `prop_pixellate!`, with CPU pilot benchmarks and CUDA benchmark coverage.
 - [x] CUDA hot-path cleanup pass: direct CUDA phase kernels for `prop_qphase` / `prop_ptp`, async KA helper routing, and bounded geometry launches.
 - [x] Backend-aware interp/mask workspace slice: `WaveFront`/`RunContext` now preserve backend type for interpolation axes and mask buffers, with typed axis-fill routing for CUDA-safe coordinate generation.
+- [x] Propagation FFT scratch reuse slice: CUDA `prop_ptp` / `prop_wts` / `prop_stw` now use workspace-backed in-place transform flows, with backend-preserving FFT scratch in `FFTWorkspace`.
 
 ## Current Workstream (Phase 1)
 - [x] Core policy/trait/context types created.
@@ -64,8 +65,8 @@
 - [x] Document Phase 8 closure evidence (`docs/PHASE8_CLOSURE.md`).
 - [x] Perform MATLAB/manual semantic reconciliation on known disagreement hotspots.
 - [x] Publish Phase 9 reconciliation report (`docs/PHASE9_RECONCILIATION.md`) and migration guide (`docs/MIGRATION_GUIDE.md`).
-- [ ] Complete the remaining FFT/cache portion of the backend-aware workspace refactor for CUDA (`docs/CUDA_OPTIMIZATION_PLAN.md`, C2/C3).
-- [ ] Reuse CUDA scratch/FFT state in propagation hot paths (`docs/CUDA_OPTIMIZATION_PLAN.md`, C3).
+- [ ] Complete the remaining cache portion of the backend-aware FFT refactor for CUDA (`docs/CUDA_OPTIMIZATION_PLAN.md`, C3).
+- [ ] Validate and tune the in-place CUDA propagation scratch path on hardware (`docs/CUDA_OPTIMIZATION_PLAN.md`, C3).
 - [ ] Remove remaining host-staged mask/map paths on CUDA (`docs/CUDA_OPTIMIZATION_PLAN.md`, C4).
 - [ ] Split CUDA benchmark interpretation by precision regime (`docs/CUDA_OPTIMIZATION_PLAN.md`, C5).
 

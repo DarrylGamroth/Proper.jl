@@ -2,6 +2,7 @@ module ProperCUDAExt
 
 using Proper
 using CUDA
+using CUDA.CUFFT
 
 Proper.backend_style(::Type{<:CUDA.CuArray}) = Proper.CUDABackend()
 Proper.fft_style(::Type{<:CUDA.CuArray}) = Proper.CUFFTStyle()

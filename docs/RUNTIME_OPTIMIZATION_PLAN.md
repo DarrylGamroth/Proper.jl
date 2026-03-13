@@ -159,6 +159,19 @@ Status: Completed
   - remove repeated host staging for interpolation axes and aperture mask buffers
   - preserve CPU allocation/performance behavior while enabling backend-preserving scratch on CUDA-visible paths
 
+### O13: Propagation FFT Scratch Reuse Slice
+Status: Completed
+- Preserve backend complex FFT scratch in `FFTWorkspace`.
+- Route CUDA propagation paths for:
+  - `prop_ptp`
+  - `prop_wts`
+  - `prop_stw`
+  through workspace-backed in-place `fft!` / `bfft!` transforms.
+- Keep CPU FFTW planned path unchanged.
+- Targets:
+  - reduce temporary transform allocations on CUDA propagation paths
+  - keep propagation dispatch type-stable and backend-specific
+
 ## Execution Log
 - 2026-03-05: Plan created. Starting O1.
 - 2026-03-05: O1 completed.
@@ -291,3 +304,11 @@ Status: Completed
     - `simple_prescription_256`: `4.01 MiB -> 3.50 MiB`
     - `simple_telescope_256`: `5.02 MiB -> 3.50 MiB`
     - `psdtest_128`: `1.64 MiB -> 1.51 MiB`
+- 2026-03-13: O13 completed.
+  - `FFTWorkspace` now preserves backend complex scratch buffers while keeping CPU plan caching on the FFTW path.
+  - CUDA propagation paths for `prop_ptp`, `prop_wts`, and `prop_stw` now use workspace-backed in-place `fft!` / `bfft!`.
+  - added CPU scratch-reuse regression coverage in `test/test_r3_mutating_workspace.jl` and CUDA smoke coverage for backend-preserving FFT scratch in `test/test_r2_trait_routing.jl`.
+  - local benchmark snapshot:
+    - steady-state CPU: `27.89 ms -> 26.92 ms`
+    - phase-2 `prop_ptp`: `12.85 ms -> 10.76 ms`
+  - CUDA hardware rerun is still required to measure the actual GPU effect of the in-place transform path.

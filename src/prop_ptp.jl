@@ -46,13 +46,16 @@ function _prop_ptp_fft!(
     dx,
     kphase,
 )
-    _ = ws
     _ = ny
     _ = nx
-    f = fft_forward(wf.field, ctx)
+    f = ensure_fft_scratch!(ws, size(wf.field, 1), size(wf.field, 2))
+    copyto!(f, wf.field)
+    fft_forward!(f, ctx)
     f ./= n
     ka_apply_frequency_phase!(f, kphase, dx)
-    wf.field .= fft_inverse(f, ctx) .* n
+    fft_backward!(f, ctx)
+    f ./= n
+    copyto!(wf.field, f)
     return wf
 end
 

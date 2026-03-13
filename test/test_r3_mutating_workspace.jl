@@ -48,8 +48,10 @@ using Random
         Proper.prop_ptp(wfptp, 0.01, ctx)
         fws = Proper.fft_workspace(ctx)
         rhoptr = pointer(fws.rho2)
+        scratchptr = pointer(fws.scratch)
         Proper.prop_ptp(wfptp, 0.01, ctx)
         @test pointer(fws.rho2) == rhoptr
+        @test pointer(fws.scratch) == scratchptr
         @test fws.forward_plan !== nothing
         @test fws.backward_plan !== nothing
 

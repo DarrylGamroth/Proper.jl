@@ -32,12 +32,16 @@ end
     ctx::RunContext,
     ws::FFTWorkspace,
 )
-    _ = ws
+    ny, nx = size(wf.field)
+    f = ensure_fft_scratch!(ws, ny, nx)
+    copyto!(f, wf.field)
     if d >= 0
-        wf.field .= fft_forward(wf.field, ctx) ./ n
+        fft_forward!(f, ctx)
     else
-        wf.field .= fft_inverse(wf.field, ctx) .* n
+        fft_backward!(f, ctx)
     end
+    f ./= n
+    copyto!(wf.field, f)
     return wf
 end
 

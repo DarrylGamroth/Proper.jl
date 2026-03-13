@@ -83,10 +83,14 @@ end
 const FFTWFwdPlan2D{T} = FFTW.cFFTWPlan{Complex{T},-1,true,2,Tuple{Int,Int}}
 const FFTWBwdPlan2D{T} = FFTW.cFFTWPlan{Complex{T},1,true,2,Tuple{Int,Int}}
 
-mutable struct FFTWorkspace{T<:AbstractFloat}
+mutable struct FFTWorkspace{
+    T<:AbstractFloat,
+    SCR<:AbstractMatrix{Complex{T}},
+    RS<:AbstractMatrix{T},
+}
     rho2::Matrix{T}
-    scratch::Matrix{Complex{T}}
-    real_scratch::Matrix{T}
+    scratch::SCR
+    real_scratch::RS
     forward_plan::Union{Nothing,FFTWFwdPlan2D{T}}
     backward_plan::Union{Nothing,FFTWBwdPlan2D{T}}
     nx::Int
@@ -99,10 +103,12 @@ mutable struct FFTWorkspace{T<:AbstractFloat}
 end
 
 function FFTWorkspace(::Type{T}=Float64) where {T<:AbstractFloat}
-    return FFTWorkspace{T}(
+    scratch = Matrix{Complex{T}}(undef, 0, 0)
+    real_scratch = Matrix{T}(undef, 0, 0)
+    return FFTWorkspace{T,typeof(scratch),typeof(real_scratch)}(
         Matrix{T}(undef, 0, 0),
-        Matrix{Complex{T}}(undef, 0, 0),
-        Matrix{T}(undef, 0, 0),
+        scratch,
+        real_scratch,
         nothing,
         nothing,
         0,
@@ -115,7 +121,24 @@ function FFTWorkspace(::Type{T}=Float64) where {T<:AbstractFloat}
     )
 end
 
-FFTWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:AbstractFloat} = FFTWorkspace(T)
+function FFTWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:AbstractFloat}
+    scratch = workspace_complex_matrix(A, T, 0, 0)
+    real_scratch = workspace_matrix(A, T, 0, 0)
+    return FFTWorkspace{T,typeof(scratch),typeof(real_scratch)}(
+        Matrix{T}(undef, 0, 0),
+        scratch,
+        real_scratch,
+        nothing,
+        nothing,
+        0,
+        0,
+        zero(T),
+        false,
+        false,
+        false,
+        false,
+    )
+end
 
 @inline function ensure_rho2_map!(ws::FFTWorkspace{T}, ny::Integer, nx::Integer, dx::Real) where {T}
     dxT = T(dx)
@@ -147,7 +170,19 @@ end
     return ws.real_scratch
 end
 
-@inline function ensure_fft_plans!(ws::FFTWorkspace{T}, ny::Integer, nx::Integer) where {T}
+abstract type FFTPlanExecStyle end
+struct FFTPlanAvailableStyle <: FFTPlanExecStyle end
+struct FFTPlanUnavailableStyle <: FFTPlanExecStyle end
+
+@inline fft_plan_exec_style(::Type{<:StridedMatrix}) = FFTPlanAvailableStyle()
+@inline fft_plan_exec_style(::Type{<:AbstractMatrix}) = FFTPlanUnavailableStyle()
+
+@inline function _ensure_fft_plans!(
+    ::FFTPlanAvailableStyle,
+    ws::FFTWorkspace{T},
+    ny::Integer,
+    nx::Integer,
+) where {T}
     ensure_fft_scratch!(ws, ny, nx)
     if !(ws.plans_valid && ws.forward_plan !== nothing && ws.backward_plan !== nothing)
         ws.forward_plan = FFTW.plan_fft!(ws.scratch; flags=FFTW.ESTIMATE)
@@ -155,6 +190,22 @@ end
         ws.plans_valid = true
     end
     return ws.forward_plan::FFTWFwdPlan2D{T}, ws.backward_plan::FFTWBwdPlan2D{T}
+end
+
+@inline function ensure_fft_plans!(ws::FFTWorkspace, ny::Integer, nx::Integer)
+    return _ensure_fft_plans!(fft_plan_exec_style(typeof(ws.scratch)), ws, ny, nx)
+end
+
+@inline function _ensure_fft_plans!(
+    ::FFTPlanUnavailableStyle,
+    ws::FFTWorkspace,
+    ny::Integer,
+    nx::Integer,
+)
+    _ = ws
+    _ = ny
+    _ = nx
+    throw(ArgumentError("FFT plans are only available for strided CPU workspaces"))
 end
 
 @inline function _fill_fft_order_rho2!(::CPUBackend, rho2::AbstractMatrix{T}, dx::T) where {T<:AbstractFloat}

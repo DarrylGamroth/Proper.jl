@@ -204,6 +204,7 @@ using Test
             prop_qphase(wf, 0.25f0, ctx)
             wf.reference_surface = Proper.PLANAR
             prop_ptp(wf, 0.01f0, ctx)
+            @test Proper.fft_workspace(ctx).scratch isa CUDA.CuArray
             prop_circular_aperture(wf, 2.5f-4)
             @test wf.workspace.mask.mask isa CUDA.CuArray
             rect = prop_rectangle(wf, 5f-4, 4f-4)

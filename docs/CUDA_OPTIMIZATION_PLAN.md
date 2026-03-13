@@ -93,7 +93,7 @@ Targets:
 - Provide a clean basis for device-side cache reuse.
 
 ### C3: CUDA FFT Scratch and Propagation Reuse
-Status: Pending
+Status: In Progress
 - Add CUDA-oriented scratch reuse for:
   - `prop_ptp`
   - `prop_wts`
@@ -101,6 +101,15 @@ Status: Pending
   - `prop_end`
 - Keep dispatch explicit by backend/FFT style.
 - Minimize temporary FFT arrays and repeated device allocations per call.
+
+Completed in this slice:
+- backend-aware complex FFT scratch is now preserved in `FFTWorkspace`
+- CUDA propagation paths for `prop_ptp`, `prop_wts`, and `prop_stw` now use workspace-backed in-place `fft!` / `bfft!` flows
+- CPU planned FFT path is preserved unchanged behind typed dispatch
+
+Remaining in C3:
+- validate CUDA in-place FFT behavior and timings on hardware
+- decide whether `prop_end` needs additional backend scratch/state or whether current KA copy path is sufficient
 
 Targets:
 - Improve steady-state propagation on GPU.
@@ -148,4 +157,15 @@ Targets:
     - `simple_prescription_256`: `4.01 MiB -> 3.50 MiB`
     - `simple_telescope_256`: `5.02 MiB -> 3.50 MiB`
     - `psdtest_128`: `1.64 MiB -> 1.51 MiB`
-- 2026-03-13: Awaiting rerun on CUDA hardware for updated C1/C2 benchmark data.
+- 2026-03-13: C3 slice 1 implemented.
+  - `FFTWorkspace` now preserves backend complex scratch buffers while keeping CPU FFT plan caching intact.
+  - CUDA propagation routes for `prop_ptp`, `prop_wts`, and `prop_stw` now use workspace-backed in-place `fft!` / `bfft!` flows.
+  - added CPU scratch-reuse regression coverage and CUDA smoke coverage for backend-preserving FFT scratch.
+  - local validation:
+    - `julia --project=. test/runtests.jl`: pass
+    - `./scripts/benchmark_all.sh`: pass on non-CUDA machine, CUDA lane skipped cleanly
+  - local benchmark snapshot:
+    - steady-state CPU: `27.89 ms -> 26.92 ms`
+    - phase-2 `prop_ptp`: `12.85 ms -> 10.76 ms`
+    - example allocations unchanged from C2 slice (`3.50 MiB` / `3.50 MiB` / `1.51 MiB`)
+- 2026-03-13: Awaiting rerun on CUDA hardware for updated C1/C2/C3 benchmark data.
