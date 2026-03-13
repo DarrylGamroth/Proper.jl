@@ -239,6 +239,8 @@ if cpu_kernel_data !== nothing
     preferred = [
         "prop_qphase",
         "prop_ptp",
+        "prop_wts",
+        "prop_stw",
         "prop_circular_aperture",
         "prop_end_mutating",
         "prop_rotate_mutating",
@@ -293,7 +295,7 @@ if cuda_precision_available
     end
 
     for name in ordered_names(
-        ["prop_qphase", "prop_ptp", "prop_circular_aperture", "prop_end_mutating"],
+        ["prop_qphase", "prop_ptp", "prop_wts", "prop_stw", "prop_circular_aperture", "prop_end_mutating"],
         getpath(cuda_precision, "kernels"),
     )
         payload = getpath(cuda_precision, "kernels", name)

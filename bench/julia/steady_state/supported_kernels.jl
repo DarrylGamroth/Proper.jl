@@ -2,6 +2,7 @@ using BenchmarkTools
 using JSON3
 using Proper
 include(joinpath(@__DIR__, "..", "..", "common", "metadata.jl"))
+include(joinpath(@__DIR__, "..", "..", "common", "wavefront_state.jl"))
 using .BenchMetadata
 
 const RUN_TAG = "steady_state_supported_kernels"
@@ -23,12 +24,21 @@ function bench_supported_kernels()
     samples = 20
 
     wf_q = prop_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
-    ctx_q = RunContext(typeof(wf_q.field))
+    ctx_q = RunContext(wf_q)
 
     wf_p = prop_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
-    ctx_p = RunContext(typeof(wf_p.field))
+    ctx_p = RunContext(wf_p)
+
+    wf_w = prop_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
+    ctx_w = RunContext(wf_w)
+
+    wf_s = prop_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
+    ctx_s = RunContext(wf_s)
+    prop_wts(wf_s, 0.01, ctx_s)
 
     wf_a = prop_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
+    wf_e = prop_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
+    prop_circular_aperture(wf_e, 0.6)
     out_end = zeros(Float64, nprop, nprop)
 
     img = rand(Float32, nmap, nmap)
@@ -40,18 +50,27 @@ function bench_supported_kernels()
 
     wf_map = prop_begin(1.0, 0.55e-6, nmap)
     dmap = rand(Float32, nmap, nmap)
-    ctx_map = RunContext(typeof(dmap))
+    ctx_map = RunContext(wf_map)
     res_out = zeros(Float64, nmap, nmap)
     res_opts = Proper.ResampleMapOptions(wf_map, wf_map.sampling_m, nmap / 2, nmap / 2)
     rect_out = zeros(Float64, nmap, nmap)
     round_out = similar(rect_out)
 
+    snap_q = capture_wavefront_state(wf_q)
+    snap_p = capture_wavefront_state(wf_p)
+    snap_w = capture_wavefront_state(wf_w)
+    snap_s = capture_wavefront_state(wf_s)
+    snap_a = capture_wavefront_state(wf_a)
+    snap_e = capture_wavefront_state(wf_e)
+
     # Warmup: exclude compilation from the reported timings.
     prop_qphase(wf_q, 10.0, ctx_q)
     wf_p.reference_surface = Proper.PLANAR
     prop_ptp(wf_p, 0.01, ctx_p)
+    prop_wts(wf_w, 0.01, ctx_w)
+    prop_stw(wf_s, 0.01, ctx_s)
     prop_circular_aperture(wf_a, 0.6)
-    prop_end!(out_end, wf_a)
+    prop_end!(out_end, wf_e)
     prop_rotate!(rot_out, img, 12.0, ctx_img)
     prop_magnify!(mag_out, img, 1.1, ctx_img; QUICK=true)
     prop_szoom!(szoom_out, img, 1.1)
@@ -62,20 +81,27 @@ function bench_supported_kernels()
 
     q = run(@benchmarkable begin
         prop_qphase($wf_q, 10.0, $ctx_q)
-    end evals=1 samples=samples)
+    end setup=(restore_wavefront_state!($wf_q, $snap_q)) evals=1 samples=samples)
 
     p = run(@benchmarkable begin
-        $wf_p.reference_surface = Proper.PLANAR
         prop_ptp($wf_p, 0.01, $ctx_p)
-    end evals=1 samples=samples)
+    end setup=(restore_wavefront_state!($wf_p, $snap_p)) evals=1 samples=samples)
+
+    w = run(@benchmarkable begin
+        prop_wts($wf_w, 0.01, $ctx_w)
+    end setup=(restore_wavefront_state!($wf_w, $snap_w)) evals=1 samples=samples)
+
+    s = run(@benchmarkable begin
+        prop_stw($wf_s, 0.01, $ctx_s)
+    end setup=(restore_wavefront_state!($wf_s, $snap_s)) evals=1 samples=samples)
 
     a = run(@benchmarkable begin
         prop_circular_aperture($wf_a, 0.6)
-    end evals=1 samples=samples)
+    end setup=(restore_wavefront_state!($wf_a, $snap_a)) evals=1 samples=samples)
 
     e = run(@benchmarkable begin
-        prop_end!($out_end, $wf_a)
-    end evals=1 samples=samples)
+        prop_end!($out_end, $wf_e)
+    end setup=(restore_wavefront_state!($wf_e, $snap_e)) evals=1 samples=samples)
 
     r = run(@benchmarkable begin
         prop_rotate!($rot_out, $img, 12.0, $ctx_img)
@@ -107,10 +133,12 @@ function bench_supported_kernels()
 
     return Dict(
         "meta" => merge(benchmark_metadata(run_tag=RUN_TAG), Dict("prop_grid_n" => nprop, "map_grid_n" => nmap)),
-        "policy" => "steady-state supported CPU kernel timings; TTFx excluded",
+        "policy" => "steady-state supported CPU kernel timings with per-sample wavefront state restore for stateful kernels; TTFx excluded",
         "kernels" => Dict(
             "prop_qphase" => trial_stats(q),
             "prop_ptp" => trial_stats(p),
+            "prop_wts" => trial_stats(w),
+            "prop_stw" => trial_stats(s),
             "prop_circular_aperture" => trial_stats(a),
             "prop_end_mutating" => trial_stats(e),
             "prop_rotate_mutating" => trial_stats(r),
