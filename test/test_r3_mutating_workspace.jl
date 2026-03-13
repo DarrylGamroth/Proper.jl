@@ -166,7 +166,7 @@ using FFTW
         wf_ref_circle_center = prop_begin(1.0, 500e-9, 32)
         wf_ka_circle_center = prop_begin(1.0, 500e-9, 32)
         cgeom_center = Proper.circle_geometry(Float64, wf_ka_circle_center, 0.30, 0.0, 0.0, copts)
-        Proper.ka_apply_centered_circle_aperture!(
+        Proper.ka_apply_centered_circle!(
             wf_ka_circle_center.field,
             cgeom_center.threshold_hi2,
             cgeom_center.threshold_lo2,

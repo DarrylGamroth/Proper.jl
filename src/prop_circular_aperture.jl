@@ -109,9 +109,6 @@ struct ShiftedCircleKAExecStyle <: ShiftedCircleApplyExecStyle end
 abstract type CircleCenterExecStyle end
 struct CenteredCircleStyle <: CircleCenterExecStyle end
 struct ShiftedCircleStyle <: CircleCenterExecStyle end
-abstract type CircleModeExecStyle end
-struct StandardCircleApertureStyle <: CircleModeExecStyle end
-struct GenericCircleModeStyle <: CircleModeExecStyle end
 
 @inline shifted_circle_apply_exec_style(::GeometryKAStyle) = ShiftedCircleKAExecStyle()
 @inline shifted_circle_apply_exec_style(::GeometryKernelStyle) = ShiftedCircleMaskExecStyle()
@@ -119,9 +116,6 @@ struct GenericCircleModeStyle <: CircleModeExecStyle end
 @inline circle_center_exec_style(::Val{true}) = CenteredCircleStyle()
 @inline circle_center_exec_style(::Val{false}) = ShiftedCircleStyle()
 @inline circle_center_exec_style(geom::CircleGeometry) = circle_center_exec_style(Val(iszero(geom.xoffset_pix) && iszero(geom.yoffset_pix)))
-@inline circle_mode_exec_style(::Val{true}) = StandardCircleApertureStyle()
-@inline circle_mode_exec_style(::Val{false}) = GenericCircleModeStyle()
-@inline circle_mode_exec_style(dark::Bool, invert::Bool) = circle_mode_exec_style(Val(!dark && !invert))
 
 @inline ellipse_options(opts::CircleOptions{T}) where {T<:AbstractFloat} = EllipseOptions{T}(opts.norm, opts.dark, zero(T))
 
@@ -147,30 +141,11 @@ end
     invert::Bool,
 ) where {T<:AbstractFloat}
     geom = circle_geometry(T, wf, radius, xc, yc, opts)
-    return _apply_shifted_circle!(circle_center_exec_style(geom), circle_mode_exec_style(opts.dark, invert), wf, geom, opts.dark, invert)
+    return _apply_shifted_circle!(circle_center_exec_style(geom), wf, geom, opts.dark, invert)
 end
 
 @inline function _apply_shifted_circle!(
     ::CenteredCircleStyle,
-    ::StandardCircleApertureStyle,
-    wf::WaveFront,
-    geom::CircleGeometry,
-    dark::Bool,
-    invert::Bool,
-)
-    ka_apply_centered_circle_aperture!(
-        wf.field,
-        geom.threshold_hi2,
-        geom.threshold_lo2,
-        geom.limit2;
-        nsub=antialias_subsampling(),
-    )
-    return wf
-end
-
-@inline function _apply_shifted_circle!(
-    ::CenteredCircleStyle,
-    ::CircleModeExecStyle,
     wf::WaveFront,
     geom::CircleGeometry,
     dark::Bool,
@@ -190,7 +165,6 @@ end
 
 @inline function _apply_shifted_circle!(
     ::ShiftedCircleStyle,
-    ::CircleModeExecStyle,
     wf::WaveFront,
     geom::CircleGeometry,
     dark::Bool,

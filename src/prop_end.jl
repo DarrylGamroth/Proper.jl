@@ -20,16 +20,6 @@ end
     return sy, sx, ny - sy, nx - sx
 end
 
-abstract type EndFullCopyExecStyle end
-struct EndQuadrantCopyStyle <: EndFullCopyExecStyle end
-struct EndKernelCopyStyle <: EndFullCopyExecStyle end
-struct EndGenericCopyStyle <: EndFullCopyExecStyle end
-
-@inline end_full_copy_exec_style(::Val{false}, ::BackendStyle, ::ArrayLayoutStyle, ::ArrayLayoutStyle) = EndGenericCopyStyle()
-@inline end_full_copy_exec_style(::Val{true}, ::CPUBackend, ::StridedLayout, ::StridedLayout) = EndQuadrantCopyStyle()
-@inline end_full_copy_exec_style(::Val{true}, ::CUDABackend, ::ArrayLayoutStyle, ::ArrayLayoutStyle) = EndKernelCopyStyle()
-@inline end_full_copy_exec_style(::Val{true}, ::BackendStyle, ::ArrayLayoutStyle, ::ArrayLayoutStyle) = EndGenericCopyStyle()
-
 @inline function _copy_shifted_complex_full!(
     out::AbstractMatrix{Tout},
     field::AbstractMatrix{Tin},
@@ -66,14 +56,7 @@ end
     return out
 end
 
-@inline function end_full_copy_exec_style(::Type{A}, ::Type{B}) where {A<:AbstractArray,B<:AbstractArray}
-    return end_full_copy_exec_style(
-        Val(same_backend_style(A, B)),
-        backend_style(A),
-        array_layout_style(A),
-        array_layout_style(B),
-    )
-end
+@inline _prop_end_full_copy_enabled(::Type{A}, ::Type{B}) where {A<:AbstractArray,B<:AbstractArray} = same_backend_style(A, B)
 
 @inline function _copy_shifted_complex!(
     out::StridedMatrix{Tout},
@@ -174,15 +157,6 @@ end
     return _copy_shifted_complex!(out, field, r0, c0)
 end
 
-@inline _prop_end_full_copy_noabs!(::EndQuadrantCopyStyle, out::AbstractMatrix{<:Complex}, field::AbstractMatrix{<:Complex}) =
-    _copy_shifted_complex_full!(out, field)
-
-@inline _prop_end_full_copy_noabs!(::EndKernelCopyStyle, out::AbstractMatrix{<:Complex}, field::AbstractMatrix{<:Complex}) =
-    _copy_shifted_complex!(out, field, 1, 1)
-
-@inline _prop_end_full_copy_noabs!(::EndGenericCopyStyle, out::AbstractMatrix{<:Complex}, field::AbstractMatrix{<:Complex}) =
-    _copy_shifted_complex_generic!(out, field, 1, 1)
-
 @inline function _prop_end_copy_noabs!(
     out::AbstractMatrix,
     field::AbstractMatrix{<:Complex},
@@ -204,15 +178,6 @@ end
 )
     return _copy_shifted_intensity!(out, field, r0, c0)
 end
-
-@inline _prop_end_full_copy_intensity!(::EndQuadrantCopyStyle, out::AbstractMatrix, field::AbstractMatrix{<:Complex}) =
-    _copy_shifted_intensity_full!(out, field)
-
-@inline _prop_end_full_copy_intensity!(::EndKernelCopyStyle, out::AbstractMatrix, field::AbstractMatrix{<:Complex}) =
-    _copy_shifted_intensity!(out, field, 1, 1)
-
-@inline _prop_end_full_copy_intensity!(::EndGenericCopyStyle, out::AbstractMatrix, field::AbstractMatrix{<:Complex}) =
-    _copy_shifted_intensity_generic!(out, field, 1, 1)
 
 @inline function _prop_end_copy_intensity!(
     out::AbstractMatrix,
@@ -237,17 +202,16 @@ function prop_end!(
     ny, nx = size(wf.field)
     oy, ox, r0, c0 = _prop_end_layout(ny, nx, extract)
     size(out) == (oy, ox) || throw(ArgumentError("output size must be ($(oy), $(ox))"))
-    fullcopy_sty = end_full_copy_exec_style(typeof(out), typeof(wf.field))
-    fullcopy = extract === nothing
+    fullcopy = extract === nothing && _prop_end_full_copy_enabled(typeof(out), typeof(wf.field))
 
     if noabs
         eltype(out) <: Complex || throw(ArgumentError("output eltype must be complex when noabs=true"))
-        fullcopy && return _prop_end_full_copy_noabs!(fullcopy_sty, out, wf.field)
+        fullcopy && return _copy_shifted_complex_full!(out, wf.field)
         return _prop_end_copy_noabs!(out, wf.field, r0, c0)
     end
 
     eltype(out) <: Number || throw(ArgumentError("output eltype must be numeric"))
-    fullcopy && return _prop_end_full_copy_intensity!(fullcopy_sty, out, wf.field)
+    fullcopy && return _copy_shifted_intensity_full!(out, wf.field)
     return _prop_end_copy_intensity!(out, wf.field, r0, c0)
 end
 

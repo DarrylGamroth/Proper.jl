@@ -165,6 +165,6 @@ Status: Gated
   - the standard CUDA steady-state report is now emitted as an alias of the FP64 workload report rather than a second independent run.
   - summary reporting now warns if the standard CUDA steady-state and standalone FP64 reports diverge materially, which protects against stale manual runs.
 - 2026-03-13: GPU follow-up slice implemented after benchmark reconciliation.
-  - `prop_end!` full-frame dispatch is now backend-specific: CPU keeps the quadrant copy/broadcast fast path, while CUDA-compatible backends route the same case through the single-kernel shifted-copy path instead of four view-based operations.
-  - centered standard circular aperture on KA backends now uses a dedicated aperture path: zero the obvious outside region cheaply, then run circle math only on the four corner boxes that can contain the centered aperture in FFT-order storage.
-  - regression coverage now checks the centered aperture helper directly and compares CUDA `prop_end` output against the CPU reference path in the smoke test.
+  - `prop_end!` full-frame dispatch was temporarily changed to a CUDA-specific single-kernel shifted-copy path, but that regressed on the RTX 3050 Ti and was removed.
+  - centered standard circular aperture was temporarily changed to a box-specialized centered-aperture path, but that also regressed on the RTX 3050 Ti and was removed.
+  - the retained change from this investigation is the benchmark conclusion itself: for these kernels on this hardware, fewer launches was not worth the worse memory access pattern in `prop_end!`, and multi-kernel box decomposition was not worth the added launch overhead for centered circular aperture.
