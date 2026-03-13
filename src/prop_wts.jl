@@ -34,11 +34,12 @@ end
 )
     ny, nx = size(wf.field)
     f = ensure_fft_scratch!(ws, ny, nx)
+    pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
     copyto!(f, wf.field)
     if d >= 0
-        fft_forward!(f, ctx)
+        LinearAlgebra.mul!(f, pfft, f)
     else
-        fft_backward!(f, ctx)
+        LinearAlgebra.mul!(f, pbfft, f)
     end
     f ./= n
     copyto!(wf.field, f)

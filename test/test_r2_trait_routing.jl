@@ -204,7 +204,16 @@ using Test
             prop_qphase(wf, 0.25f0, ctx)
             wf.reference_surface = Proper.PLANAR
             prop_ptp(wf, 0.01f0, ctx)
-            @test Proper.fft_workspace(ctx).scratch isa CUDA.CuArray
+            fws = Proper.fft_workspace(ctx)
+            @test fws.scratch isa CUDA.CuArray
+            @test fws.forward_plan !== nothing
+            @test fws.backward_plan !== nothing
+            pfft = fws.forward_plan
+            pbfft = fws.backward_plan
+            wf.reference_surface = Proper.PLANAR
+            prop_ptp(wf, 0.01f0, ctx)
+            @test fws.forward_plan === pfft
+            @test fws.backward_plan === pbfft
             prop_circular_aperture(wf, 2.5f-4)
             @test wf.workspace.mask.mask isa CUDA.CuArray
             wf_ref = Proper.WaveFront(fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)

@@ -318,6 +318,10 @@ end
         geom.threshold_hi,
         geom.threshold_lo,
         geom.limit;
+        minx_pix=geom.minx_pix,
+        maxx_pix=geom.maxx_pix,
+        miny_pix=geom.miny_pix,
+        maxy_pix=geom.maxy_pix,
         dark=opts.dark,
         invert=invert,
         nsub=antialias_subsampling(),

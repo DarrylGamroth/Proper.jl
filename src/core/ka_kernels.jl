@@ -184,6 +184,10 @@ end
     nsub::Int,
     dark::Bool,
     invert::Bool,
+    minx_pix::Int,
+    maxx_pix::Int,
+    miny_pix::Int,
+    maxy_pix::Int,
     sy::Int,
     sx::Int,
     ny::Int,
@@ -199,34 +203,44 @@ end
         js = j + sx
         is = ifelse(is > ny, is - ny, is)
         js = ifelse(js > nx, js - nx, js)
+        is0 = is - 1
+        js0 = js - 1
 
-        x0 = T(js - 1) - xcenter_pix
-        y0 = T(is - 1) - ycenter_pix
+        outside_factor = xor(dark, invert) ? one(T) : zero(T)
+        inside_factor = xor(dark, invert) ? zero(T) : one(T)
+        factor = outside_factor
 
-        xr = (x0 * cost - y0 * sint) / xrad_pix
-        yr = (x0 * sint + y0 * cost) / yrad_pix
-        rv = sqrt(xr * xr + yr * yr)
+        if !(js0 < minx_pix || js0 > maxx_pix || is0 < miny_pix || is0 > maxy_pix)
+            x0 = T(js - 1) - xcenter_pix
+            y0 = T(is - 1) - ycenter_pix
 
-        pixval = if rv > threshold_hi
-            zero(T)
-        elseif rv <= threshold_lo
-            one(T)
-        else
-            cnt = 0
-            for oy_i in 1:nsub
-                ys = y0 + _ka_subsample_offset(oy_i, nsub, one(T))
-                for ox_i in 1:nsub
-                    xs = x0 + _ka_subsample_offset(ox_i, nsub, one(T))
-                    xsv = (xs * cost - ys * sint) / xrad_pix
-                    ysv = (xs * sint + ys * cost) / yrad_pix
-                    cnt += ((xsv * xsv + ysv * ysv) <= limit)
+            xr = (x0 * cost - y0 * sint) / xrad_pix
+            yr = (x0 * sint + y0 * cost) / yrad_pix
+            rv = sqrt(xr * xr + yr * yr)
+
+            if rv <= threshold_lo
+                factor = inside_factor
+            elseif rv <= threshold_hi
+                cnt = 0
+                for oy_i in 1:nsub
+                    ys = y0 + _ka_subsample_offset(oy_i, nsub, one(T))
+                    for ox_i in 1:nsub
+                        xs = x0 + _ka_subsample_offset(ox_i, nsub, one(T))
+                        xsv = (xs * cost - ys * sint) / xrad_pix
+                        ysv = (xs * sint + ys * cost) / yrad_pix
+                        cnt += ((xsv * xsv + ysv * ysv) <= limit)
+                    end
                 end
+                pixval = T(cnt) / T(nsub * nsub)
+                maskval = dark ? (one(T) - pixval) : pixval
+                factor = invert ? (one(T) - maskval) : maskval
             end
-            T(cnt) / T(nsub * nsub)
         end
-
-        maskval = dark ? (one(T) - pixval) : pixval
-        field[i, j] *= invert ? (one(T) - maskval) : maskval
+        if factor == zero(T)
+            field[i, j] = zero(eltype(field))
+        elseif factor != one(T)
+            field[i, j] *= factor
+        end
     end
 end
 
@@ -701,6 +715,10 @@ end
     threshold_hi,
     threshold_lo,
     limit;
+    minx_pix::Int=0,
+    maxx_pix::Int=size(field, 2) - 1,
+    miny_pix::Int=0,
+    maxy_pix::Int=size(field, 1) - 1,
     dark::Bool=false,
     invert::Bool=false,
     nsub::Int=1,
@@ -724,6 +742,10 @@ end
         nsub,
         dark,
         invert,
+        minx_pix,
+        maxx_pix,
+        miny_pix,
+        maxy_pix,
         ny ÷ 2,
         nx ÷ 2,
         ny,

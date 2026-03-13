@@ -82,17 +82,21 @@ end
 
 const FFTWFwdPlan2D{T} = FFTW.cFFTWPlan{Complex{T},-1,true,2,Tuple{Int,Int}}
 const FFTWBwdPlan2D{T} = FFTW.cFFTWPlan{Complex{T},1,true,2,Tuple{Int,Int}}
+const MaybeFFTWFwdPlan2D{T} = Union{Nothing,FFTWFwdPlan2D{T}}
+const MaybeFFTWBwdPlan2D{T} = Union{Nothing,FFTWBwdPlan2D{T}}
 
 mutable struct FFTWorkspace{
     T<:AbstractFloat,
     SCR<:AbstractMatrix{Complex{T}},
     RS<:AbstractMatrix{T},
+    FP,
+    BP,
 }
     rho2::Matrix{T}
     scratch::SCR
     real_scratch::RS
-    forward_plan::Union{Nothing,FFTWFwdPlan2D{T}}
-    backward_plan::Union{Nothing,FFTWBwdPlan2D{T}}
+    forward_plan::FP
+    backward_plan::BP
     nx::Int
     ny::Int
     dx::T
@@ -106,7 +110,7 @@ end
 function FFTWorkspace(::Type{T}=Float64) where {T<:AbstractFloat}
     scratch = Matrix{Complex{T}}(undef, 0, 0)
     real_scratch = Matrix{T}(undef, 0, 0)
-    return FFTWorkspace{T,typeof(scratch),typeof(real_scratch)}(
+    return FFTWorkspace{T,typeof(scratch),typeof(real_scratch),MaybeFFTWFwdPlan2D{T},MaybeFFTWBwdPlan2D{T}}(
         Matrix{T}(undef, 0, 0),
         scratch,
         real_scratch,
@@ -126,7 +130,7 @@ end
 function FFTWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:AbstractFloat}
     scratch = workspace_complex_matrix(A, T, 0, 0)
     real_scratch = workspace_matrix(A, T, 0, 0)
-    return FFTWorkspace{T,typeof(scratch),typeof(real_scratch)}(
+    return FFTWorkspace{T,typeof(scratch),typeof(real_scratch),MaybeFFTWFwdPlan2D{T},MaybeFFTWBwdPlan2D{T}}(
         Matrix{T}(undef, 0, 0),
         scratch,
         real_scratch,

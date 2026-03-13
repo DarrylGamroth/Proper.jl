@@ -88,19 +88,61 @@ using FFTW
     @testset "Shifted ellipse application semantics" begin
         wf_ref = prop_begin(1.0, 500e-9, 32)
         wf_loop = prop_begin(1.0, 500e-9, 32)
+        wf_ka = prop_begin(1.0, 500e-9, 32)
         opts = Proper.EllipseOptions{Float64}(true, false, 13.0)
         geom = Proper.ellipse_geometry(Float64, wf_loop, 0.35, 0.25, 0.05, -0.03, opts)
         Proper._apply_shifted_ellipse_loop!(wf_loop.field, geom, opts.dark, false, Proper.antialias_subsampling())
+        Proper.ka_apply_shifted_ellipse!(
+            wf_ka.field,
+            geom.xcenter_pix,
+            geom.ycenter_pix,
+            geom.xrad_pix,
+            geom.yrad_pix,
+            geom.sint,
+            geom.cost,
+            geom.threshold_hi,
+            geom.threshold_lo,
+            geom.limit;
+            minx_pix=geom.minx_pix,
+            maxx_pix=geom.maxx_pix,
+            miny_pix=geom.miny_pix,
+            maxy_pix=geom.maxy_pix,
+            dark=opts.dark,
+            invert=false,
+            nsub=Proper.antialias_subsampling(),
+        )
         Proper.prop_elliptical_aperture(wf_ref, 0.35, 0.25, 0.05, -0.03; NORM=true, ROTATION=13.0)
         @test isapprox(wf_loop.field, wf_ref.field; atol=0, rtol=0)
+        @test isapprox(wf_ka.field, wf_ref.field; atol=0, rtol=0)
 
         wf_ref_dark = prop_begin(1.0, 500e-9, 32)
         wf_loop_dark = prop_begin(1.0, 500e-9, 32)
+        wf_ka_dark = prop_begin(1.0, 500e-9, 32)
         opts_dark = Proper.EllipseOptions{Float64}(true, true, -9.0)
         geom_dark = Proper.ellipse_geometry(Float64, wf_loop_dark, 0.22, 0.18, -0.04, 0.02, opts_dark)
         Proper._apply_shifted_ellipse_loop!(wf_loop_dark.field, geom_dark, opts_dark.dark, true, Proper.antialias_subsampling())
+        Proper.ka_apply_shifted_ellipse!(
+            wf_ka_dark.field,
+            geom_dark.xcenter_pix,
+            geom_dark.ycenter_pix,
+            geom_dark.xrad_pix,
+            geom_dark.yrad_pix,
+            geom_dark.sint,
+            geom_dark.cost,
+            geom_dark.threshold_hi,
+            geom_dark.threshold_lo,
+            geom_dark.limit;
+            minx_pix=geom_dark.minx_pix,
+            maxx_pix=geom_dark.maxx_pix,
+            miny_pix=geom_dark.miny_pix,
+            maxy_pix=geom_dark.maxy_pix,
+            dark=opts_dark.dark,
+            invert=true,
+            nsub=Proper.antialias_subsampling(),
+        )
         Proper.prop_elliptical_obscuration(wf_ref_dark, 0.22, 0.18, -0.04, 0.02; NORM=true, ROTATION=-9.0, DARK=true)
         @test isapprox(wf_loop_dark.field, wf_ref_dark.field; atol=0, rtol=0)
+        @test isapprox(wf_ka_dark.field, wf_ref_dark.field; atol=0, rtol=0)
     end
 
     @testset "Mutating wrapper parity" begin

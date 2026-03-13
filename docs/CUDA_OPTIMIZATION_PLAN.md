@@ -107,9 +107,10 @@ Completed in this slice:
 - backend-aware complex FFT scratch is now preserved in `FFTWorkspace`
 - CUDA propagation paths for `prop_ptp`, `prop_wts`, and `prop_stw` now use workspace-backed in-place `fft!` / `bfft!` flows
 - CPU planned FFT path is preserved unchanged behind typed dispatch
+- CUDA propagation paths now cache and reuse explicit CUFFT `plan_fft!` / `plan_bfft!` objects in `FFTWorkspace` instead of creating implicit plans through generic `fft!` / `bfft!` dispatch
 
 Remaining in C3:
-- validate CUDA in-place FFT behavior and timings on hardware
+- validate explicit CUFFT plan reuse behavior and timings on hardware
 - decide whether `prop_end` needs additional backend scratch/state or whether current KA copy path is sufficient
 
 Targets:
@@ -125,12 +126,13 @@ Status: In Progress
 
 Completed in this slice:
 - circular/elliptical aperture and obscuration wrappers now route through a direct shifted-ellipse application path on KA backends, avoiding the old materialize-mask-then-apply sequence on CUDA-visible fields
+- shifted-ellipse KA application now uses bbox/outside fast paths so trivially outside pixels avoid full rotated-ellipse math
 
 Targets:
 - Avoid device-host-device round-trips in common aperture workflows.
 
 ### C5: Benchmark Clarity and Precision Split
-Status: Pending
+Status: Completed
 - Split CUDA benchmark reporting by precision regime where useful:
   - wavefront FP64 propagation
   - image/interpolation FP32 kernels
@@ -181,4 +183,12 @@ Targets:
     - `julia --project=. test/runtests.jl`: pass
     - `julia --project=. test/parity/compare_examples.jl`: pass (`num_failed = 0`)
     - `./scripts/benchmark_all.sh`: pass on non-CUDA machine, CUDA lane skipped cleanly
-- 2026-03-13: Awaiting rerun on CUDA hardware for updated C2/C3/C4 benchmark data after backend-consistent FFT scratch and direct aperture application changes.
+- 2026-03-13: C3/C4/C5 follow-up slice implemented.
+  - added CUDA precision-split benchmark report (`bench/reports/cuda_precision_split.json`) plus summary/CSV integration.
+  - benchmark CUDA workloads now use `RunContext(wf)` / `RunContext(wf_map)` so timing reflects backend workspace reuse.
+  - shifted-ellipse KA application now uses bbox/outside fast paths.
+  - `FFTWorkspace` now caches explicit CUFFT plans through `ProperCUDAExt`, and CUDA `prop_ptp` / `prop_wts` / `prop_stw` now execute those cached plans via `LinearAlgebra.mul!`.
+  - added regression coverage for shifted-ellipse KA parity and CUDA plan reuse smoke checks.
+  - local validation:
+    - `julia --project=. test/runtests.jl`: pass
+    - `./scripts/benchmark_all.sh`: pass on non-CUDA machine, CUDA lane skipped cleanly
