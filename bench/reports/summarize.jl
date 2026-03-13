@@ -62,25 +62,75 @@ function padcell(text::AbstractString, width::Int, align::Symbol)
     return align === :r ? lpad(text, width) : rpad(text, width)
 end
 
-function print_table(headers::Vector{String}, rows::Vector{Vector{String}}; aligns=fill(:l, length(headers)))
-    isempty(rows) && return
+function render_ascii_table(headers::Vector{String}, rows::Vector{Vector{String}}; aligns=fill(:l, length(headers)))
+    isempty(rows) && return ""
     widths = [length(h) for h in headers]
     for row in rows
         for i in eachindex(headers)
             widths[i] = max(widths[i], length(row[i]))
         end
     end
-    println(join((padcell(headers[i], widths[i], aligns[i]) for i in eachindex(headers)), "  "))
-    println(join((repeat("-", widths[i]) for i in eachindex(headers)), "  "))
+
+    io = IOBuffer()
+    println(io, join((padcell(headers[i], widths[i], aligns[i]) for i in eachindex(headers)), "  "))
+    println(io, join((repeat("-", widths[i]) for i in eachindex(headers)), "  "))
     for row in rows
-        println(join((padcell(row[i], widths[i], aligns[i]) for i in eachindex(headers)), "  "))
+        println(io, join((padcell(row[i], widths[i], aligns[i]) for i in eachindex(headers)), "  "))
+    end
+    return String(take!(io))
+end
+
+function md_escape(text::AbstractString)
+    return replace(text, "|" => "\\|")
+end
+
+function render_markdown_table(headers::Vector{String}, rows::Vector{Vector{String}})
+    isempty(rows) && return ""
+    io = IOBuffer()
+    println(io, "| ", join(md_escape.(headers), " | "), " |")
+    println(io, "| ", join(fill("---", length(headers)), " | "), " |")
+    for row in rows
+        println(io, "| ", join(md_escape.(row), " | "), " |")
+    end
+    return String(take!(io))
+end
+
+function csv_escape(text::AbstractString)
+    return "\"" * replace(text, "\"" => "\"\"") * "\""
+end
+
+function write_csv(path::AbstractString, headers::Vector{String}, rows::Vector{Vector{String}})
+    open(path, "w") do io
+        println(io, join(csv_escape.(headers), ","))
+        for row in rows
+            println(io, join(csv_escape.(row), ","))
+        end
+    end
+    return path
+end
+
+function append_ascii_section!(io::IO, title::AbstractString, headers::Vector{String}, rows::Vector{Vector{String}}; aligns=fill(:l, length(headers)), notes=String[])
+    isempty(rows) && return
+    println(io)
+    println(io, title)
+    println(io, repeat("=", length(title)))
+    print(io, render_ascii_table(headers, rows; aligns=aligns))
+    for note in notes
+        println(io)
+        println(io, note)
     end
 end
 
-function print_section(title::AbstractString)
-    println()
-    println(title)
-    println(repeat("=", length(title)))
+function append_markdown_section!(io::IO, title::AbstractString, headers::Vector{String}, rows::Vector{Vector{String}}; notes=String[])
+    isempty(rows) && return
+    println(io, "## ", title)
+    println(io)
+    print(io, render_markdown_table(headers, rows))
+    println(io)
+    for note in notes
+        println(io, note)
+    end
+    println(io)
 end
 
 function ordered_names(preferred::Vector{String}, dicts...)
@@ -119,8 +169,19 @@ examples = loadjson(joinpath(root, "example_workflows.json"))
 cuda_jl = loadjson(joinpath(root, "julia_cuda_steady_state.json"))
 cuda_kernels = loadjson(joinpath(root, "cuda_supported_kernels.json"))
 
-print_section("Steady-State Workload")
+summary_md_path = joinpath(root, "benchmark_summary.md")
+generated_paths = String[]
+
+term = IOBuffer()
+md = IOBuffer()
+println(md, "# Benchmark Summary")
+println(md)
+println(md, "Generated from JSON reports in `bench/reports/`.")
+println(md)
+
+steady_headers = ["Backend", "Median", "Samples", "Vs Python", "Vs Julia CPU"]
 steady_rows = Vector{Vector{String}}()
+steady_notes = String[]
 py_med = maybe_float(getpath(py, "stats", "median_ns"))
 jl_med = maybe_float(getpath(jl, "stats", "median_ns"))
 cuda_available = maybe_bool(getpath(cuda_jl, "meta", "available"))
@@ -153,28 +214,27 @@ if cuda_available
         jl_med === nothing ? "-" : fmt_ratio(jl_med / cuda_med),
     ])
 end
-print_table(
-    ["Backend", "Median", "Samples", "Vs Python", "Vs Julia CPU"],
-    steady_rows;
-    aligns=[:l, :r, :r, :r, :r],
-)
-println()
-println("Note: steady-state rows exclude Julia TTFx by construction.")
-println("Ratio columns are reference/row, so values greater than 1.00x mean the row is faster.")
+push!(steady_notes, "Note: steady-state rows exclude Julia TTFx by construction.")
+push!(steady_notes, "Ratio columns are reference/row, so values greater than 1.00x mean the row is faster.")
 if ttfx !== nothing
-    println("Julia cold start / TTFx: ", fmt_ns(getpath(ttfx, "first_call_ns")))
+    push!(steady_notes, "Julia cold start / TTFx: $(fmt_ns(getpath(ttfx, "first_call_ns")))")
 end
 if cuda_available
-    println("CUDA device: ", getpath(cuda_jl, "meta", "device"))
+    push!(steady_notes, "CUDA device: $(getpath(cuda_jl, "meta", "device"))")
 elseif cuda_jl !== nothing
-    println("CUDA status: skipped")
-    println("Reason: ", replace(String(getpath(cuda_jl, "reason")), '\n' => ' '))
+    reason = replace(String(getpath(cuda_jl, "reason")), '\n' => ' ')
+    push!(steady_notes, "CUDA status: skipped")
+    push!(steady_notes, "Reason: $reason")
 end
+append_ascii_section!(term, "Steady-State Workload", steady_headers, steady_rows; aligns=[:l, :r, :r, :r, :r], notes=steady_notes)
+append_markdown_section!(md, "Steady-State Workload", steady_headers, steady_rows; notes=steady_notes)
+push!(generated_paths, write_csv(joinpath(root, "steady_state_comparison.csv"), steady_headers, steady_rows))
 
 cpu_kernel_data = getpath(cpu_supported, "kernels")
 cuda_kernel_data = cuda_available ? getpath(cuda_kernels, "kernels") : nothing
 if cpu_kernel_data !== nothing
-    print_section("Supported Kernels: CPU vs CUDA")
+    kernel_headers = ["Kernel", "CPU", "CUDA", "CPU/CUDA", "CPU allocs", "CUDA allocs", "CPU bytes", "CUDA bytes"]
+    kernel_rows = Vector{Vector{String}}()
     preferred = [
         "prop_qphase",
         "prop_ptp",
@@ -188,13 +248,12 @@ if cpu_kernel_data !== nothing
         "prop_rectangle_mutating",
         "prop_rounded_rectangle_mutating",
     ]
-    rows = Vector{Vector{String}}()
     for name in ordered_names(preferred, cpu_kernel_data, cuda_kernel_data)
         cpu_stats = getkey(cpu_kernel_data, name)
         cuda_stats = getkey(cuda_kernel_data, name)
         cpu_ns = maybe_float(getpath(cpu_stats, "median_ns"))
         cuda_ns = maybe_float(getpath(cuda_stats, "median_ns"))
-        push!(rows, [
+        push!(kernel_rows, [
             name,
             fmt_ns(cpu_ns),
             fmt_ns(cuda_ns),
@@ -205,20 +264,18 @@ if cpu_kernel_data !== nothing
             fmt_bytes(getpath(cuda_stats, "median_bytes")),
         ])
     end
-    print_table(
-        ["Kernel", "CPU", "CUDA", "CPU/CUDA", "CPU allocs", "CUDA allocs", "CPU bytes", "CUDA bytes"],
-        rows;
-        aligns=[:l, :r, :r, :r, :r, :r, :r, :r],
-    )
+    append_ascii_section!(term, "Supported Kernels: CPU vs CUDA", kernel_headers, kernel_rows; aligns=[:l, :r, :r, :r, :r, :r, :r, :r])
+    append_markdown_section!(md, "Supported Kernels: CPU vs CUDA", kernel_headers, kernel_rows)
+    push!(generated_paths, write_csv(joinpath(root, "supported_kernels_comparison.csv"), kernel_headers, kernel_rows))
 end
 
 if phase2 !== nothing
-    print_section("Phase-2 CPU Kernels")
+    phase2_headers = ["Kernel", "Median", "Allocs", "Bytes", "Samples"]
+    phase2_rows = Vector{Vector{String}}()
     kernel_data = getpath(phase2, "kernels")
-    rows = Vector{Vector{String}}()
     for name in ordered_names(["prop_lens", "prop_qphase", "prop_ptp"], kernel_data)
         stats = getkey(kernel_data, name)
-        push!(rows, [
+        push!(phase2_rows, [
             name,
             fmt_ns(getpath(stats, "median_ns")),
             fmt_int(getpath(stats, "median_allocs")),
@@ -226,18 +283,20 @@ if phase2 !== nothing
             fmt_int(getpath(stats, "samples")),
         ])
     end
-    print_table(["Kernel", "Median", "Allocs", "Bytes", "Samples"], rows; aligns=[:l, :r, :r, :r, :r])
+    append_ascii_section!(term, "Phase-2 CPU Kernels", phase2_headers, phase2_rows; aligns=[:l, :r, :r, :r, :r])
+    append_markdown_section!(md, "Phase-2 CPU Kernels", phase2_headers, phase2_rows)
+    push!(generated_paths, write_csv(joinpath(root, "phase2_cpu_kernels.csv"), phase2_headers, phase2_rows))
 end
 
 if refactor !== nothing
-    print_section("Wrapper vs Mutating")
-    rows = Vector{Vector{String}}()
+    refactor_headers = ["Kernel", "Wrapper", "Mutating", "Wrapper/Mut", "Bytes saved"]
+    refactor_rows = Vector{Vector{String}}()
     for name in ordered_names(
         ["rectangle", "ellipse", "polygon", "irregular_polygon", "rotate", "resamplemap", "magnify_quick", "psd_errormap"],
         getpath(refactor, "pairs"),
     )
         payload = getpath(refactor, "pairs", name)
-        push!(rows, [
+        push!(refactor_rows, [
             name,
             fmt_ns(getpath(payload, "wrapper", "median_ns")),
             fmt_ns(getpath(payload, "mutating", "median_ns")),
@@ -245,49 +304,51 @@ if refactor !== nothing
             fmt_bytes(getpath(payload, "median_byte_reduction")),
         ])
     end
-    print_table(
-        ["Kernel", "Wrapper", "Mutating", "Wrapper/Mut", "Bytes saved"],
-        rows;
-        aligns=[:l, :r, :r, :r, :r],
-    )
+    append_ascii_section!(term, "Wrapper vs Mutating", refactor_headers, refactor_rows; aligns=[:l, :r, :r, :r, :r])
+    append_markdown_section!(md, "Wrapper vs Mutating", refactor_headers, refactor_rows)
+    push!(generated_paths, write_csv(joinpath(root, "wrapper_vs_mutating.csv"), refactor_headers, refactor_rows))
 end
 
 if ka_interp !== nothing
-    print_section("KA Interpolation Pilot")
-    rows = Vector{Vector{String}}()
+    interp_headers = ["Kernel", "Loop", "KA", "Loop/KA"]
+    interp_rows = Vector{Vector{String}}()
     for name in ordered_names(["cubic_conv_grid", "rotate_cubic", "rotate_linear"], getpath(ka_interp, "pairs"))
         payload = getpath(ka_interp, "pairs", name)
-        push!(rows, [
+        push!(interp_rows, [
             name,
             fmt_ns(getpath(payload, "loop", "median_ns")),
             fmt_ns(getpath(payload, "ka", "median_ns")),
             fmt_ratio(getpath(payload, "speedup_loop_over_ka")),
         ])
     end
-    print_table(["Kernel", "Loop", "KA", "Loop/KA"], rows; aligns=[:l, :r, :r, :r])
+    append_ascii_section!(term, "KA Interpolation Pilot", interp_headers, interp_rows; aligns=[:l, :r, :r, :r])
+    append_markdown_section!(md, "KA Interpolation Pilot", interp_headers, interp_rows)
+    push!(generated_paths, write_csv(joinpath(root, "ka_interpolation_pilot.csv"), interp_headers, interp_rows))
 end
 
 if ka_geom !== nothing
-    print_section("KA Geometry/Sampling Pilot")
-    rows = Vector{Vector{String}}()
+    geom_headers = ["Kernel", "Loop", "KA", "Loop/KA"]
+    geom_rows = Vector{Vector{String}}()
     for name in ordered_names(["rectangle", "ellipse", "irregular_polygon", "rounded_rectangle", "szoom", "pixellate"], getpath(ka_geom, "pairs"))
         payload = getpath(ka_geom, "pairs", name)
-        push!(rows, [
+        push!(geom_rows, [
             name,
             fmt_ns(getpath(payload, "loop", "median_ns")),
             fmt_ns(getpath(payload, "ka", "median_ns")),
             fmt_ratio(getpath(payload, "speedup_loop_over_ka")),
         ])
     end
-    print_table(["Kernel", "Loop", "KA", "Loop/KA"], rows; aligns=[:l, :r, :r, :r])
+    append_ascii_section!(term, "KA Geometry/Sampling Pilot", geom_headers, geom_rows; aligns=[:l, :r, :r, :r])
+    append_markdown_section!(md, "KA Geometry/Sampling Pilot", geom_headers, geom_rows)
+    push!(generated_paths, write_csv(joinpath(root, "ka_geometry_sampling_pilot.csv"), geom_headers, geom_rows))
 end
 
 if examples !== nothing
-    print_section("Example Workflows")
-    rows = Vector{Vector{String}}()
+    example_headers = ["Workflow", "Median", "Allocs", "Bytes", "Samples"]
+    example_rows = Vector{Vector{String}}()
     for name in ordered_names(["simple_prescription_256", "simple_telescope_256", "psdtest_128"], getpath(examples, "examples"))
         stats = getpath(examples, "examples", name)
-        push!(rows, [
+        push!(example_rows, [
             name,
             fmt_ns(getpath(stats, "median_ns")),
             fmt_int(getpath(stats, "median_allocs")),
@@ -295,5 +356,20 @@ if examples !== nothing
             fmt_int(getpath(stats, "samples")),
         ])
     end
-    print_table(["Workflow", "Median", "Allocs", "Bytes", "Samples"], rows; aligns=[:l, :r, :r, :r, :r])
+    append_ascii_section!(term, "Example Workflows", example_headers, example_rows; aligns=[:l, :r, :r, :r, :r])
+    append_markdown_section!(md, "Example Workflows", example_headers, example_rows)
+    push!(generated_paths, write_csv(joinpath(root, "example_workflows.csv"), example_headers, example_rows))
+end
+
+open(summary_md_path, "w") do io
+    write(io, String(take!(md)))
+end
+pushfirst!(generated_paths, summary_md_path)
+
+print(String(take!(term)))
+println()
+println("Generated files")
+println("===============")
+for path in generated_paths
+    println(relpath(path, pwd()))
 end
