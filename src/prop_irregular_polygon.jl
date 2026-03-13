@@ -28,6 +28,7 @@ end
 end
 
 function _prop_irregular_polygon(
+    ::GeometryLoopExecStyle,
     image::AbstractMatrix,
     wf::WaveFront,
     xverts::AbstractVector,
@@ -37,7 +38,7 @@ function _prop_irregular_polygon(
     length(xverts) == length(yverts) || throw(ArgumentError("vertex arrays must have same length"))
     nverts = length(xverts)
 
-    RT = real(eltype(wf.field))
+    RT = eltype(image)
     beamr = prop_get_beamradius(wf)
     xv, yv = ensure_mask_vertices!(wf.workspace.mask, nverts)
     @inbounds for k in 1:nverts
@@ -87,13 +88,69 @@ function _prop_irregular_polygon(
 end
 
 function _prop_irregular_polygon(
+    ::GeometryKAExecStyle,
+    image::AbstractMatrix,
+    wf::WaveFront,
+    xverts::AbstractVector,
+    yverts::AbstractVector,
+    opts::IrregularPolygonOptions,
+)
+    length(xverts) == length(yverts) || throw(ArgumentError("vertex arrays must have same length"))
+    nverts = length(xverts)
+
+    RT = eltype(image)
+    beamr = prop_get_beamradius(wf)
+    xv, yv = ensure_mask_vertices!(wf.workspace.mask, nverts)
+    @inbounds for k in 1:nverts
+        xv0 = RT(xverts[k])
+        yv0 = RT(yverts[k])
+        if opts.norm
+            xv[k] = xv0 * RT(beamr)
+            yv[k] = yv0 * RT(beamr)
+        else
+            xv[k] = xv0
+            yv[k] = yv0
+        end
+    end
+
+    ny, nx = size(wf.field)
+    size(image) == (ny, nx) || throw(ArgumentError("output size must match wavefront"))
+    dx = RT(wf.sampling_m)
+    cx = nx ÷ 2
+    cy = ny ÷ 2
+    xv_dev = backend_adapt(image, xv)
+    yv_dev = backend_adapt(image, yv)
+
+    return ka_irregular_polygon_mask!(
+        image,
+        xv_dev,
+        yv_dev,
+        cx,
+        cy,
+        dx;
+        dark=opts.dark,
+        nsub=antialias_subsampling(),
+    )
+end
+
+function _prop_irregular_polygon(
+    image::AbstractMatrix,
+    wf::WaveFront,
+    xverts::AbstractVector,
+    yverts::AbstractVector,
+    opts::IrregularPolygonOptions,
+)
+    return _prop_irregular_polygon(geometry_exec_style(typeof(image), size(image, 1), size(image, 2)), image, wf, xverts, yverts, opts)
+end
+
+function _prop_irregular_polygon(
     wf::WaveFront,
     xverts::AbstractVector,
     yverts::AbstractVector,
     opts::IrregularPolygonOptions,
 )
     RT = real(eltype(wf.field))
-    image = zeros(RT, size(wf.field)...)
+    image = similar(wf.field, RT, size(wf.field)...)
     return _prop_irregular_polygon(image, wf, xverts, yverts, opts)
 end
 

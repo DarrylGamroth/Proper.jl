@@ -64,7 +64,7 @@ function _prop_polygon(
     opts::PolygonOptions,
 )
     RT = real(eltype(wf.field))
-    image = zeros(RT, size(wf.field)...)
+    image = similar(wf.field, RT, size(wf.field)...)
     return _prop_polygon!(image, wf, nsides, radius, xc, yc, opts)
 end
 

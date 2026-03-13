@@ -13,6 +13,7 @@ end
 end
 
 function _prop_ellipse!(
+    ::GeometryLoopExecStyle,
     image::AbstractMatrix,
     wf::WaveFront,
     xradius::Real,
@@ -21,23 +22,23 @@ function _prop_ellipse!(
     yc::Real,
     opts::EllipseOptions,
 )
-    nsub = antialias_subsampling()
     n = prop_get_gridsize(wf)
     size(image) == (n, n) || throw(ArgumentError("output size must match wavefront grid"))
 
-    dx = prop_get_sampling(wf)
-    beamrad_pix = prop_get_beamradius(wf) / dx
+    nsub = antialias_subsampling()
+    T = eltype(image)
+    dx = T(prop_get_sampling(wf))
+    beamrad_pix = T(prop_get_beamradius(wf)) / dx
     norm = opts.norm
     dark = opts.dark
     rotation = opts.rotation
 
-    RT = real(eltype(wf.field))
-    xf = RT
+    xf = T
     xcenter_pix = xf(n ÷ 2)
     ycenter_pix = xf(n ÷ 2)
 
-    xrad_pix::RT = zero(RT)
-    yrad_pix::RT = zero(RT)
+    xrad_pix::T = zero(T)
+    yrad_pix::T = zero(T)
     if norm
         xcenter_pix += xf(xc) * xf(beamrad_pix)
         ycenter_pix += xf(yc) * xf(beamrad_pix)
@@ -54,10 +55,10 @@ function _prop_ellipse!(
     sint = sin(t)
     cost = cos(t)
 
-    minx = typemax(RT)
-    maxx = typemin(RT)
-    miny = typemax(RT)
-    maxy = typemin(RT)
+    minx = typemax(T)
+    maxx = typemin(T)
+    miny = typemax(T)
+    maxy = typemin(T)
     @inbounds for (xp, yp) in ((-xrad_pix, -yrad_pix), (xrad_pix, -yrad_pix), (xrad_pix, yrad_pix), (-xrad_pix, yrad_pix))
         xr = xp * cost - yp * sint + xcenter_pix
         yr = xp * sint + yp * cost + ycenter_pix
@@ -78,11 +79,7 @@ function _prop_ellipse!(
     dry = delx * sint + dely * cost
     dr = max(abs(drx), abs(dry))
 
-    if dark
-        fill!(image, one(eltype(image)))
-    else
-        fill!(image, zero(eltype(image)))
-    end
+    fill!(image, dark ? one(T) : zero(T))
 
     threshold_hi = xf(1) + dr
     threshold_lo = xf(1) - dr
@@ -102,9 +99,9 @@ function _prop_ellipse!(
             rv = sqrt(xr * xr + yr * yr)
 
             pixval = if rv > threshold_hi
-                zero(RT)
+                zero(T)
             elseif rv <= threshold_lo
-                one(RT)
+                one(T)
             else
                 cnt = 0
                 for oy_i in 1:nsub
@@ -121,11 +118,88 @@ function _prop_ellipse!(
                 xf(cnt) / nsubpix
             end
 
-            image[ypix + 1, xpix + 1] = dark ? (one(RT) - pixval) : pixval
+            image[ypix + 1, xpix + 1] = dark ? (one(T) - pixval) : pixval
         end
     end
 
     return image
+end
+
+function _prop_ellipse!(
+    ::GeometryKAExecStyle,
+    image::AbstractMatrix,
+    wf::WaveFront,
+    xradius::Real,
+    yradius::Real,
+    xc::Real,
+    yc::Real,
+    opts::EllipseOptions,
+)
+    n = prop_get_gridsize(wf)
+    size(image) == (n, n) || throw(ArgumentError("output size must match wavefront grid"))
+
+    nsub = antialias_subsampling()
+    T = eltype(image)
+    dx = T(prop_get_sampling(wf))
+    beamrad_pix = T(prop_get_beamradius(wf)) / dx
+
+    xcenter_pix = T(n ÷ 2)
+    ycenter_pix = T(n ÷ 2)
+
+    xrad_pix = zero(T)
+    yrad_pix = zero(T)
+    if opts.norm
+        xcenter_pix += T(xc) * beamrad_pix
+        ycenter_pix += T(yc) * beamrad_pix
+        xrad_pix = T(xradius) * beamrad_pix
+        yrad_pix = T(yradius) * beamrad_pix
+    else
+        xcenter_pix += T(xc) / dx
+        ycenter_pix += T(yc) / dx
+        xrad_pix = T(xradius) / dx
+        yrad_pix = T(yradius) / dx
+    end
+
+    t = T(deg2rad(opts.rotation))
+    sint = sin(t)
+    cost = cos(t)
+
+    delx = inv(xrad_pix)
+    dely = inv(yrad_pix)
+    drx = delx * cost - dely * sint
+    dry = delx * sint + dely * cost
+    dr = max(abs(drx), abs(dry))
+
+    threshold_hi = one(T) + dr
+    threshold_lo = one(T) - dr
+    limit = T(1 + 1e-10)
+
+    return ka_ellipse_mask!(
+        image,
+        xcenter_pix,
+        ycenter_pix,
+        xrad_pix,
+        yrad_pix,
+        sint,
+        cost,
+        threshold_hi,
+        threshold_lo,
+        limit;
+        dark=opts.dark,
+        nsub=nsub,
+    )
+end
+
+function _prop_ellipse!(
+    image::AbstractMatrix,
+    wf::WaveFront,
+    xradius::Real,
+    yradius::Real,
+    xc::Real,
+    yc::Real,
+    opts::EllipseOptions,
+)
+    return _prop_ellipse!(geometry_exec_style(typeof(image), size(image, 1), size(image, 2)), image, wf, xradius, yradius, xc, yc, opts)
 end
 
 function _prop_ellipse(
@@ -137,7 +211,7 @@ function _prop_ellipse(
     opts::EllipseOptions,
 )
     RT = real(eltype(wf.field))
-    image = zeros(RT, prop_get_gridsize(wf), prop_get_gridsize(wf))
+    image = similar(wf.field, RT, prop_get_gridsize(wf), prop_get_gridsize(wf))
     return _prop_ellipse!(image, wf, xradius, yradius, xc, yc, opts)
 end
 

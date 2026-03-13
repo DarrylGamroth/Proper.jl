@@ -13,6 +13,7 @@ end
 end
 
 function _prop_rectangle!(
+    ::GeometryLoopExecStyle,
     image::AbstractMatrix,
     wf::WaveFront,
     xsize::Real,
@@ -23,20 +24,21 @@ function _prop_rectangle!(
 )
     n = prop_get_gridsize(wf)
     size(image) == (n, n) || throw(ArgumentError("output size must match wavefront grid"))
-    dx = prop_get_sampling(wf)
-    beamrad = prop_get_beamradius(wf)
+    T = eltype(image)
+    dx = T(prop_get_sampling(wf))
+    beamrad = T(prop_get_beamradius(wf))
     pr = beamrad / dx
 
-    θ = deg2rad(opts.rotation)
+    θ = T(deg2rad(opts.rotation))
     cθ = cos(θ)
     sθ = sin(θ)
 
-    xcp = n ÷ 2 + (opts.norm ? float(xc) * pr : float(xc) / dx)
-    ycp = n ÷ 2 + (opts.norm ? float(yc) * pr : float(yc) / dx)
-    xrp = (opts.norm ? float(xsize) * pr : float(xsize) / dx) / 2
-    yrp = (opts.norm ? float(ysize) * pr : float(ysize) / dx) / 2
+    xcp = T(n ÷ 2) + (opts.norm ? T(xc) * pr : T(xc) / dx)
+    ycp = T(n ÷ 2) + (opts.norm ? T(yc) * pr : T(yc) / dx)
+    xrp = (opts.norm ? T(xsize) * pr : T(xsize) / dx) / T(2)
+    yrp = (opts.norm ? T(ysize) * pr : T(ysize) / dx) / T(2)
 
-    fill!(image, zero(eltype(image)))
+    fill!(image, zero(T))
 
     # Bounding box from rotated corners.
     xp = (-xrp, -xrp, xrp, xrp)
@@ -50,7 +52,7 @@ function _prop_rectangle!(
     maxy = min(n - 1, ceil(Int, maximum(ybox) + 1))
 
     nsub = antialias_subsampling()
-    inv_sub = 1 / (nsub * nsub)
+    inv_sub = inv(T(nsub * nsub))
 
     @inbounds for ypix in miny:maxy
         y0 = ypix - ycp
@@ -77,6 +79,71 @@ function _prop_rectangle!(
     return image
 end
 
+function _prop_rectangle!(
+    ::GeometryKAExecStyle,
+    image::AbstractMatrix,
+    wf::WaveFront,
+    xsize::Real,
+    ysize::Real,
+    xc::Real,
+    yc::Real,
+    opts::RectangleOptions,
+)
+    n = prop_get_gridsize(wf)
+    size(image) == (n, n) || throw(ArgumentError("output size must match wavefront grid"))
+    T = eltype(image)
+    dx = T(prop_get_sampling(wf))
+    beamrad = T(prop_get_beamradius(wf))
+    pr = beamrad / dx
+
+    θ = T(deg2rad(opts.rotation))
+    cθ = cos(θ)
+    sθ = sin(θ)
+
+    xcp = T(n ÷ 2) + (opts.norm ? T(xc) * pr : T(xc) / dx)
+    ycp = T(n ÷ 2) + (opts.norm ? T(yc) * pr : T(yc) / dx)
+    xrp = (opts.norm ? T(xsize) * pr : T(xsize) / dx) / T(2)
+    yrp = (opts.norm ? T(ysize) * pr : T(ysize) / dx) / T(2)
+
+    xp = (-xrp, -xrp, xrp, xrp)
+    yp = (-yrp, yrp, yrp, -yrp)
+    xbox = ntuple(i -> xp[i] * cθ - yp[i] * sθ + xcp, 4)
+    ybox = ntuple(i -> xp[i] * sθ + yp[i] * cθ + ycp, 4)
+
+    minx = max(0, floor(Int, minimum(xbox) - one(T)))
+    maxx = min(n - 1, ceil(Int, maximum(xbox) + one(T)))
+    miny = max(0, floor(Int, minimum(ybox) - one(T)))
+    maxy = min(n - 1, ceil(Int, maximum(ybox) + one(T)))
+
+    return ka_rectangle_mask!(
+        image,
+        xcp,
+        ycp,
+        xrp,
+        yrp,
+        cθ,
+        sθ,
+        minx,
+        maxx,
+        miny,
+        maxy;
+        dark=opts.dark,
+        nsub=antialias_subsampling(),
+    )
+end
+
+function _prop_rectangle!(
+    image::AbstractMatrix,
+    wf::WaveFront,
+    xsize::Real,
+    ysize::Real,
+    xc::Real,
+    yc::Real,
+    opts::RectangleOptions,
+)
+    return _prop_rectangle!(geometry_exec_style(typeof(image), size(image, 1), size(image, 2)), image, wf, xsize, ysize, xc, yc, opts)
+end
+
 function _prop_rectangle(
     wf::WaveFront,
     xsize::Real,
@@ -86,7 +153,7 @@ function _prop_rectangle(
     opts::RectangleOptions,
 )
     RT = real(eltype(wf.field))
-    image = zeros(RT, prop_get_gridsize(wf), prop_get_gridsize(wf))
+    image = similar(wf.field, RT, prop_get_gridsize(wf), prop_get_gridsize(wf))
     return _prop_rectangle!(image, wf, xsize, ysize, xc, yc, opts)
 end
 

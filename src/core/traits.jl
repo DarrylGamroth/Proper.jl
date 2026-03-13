@@ -64,6 +64,32 @@ end
     return ka_enabled(shift_kernel_style(A), ny, nx, KA_END_MIN_ELEMS)
 end
 
+abstract type GeometryKernelStyle end
+struct GeometryLoopStyle <: GeometryKernelStyle end
+struct GeometryKAStyle <: GeometryKernelStyle end
+
+geometry_kernel_style(::Type{<:AbstractArray}) = GeometryLoopStyle()
+
+const KA_GEOMETRY_MIN_ELEMS = typemax(Int)
+
+@inline ka_enabled(::GeometryKAStyle, ny::Integer, nx::Integer, min_elems::Int) = (ny * nx) >= min_elems
+@inline ka_enabled(::GeometryKernelStyle, ny::Integer, nx::Integer, min_elems::Int) = false
+
+@inline function ka_geometry_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
+    return ka_enabled(geometry_kernel_style(A), ny, nx, KA_GEOMETRY_MIN_ELEMS)
+end
+
+abstract type GeometryExecStyle end
+struct GeometryLoopExecStyle <: GeometryExecStyle end
+struct GeometryKAExecStyle <: GeometryExecStyle end
+
+@inline geometry_exec_style(::Val{true}) = GeometryKAExecStyle()
+@inline geometry_exec_style(::Val{false}) = GeometryLoopExecStyle()
+
+@inline function geometry_exec_style(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
+    return geometry_exec_style(Val(ka_geometry_enabled(A, ny, nx)))
+end
+
 @inline function ka_cubic_grid_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
     return ka_enabled(interp_kernel_style(A), ny, nx, KA_CUBIC_GRID_MIN_ELEMS)
 end

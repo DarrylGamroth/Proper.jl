@@ -22,6 +22,28 @@ end
     return ifelse(i < 1, 1, ifelse(i > n, n, i))
 end
 
+@inline function _ka_subsample_offset(idx::Int, nsub::Int, scale)
+    T = typeof(scale)
+    return (T(idx) - (T(nsub) + one(T)) / T(2)) / T(nsub) * scale
+end
+
+@inline function _ka_point_in_poly(x::Real, y::Real, xv::AbstractVector, yv::AbstractVector)
+    inside = false
+    n = length(xv)
+    j = n
+    epsy = eps(promote_type(typeof(x), typeof(y), eltype(xv), eltype(yv)))
+    @inbounds for i in 1:n
+        yi = yv[i]
+        yj = yv[j]
+        if (yi > y) != (yj > y)
+            xcross = (xv[j] - xv[i]) * (y - yi) / (yj - yi + epsy) + xv[i]
+            inside = ifelse(x < xcross, !inside, inside)
+        end
+        j = i
+    end
+    return inside
+end
+
 @inline function _ka_bilinear_sample(a::AbstractMatrix{T}, y::Real, x::Real) where {T}
     ny, nx = size(a)
     x0 = floor(Int, x)
@@ -255,6 +277,171 @@ end
     end
 end
 
+@kernel function _ka_rectangle_mask_kernel!(
+    image,
+    xcp,
+    ycp,
+    xrp,
+    yrp,
+    cθ,
+    sθ,
+    minx::Int,
+    maxx::Int,
+    miny::Int,
+    maxy::Int,
+    nsub::Int,
+    dark::Bool,
+    ny::Int,
+    nx::Int,
+)
+    I = @index(Global, NTuple)
+    i = I[1]
+    j = I[2]
+
+    if i <= ny && j <= nx
+        T = typeof(xcp)
+        xpix = j - 1
+        ypix = i - 1
+        pixval = zero(T)
+
+        if minx <= xpix <= maxx && miny <= ypix <= maxy
+            x0 = T(xpix) - xcp
+            y0 = T(ypix) - ycp
+            cnt = 0
+
+            for ys in 1:nsub
+                yo = y0 + _ka_subsample_offset(ys, nsub, one(T))
+                for xs in 1:nsub
+                    xo = x0 + _ka_subsample_offset(xs, nsub, one(T))
+                    xr = xo * cθ - yo * sθ
+                    yr = xo * sθ + yo * cθ
+                    cnt += (abs(xr) <= xrp && abs(yr) <= yrp)
+                end
+            end
+
+            pixval = T(cnt) / T(nsub * nsub)
+        end
+
+        image[i, j] = dark ? (one(T) - pixval) : pixval
+    end
+end
+
+@kernel function _ka_ellipse_mask_kernel!(
+    image,
+    xcenter_pix,
+    ycenter_pix,
+    xrad_pix,
+    yrad_pix,
+    sint,
+    cost,
+    threshold_hi,
+    threshold_lo,
+    limit,
+    nsub::Int,
+    dark::Bool,
+    ny::Int,
+    nx::Int,
+)
+    I = @index(Global, NTuple)
+    i = I[1]
+    j = I[2]
+
+    if i <= ny && j <= nx
+        T = typeof(xcenter_pix)
+        x0 = T(j - 1) - xcenter_pix
+        y0 = T(i - 1) - ycenter_pix
+
+        xr = (x0 * cost - y0 * sint) / xrad_pix
+        yr = (x0 * sint + y0 * cost) / yrad_pix
+        rv = sqrt(xr * xr + yr * yr)
+
+        pixval = if rv > threshold_hi
+            zero(T)
+        elseif rv <= threshold_lo
+            one(T)
+        else
+            cnt = 0
+            for oy_i in 1:nsub
+                ys = y0 + _ka_subsample_offset(oy_i, nsub, one(T))
+                for ox_i in 1:nsub
+                    xs = x0 + _ka_subsample_offset(ox_i, nsub, one(T))
+                    xsv = (xs * cost - ys * sint) / xrad_pix
+                    ysv = (xs * sint + ys * cost) / yrad_pix
+                    cnt += ((xsv * xsv + ysv * ysv) <= limit)
+                end
+            end
+            T(cnt) / T(nsub * nsub)
+        end
+
+        image[i, j] = dark ? (one(T) - pixval) : pixval
+    end
+end
+
+@kernel function _ka_irregular_polygon_mask_kernel!(
+    image,
+    xv,
+    yv,
+    cx::Int,
+    cy::Int,
+    dx,
+    nsub::Int,
+    dark::Bool,
+    ny::Int,
+    nx::Int,
+)
+    I = @index(Global, NTuple)
+    i = I[1]
+    j = I[2]
+
+    if i <= ny && j <= nx
+        T = typeof(dx)
+        x0 = T(j - 1 - cx) * dx
+        y0 = T(i - 1 - cy) * dx
+        cnt = 0
+
+        for oy_i in 1:nsub
+            oy = _ka_subsample_offset(oy_i, nsub, dx)
+            for ox_i in 1:nsub
+                ox = _ka_subsample_offset(ox_i, nsub, dx)
+                cnt += _ka_point_in_poly(x0 + ox, y0 + oy, xv, yv)
+            end
+        end
+
+        pixval = T(cnt) / T(nsub * nsub)
+        image[i, j] = dark ? (one(T) - pixval) : pixval
+    end
+end
+
+@kernel function _ka_rounded_rectangle_mask_kernel!(
+    image,
+    dx,
+    xc,
+    yc,
+    r,
+    hw,
+    hh,
+    cy::Int,
+    cx::Int,
+    ny::Int,
+    nx::Int,
+)
+    I = @index(Global, NTuple)
+    i = I[1]
+    j = I[2]
+
+    if i <= ny && j <= nx
+        T = typeof(dx)
+        x = T(j - 1 - cx) * dx - xc
+        y = T(i - 1 - cy) * dx - yc
+        qx = abs(x) - (hw - r)
+        qy = abs(y) - (hh - r)
+        ax = max(qx, zero(T))
+        ay = max(qy, zero(T))
+        inside = (qx <= 0 && abs(y) <= hh) || (qy <= 0 && abs(x) <= hw) || (ax * ax + ay * ay <= r * r)
+        image[i, j] = inside ? one(T) : zero(T)
+    end
+end
+
 @inline function ka_apply_shifted_mask!(
     field::AbstractMatrix{<:Complex},
     mask::AbstractMatrix{<:Real};
@@ -326,6 +513,140 @@ end
     _ka_rotate_cubic_kernel!(backend, (16, 16))(out, old_image, c, s, cx, cy, sx, sy, ny, nx; ndrange=(ny, nx))
     AK.synchronize(backend)
     return out
+end
+
+@inline function ka_rectangle_mask!(
+    image::AbstractMatrix{T},
+    xcp::T,
+    ycp::T,
+    xrp::T,
+    yrp::T,
+    cθ::T,
+    sθ::T,
+    minx::Int,
+    maxx::Int,
+    miny::Int,
+    maxy::Int;
+    dark::Bool=false,
+    nsub::Int=1,
+) where {T<:AbstractFloat}
+    ny, nx = size(image)
+    backend = AK.get_backend(image)
+    _ka_rectangle_mask_kernel!(backend, (16, 16))(
+        image,
+        xcp,
+        ycp,
+        xrp,
+        yrp,
+        cθ,
+        sθ,
+        minx,
+        maxx,
+        miny,
+        maxy,
+        nsub,
+        dark,
+        ny,
+        nx;
+        ndrange=(ny, nx),
+    )
+    AK.synchronize(backend)
+    return image
+end
+
+@inline function ka_ellipse_mask!(
+    image::AbstractMatrix{T},
+    xcenter_pix::T,
+    ycenter_pix::T,
+    xrad_pix::T,
+    yrad_pix::T,
+    sint::T,
+    cost::T,
+    threshold_hi::T,
+    threshold_lo::T,
+    limit::T;
+    dark::Bool=false,
+    nsub::Int=1,
+) where {T<:AbstractFloat}
+    ny, nx = size(image)
+    backend = AK.get_backend(image)
+    _ka_ellipse_mask_kernel!(backend, (16, 16))(
+        image,
+        xcenter_pix,
+        ycenter_pix,
+        xrad_pix,
+        yrad_pix,
+        sint,
+        cost,
+        threshold_hi,
+        threshold_lo,
+        limit,
+        nsub,
+        dark,
+        ny,
+        nx;
+        ndrange=(ny, nx),
+    )
+    AK.synchronize(backend)
+    return image
+end
+
+@inline function ka_irregular_polygon_mask!(
+    image::AbstractMatrix{T},
+    xv::AbstractVector,
+    yv::AbstractVector,
+    cx::Int,
+    cy::Int,
+    dx::T;
+    dark::Bool=false,
+    nsub::Int=1,
+) where {T<:AbstractFloat}
+    ny, nx = size(image)
+    backend = AK.get_backend(image)
+    _ka_irregular_polygon_mask_kernel!(backend, (16, 16))(
+        image,
+        xv,
+        yv,
+        cx,
+        cy,
+        dx,
+        nsub,
+        dark,
+        ny,
+        nx;
+        ndrange=(ny, nx),
+    )
+    AK.synchronize(backend)
+    return image
+end
+
+@inline function ka_rounded_rectangle_mask!(
+    image::AbstractMatrix{T},
+    dx::T,
+    xc::T,
+    yc::T,
+    r::T,
+    hw::T,
+    hh::T,
+) where {T<:AbstractFloat}
+    ny, nx = size(image)
+    backend = AK.get_backend(image)
+    _ka_rounded_rectangle_mask_kernel!(backend, (16, 16))(
+        image,
+        dx,
+        xc,
+        yc,
+        r,
+        hw,
+        hh,
+        ny ÷ 2,
+        nx ÷ 2,
+        ny,
+        nx;
+        ndrange=(ny, nx),
+    )
+    AK.synchronize(backend)
+    return image
 end
 
 @inline function ka_copy_shifted_intensity!(
