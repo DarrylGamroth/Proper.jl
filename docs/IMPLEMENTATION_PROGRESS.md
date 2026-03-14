@@ -45,6 +45,7 @@
 - [x] CUDA steady-state report reconciliation: the benchmark driver now uses the standalone FP64 workload as the source of truth for the standard CUDA steady-state row, with summary warnings if manual runs generate divergent reports.
 - [x] CUDA wavefront benchmark unification: supported-kernel and precision-split CUDA reports now share one benchmark helper for `prop_qphase`, `prop_ptp`, `prop_wts`, `prop_stw`, `prop_circular_aperture`, and `prop_end_mutating`.
 - [x] Isolated CUDA wavefront microbenchmarks: one-kernel-per-process CUDA reports with longer warmup and host/device timing are now generated and summarized separately.
+- [x] CUDA-only benchmark driver: `scripts/benchmark_cuda.sh` now runs just the CUDA lanes plus summary/TTFx, sharing the same CUDA benchmark sequence as `scripts/benchmark_all.sh`.
 - [x] Benchmarked and rejected two CUDA-specific kernel variants on target hardware: a single-kernel full-frame `prop_end!` path and a box-specialized centered circular aperture path were both backed out after regression on the RTX 3050 Ti.
 
 ## Current Workstream (Phase 1)

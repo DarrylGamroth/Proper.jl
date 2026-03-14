@@ -5,6 +5,7 @@ using CUDA
 
 include(joinpath(@__DIR__, "..", "..", "common", "metadata.jl"))
 include(joinpath(@__DIR__, "..", "..", "common", "cuda_support.jl"))
+include(joinpath(@__DIR__, "..", "..", "common", "wavefront_state.jl"))
 include(joinpath(@__DIR__, "..", "..", "common", "cuda_wavefront_kernel_cases.jl"))
 using .BenchMetadata
 

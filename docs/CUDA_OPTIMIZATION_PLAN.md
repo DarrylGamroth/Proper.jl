@@ -214,3 +214,4 @@ Targets:
 - 2026-03-13: isolated CUDA wavefront-kernel microbenchmarks added.
   - each of `prop_qphase`, `prop_ptp`, `prop_wts`, `prop_stw`, `prop_circular_aperture`, and `prop_end_mutating` now has a one-kernel-per-process CUDA benchmark path with longer warmup.
   - the isolated lane records both host wall time and device time, which makes launch/synchronization overhead visible without conflating it with raw device execution.
+  - `scripts/benchmark_cuda.sh` now runs the CUDA-only benchmark lane while sharing the same shell-level CUDA sequence as `scripts/benchmark_all.sh`.
