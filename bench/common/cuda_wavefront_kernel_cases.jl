@@ -1,3 +1,4 @@
+using BenchmarkTools
 using Statistics
 
 struct CUDABenchmarkCase{SetupF,RunF}
