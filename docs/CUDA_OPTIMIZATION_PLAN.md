@@ -215,3 +215,6 @@ Targets:
   - each of `prop_qphase`, `prop_ptp`, `prop_wts`, `prop_stw`, `prop_circular_aperture`, and `prop_end_mutating` now has a one-kernel-per-process CUDA benchmark path with longer warmup.
   - the isolated lane records both host wall time and device time, which makes launch/synchronization overhead visible without conflating it with raw device execution.
   - `scripts/benchmark_cuda.sh` now runs the CUDA-only benchmark lane while sharing the same shell-level CUDA sequence as `scripts/benchmark_all.sh`.
+- 2026-03-14: targeted host-overhead reduction pass for `prop_stw` and circular aperture.
+  - CUDA `prop_stw` now fuses the final scratch-to-field copy with quadratic phase application, removing one extra device-wide pass over the field.
+  - the common circular-aperture fast path (`dark=false`, `invert=false`) now uses simplified KA kernels without the general dark/invert factor logic.

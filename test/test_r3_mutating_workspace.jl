@@ -176,6 +176,28 @@ using FFTW
         Proper.prop_circular_aperture(wf_ref_circle_center, 0.30; NORM=true)
         @test isapprox(wf_ka_circle_center.field, wf_ref_circle_center.field; atol=1e-12, rtol=1e-12)
 
+        wf_fast_circle = prop_begin(1.0, 500e-9, 32)
+        Proper.ka_apply_shifted_circle_aperture!(
+            wf_fast_circle.field,
+            cgeom.xoffset_pix,
+            cgeom.yoffset_pix,
+            cgeom.threshold_hi2,
+            cgeom.threshold_lo2,
+            cgeom.limit2;
+            nsub=Proper.antialias_subsampling(),
+        )
+        @test isapprox(wf_fast_circle.field, wf_ref_circle.field; atol=1e-12, rtol=1e-12)
+
+        wf_fast_circle_center = prop_begin(1.0, 500e-9, 32)
+        Proper.ka_apply_centered_circle_aperture!(
+            wf_fast_circle_center.field,
+            cgeom_center.threshold_hi2,
+            cgeom_center.threshold_lo2,
+            cgeom_center.limit2;
+            nsub=Proper.antialias_subsampling(),
+        )
+        @test isapprox(wf_fast_circle_center.field, wf_ref_circle_center.field; atol=1e-12, rtol=1e-12)
+
         wf_ref_circle_dark = prop_begin(1.0, 500e-9, 32)
         wf_ka_circle_dark = prop_begin(1.0, 500e-9, 32)
         copts_dark = Proper.CircleOptions{Float64}(true, true)

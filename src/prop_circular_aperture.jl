@@ -116,6 +116,7 @@ struct ShiftedCircleStyle <: CircleCenterExecStyle end
 @inline circle_center_exec_style(::Val{true}) = CenteredCircleStyle()
 @inline circle_center_exec_style(::Val{false}) = ShiftedCircleStyle()
 @inline circle_center_exec_style(geom::CircleGeometry) = circle_center_exec_style(Val(iszero(geom.xoffset_pix) && iszero(geom.yoffset_pix)))
+@inline circle_apply_variant(dark::Bool, invert::Bool) = Val((dark, invert))
 
 @inline ellipse_options(opts::CircleOptions{T}) where {T<:AbstractFloat} = EllipseOptions{T}(opts.norm, opts.dark, zero(T))
 
@@ -141,16 +142,33 @@ end
     invert::Bool,
 ) where {T<:AbstractFloat}
     geom = circle_geometry(T, wf, radius, xc, yc, opts)
-    return _apply_shifted_circle!(circle_center_exec_style(geom), wf, geom, opts.dark, invert)
+    return _apply_shifted_circle!(circle_center_exec_style(geom), wf, geom, circle_apply_variant(opts.dark, invert))
 end
 
 @inline function _apply_shifted_circle!(
     ::CenteredCircleStyle,
     wf::WaveFront,
     geom::CircleGeometry,
-    dark::Bool,
-    invert::Bool,
+    ::Val{(false, false)},
 )
+    ka_apply_centered_circle_aperture!(
+        wf.field,
+        geom.threshold_hi2,
+        geom.threshold_lo2,
+        geom.limit2;
+        nsub=antialias_subsampling(),
+    )
+    return wf
+end
+
+@inline function _apply_shifted_circle!(
+    ::CenteredCircleStyle,
+    wf::WaveFront,
+    geom::CircleGeometry,
+    ::Val{DI},
+) where {DI}
+    dark = DI[1]
+    invert = DI[2]
     ka_apply_centered_circle!(
         wf.field,
         geom.threshold_hi2,
@@ -167,9 +185,28 @@ end
     ::ShiftedCircleStyle,
     wf::WaveFront,
     geom::CircleGeometry,
-    dark::Bool,
-    invert::Bool,
+    ::Val{(false, false)},
 )
+    ka_apply_shifted_circle_aperture!(
+        wf.field,
+        geom.xoffset_pix,
+        geom.yoffset_pix,
+        geom.threshold_hi2,
+        geom.threshold_lo2,
+        geom.limit2;
+        nsub=antialias_subsampling(),
+    )
+    return wf
+end
+
+@inline function _apply_shifted_circle!(
+    ::ShiftedCircleStyle,
+    wf::WaveFront,
+    geom::CircleGeometry,
+    ::Val{DI},
+) where {DI}
+    dark = DI[1]
+    invert = DI[2]
     ka_apply_shifted_circle!(
         wf.field,
         geom.xoffset_pix,
