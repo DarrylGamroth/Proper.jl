@@ -168,3 +168,7 @@ Status: Gated
   - `prop_end!` full-frame dispatch was temporarily changed to a CUDA-specific single-kernel shifted-copy path, but that regressed on the RTX 3050 Ti and was removed.
   - centered standard circular aperture was temporarily changed to a box-specialized centered-aperture path, but that also regressed on the RTX 3050 Ti and was removed.
   - the retained change from this investigation is the benchmark conclusion itself: for these kernels on this hardware, fewer launches was not worth the worse memory access pattern in `prop_end!`, and multi-kernel box decomposition was not worth the added launch overhead for centered circular aperture.
+- 2026-03-13: CUDA wavefront microbenchmark methodology unified.
+  - the shared helper in `bench/common/cuda_wavefront_kernel_cases.jl` now defines the common setup for `prop_qphase`, `prop_ptp`, `prop_wts`, `prop_stw`, `prop_circular_aperture`, and `prop_end_mutating`.
+  - both the supported-kernel report and the precision-split report now benchmark those kernels through the same state-restore and warmup path.
+  - remaining discrepancies between those reports should now be interpreted as measurement variance or true kernel differences, not benchmark scaffolding drift.

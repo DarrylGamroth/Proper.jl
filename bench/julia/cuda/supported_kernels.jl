@@ -5,6 +5,7 @@ using CUDA
 include(joinpath(@__DIR__, "..", "..", "common", "metadata.jl"))
 include(joinpath(@__DIR__, "..", "..", "common", "cuda_support.jl"))
 include(joinpath(@__DIR__, "..", "..", "common", "wavefront_state.jl"))
+include(joinpath(@__DIR__, "..", "..", "common", "cuda_wavefront_kernel_cases.jl"))
 using .BenchMetadata
 
 const RUN_TAG = "steady_state_cuda_supported_kernels"
@@ -16,24 +17,7 @@ function bench_cuda_supported_kernels()
     nprop = 512
     nmap = 256
     samples = 20
-
-    wf_q = cuda_wavefront_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
-    ctx_q = RunContext(wf_q)
-
-    wf_p = cuda_wavefront_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
-    ctx_p = RunContext(wf_p)
-
-    wf_w = cuda_wavefront_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
-    ctx_w = RunContext(wf_w)
-
-    wf_s = cuda_wavefront_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
-    ctx_s = RunContext(wf_s)
-    prop_wts(wf_s, 0.01, ctx_s)
-
-    wf_a = cuda_wavefront_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
-    wf_e = cuda_wavefront_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
-    prop_circular_aperture(wf_e, 0.6)
-    out_end = cuda_zeros(Float64, nprop, nprop)
+    wavefront_stats = benchmark_cuda_wavefront_kernel_stats(Float64; grid_n=nprop, samples=samples)
 
     img = cuda_rand(Float32, nmap, nmap)
     ctx_img = RunContext(typeof(img))
@@ -50,21 +34,7 @@ function bench_cuda_supported_kernels()
     rect_out = cuda_zeros(Float64, nmap, nmap)
     round_out = similar(rect_out)
 
-    snap_q = capture_wavefront_state(wf_q)
-    snap_p = capture_wavefront_state(wf_p)
-    snap_w = capture_wavefront_state(wf_w)
-    snap_s = capture_wavefront_state(wf_s)
-    snap_a = capture_wavefront_state(wf_a)
-    snap_e = capture_wavefront_state(wf_e)
-    cuda_sync()
-
     # Warmup
-    prop_qphase(wf_q, 10.0, ctx_q)
-    prop_ptp(wf_p, 0.01, ctx_p)
-    prop_wts(wf_w, 0.01, ctx_w)
-    prop_stw(wf_s, 0.01, ctx_s)
-    prop_circular_aperture(wf_a, 0.6)
-    prop_end!(out_end, wf_e)
     prop_rotate!(rot_out, img, 12.0, ctx_img)
     prop_magnify!(mag_out, img, 1.1, ctx_img; QUICK=true)
     prop_szoom!(szoom_out, img, 1.1)
@@ -73,36 +43,6 @@ function bench_cuda_supported_kernels()
     prop_rectangle!(rect_out, wf_map, 0.4, 0.2, 0.03, -0.05; ROTATION=22.0, NORM=true)
     prop_rounded_rectangle!(round_out, wf_map, 0.05, 0.3, 0.2, 0.01, -0.02)
     cuda_sync()
-
-    q = run(@benchmarkable begin
-        prop_qphase($wf_q, 10.0, $ctx_q)
-        cuda_sync()
-    end setup=(restore_wavefront_state!($wf_q, $snap_q); cuda_sync()) evals=1 samples=samples)
-
-    p = run(@benchmarkable begin
-        prop_ptp($wf_p, 0.01, $ctx_p)
-        cuda_sync()
-    end setup=(restore_wavefront_state!($wf_p, $snap_p); cuda_sync()) evals=1 samples=samples)
-
-    w = run(@benchmarkable begin
-        prop_wts($wf_w, 0.01, $ctx_w)
-        cuda_sync()
-    end setup=(restore_wavefront_state!($wf_w, $snap_w); cuda_sync()) evals=1 samples=samples)
-
-    s = run(@benchmarkable begin
-        prop_stw($wf_s, 0.01, $ctx_s)
-        cuda_sync()
-    end setup=(restore_wavefront_state!($wf_s, $snap_s); cuda_sync()) evals=1 samples=samples)
-
-    a = run(@benchmarkable begin
-        prop_circular_aperture($wf_a, 0.6)
-        cuda_sync()
-    end setup=(restore_wavefront_state!($wf_a, $snap_a); cuda_sync()) evals=1 samples=samples)
-
-    e = run(@benchmarkable begin
-        prop_end!($out_end, $wf_e)
-        cuda_sync()
-    end setup=(restore_wavefront_state!($wf_e, $snap_e); cuda_sync()) evals=1 samples=samples)
 
     r = run(@benchmarkable begin
         prop_rotate!($rot_out, $img, 12.0, $ctx_img)
@@ -143,12 +83,12 @@ function bench_cuda_supported_kernels()
         "meta" => merge(cuda_report_meta(RUN_TAG; device=cuda_device_label()), Dict("prop_grid_n" => nprop, "map_grid_n" => nmap)),
         "policy" => "steady-state supported CUDA kernel timings with per-sample wavefront state restore; TTFx excluded; per-sample synchronization included",
         "kernels" => Dict(
-            "prop_qphase" => trial_stats(q),
-            "prop_ptp" => trial_stats(p),
-            "prop_wts" => trial_stats(w),
-            "prop_stw" => trial_stats(s),
-            "prop_circular_aperture" => trial_stats(a),
-            "prop_end_mutating" => trial_stats(e),
+            "prop_qphase" => wavefront_stats["prop_qphase"],
+            "prop_ptp" => wavefront_stats["prop_ptp"],
+            "prop_wts" => wavefront_stats["prop_wts"],
+            "prop_stw" => wavefront_stats["prop_stw"],
+            "prop_circular_aperture" => wavefront_stats["prop_circular_aperture"],
+            "prop_end_mutating" => wavefront_stats["prop_end_mutating"],
             "prop_rotate_mutating" => trial_stats(r),
             "prop_magnify_quick_mutating" => trial_stats(m),
             "prop_szoom_mutating" => trial_stats(sz),

@@ -207,3 +207,7 @@ Targets:
   - local validation:
     - `julia --project=. test/runtests.jl`: pass
     - `./scripts/benchmark_all.sh`: pass on non-CUDA machine, CUDA lane skipped cleanly
+- 2026-03-13: CUDA wavefront-kernel benchmark methodology unified.
+  - `bench/julia/cuda/supported_kernels.jl` and `bench/julia/cuda/precision_split.jl` now share one wavefront-kernel benchmark helper.
+  - `prop_qphase`, `prop_ptp`, `prop_wts`, `prop_stw`, `prop_circular_aperture`, and `prop_end_mutating` now use identical setup, warmup, state restore, and synchronization policy in both reports.
+  - this removes report drift caused by duplicated benchmark scaffolding rather than by kernel behavior.
