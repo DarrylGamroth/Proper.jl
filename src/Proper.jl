@@ -10,6 +10,7 @@ include("core/ka_kernels.jl")
 include("core/workspace.jl")
 include("core/types.jl")
 include("core/context.jl")
+include("core/prepared.jl")
 include("core/keywords.jl")
 include("core/grid.jl")
 include("core/resample.jl")
@@ -105,6 +106,7 @@ export BackendStyle, CPUBackend, CUDABackend, UnknownBackend, FFTStyle, FFTWStyl
 export InterpStyle, GenericInterpStyle, CubicInterpStyle, RNGStyle, GenericRNGStyle
 export ShiftKernelStyle, ShiftLoopStyle, ShiftKAStyle
 export RunContext, FFTEstimateStyle, FFTMeasureStyle, ProperConfig, ProperRuntime, WaveFront
+export PreparedPrescription, prepare_prescription
 export prop_wavefront, prop_begin, prop_end, prop_add_phase, prop_add_wavefront
 export prop_multiply, prop_divide, prop_shift_center
 export prop_radius, prop_ellipse, prop_rectangle

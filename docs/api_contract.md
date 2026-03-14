@@ -29,6 +29,7 @@ Define the user-facing API guarantees for `Proper.jl` so ports remain familiar t
 Stable entry points:
 - `prop_run`
 - `prop_run_multi`
+- `prepare_prescription`
 - `prop_begin`
 - `prop_end`
 - `prop_propagate`
@@ -42,6 +43,7 @@ Notes:
 - Internals may be refactored freely if behavior contract is preserved.
 - Reusable runtime state may be supplied explicitly:
   - `prop_run(...; context=ctx)`
+  - `prop_run(prepare_prescription(...))`
   - `prop_begin(...; context=ctx)` / `prop_begin(...; workspace=ws)`
   - `prop_wavefront(...; context=ctx)` / `prop_wavefront(...; workspace=ws)`
 
@@ -52,6 +54,9 @@ Notes:
 ### 3.1 Context Constructor Contract
 - Canonical constructor entry point (name subject to implementation details):
   - `RunContext(; backend=..., rng=..., workspace=..., fft_planning=...)`
+- Prepared execution object:
+  - `PreparedPrescription`
+  - `prepare_prescription(routine_name, lambda0_microns, gridsize; context=..., PASSVALUE=..., kwargs...)`
 - `prop_*` public APIs should consume `RunContext` (or equivalent typed config) without compatibility mode flags.
 
 ## 4. Keyword Argument Contract

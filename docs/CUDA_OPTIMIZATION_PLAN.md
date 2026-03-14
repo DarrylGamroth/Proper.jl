@@ -211,3 +211,6 @@ Targets:
   - `bench/julia/cuda/supported_kernels.jl` and `bench/julia/cuda/precision_split.jl` now share one wavefront-kernel benchmark helper.
   - `prop_qphase`, `prop_ptp`, `prop_wts`, `prop_stw`, `prop_circular_aperture`, and `prop_end_mutating` now use identical setup, warmup, state restore, and synchronization policy in both reports.
   - this removes report drift caused by duplicated benchmark scaffolding rather than by kernel behavior.
+- 2026-03-13: isolated CUDA wavefront-kernel microbenchmarks added.
+  - each of `prop_qphase`, `prop_ptp`, `prop_wts`, `prop_stw`, `prop_circular_aperture`, and `prop_end_mutating` now has a one-kernel-per-process CUDA benchmark path with longer warmup.
+  - the isolated lane records both host wall time and device time, which makes launch/synchronization overhead visible without conflating it with raw device execution.

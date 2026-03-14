@@ -179,6 +179,7 @@ cuda_jl_fp64 = loadjson(joinpath(root, "julia_cuda_steady_state_fp64.json"))
 cuda_jl_fp32 = loadjson(joinpath(root, "julia_cuda_steady_state_fp32.json"))
 cuda_kernels = loadjson(joinpath(root, "cuda_supported_kernels.json"))
 cuda_precision = loadjson(joinpath(root, "cuda_precision_split.json"))
+cuda_isolated = loadjson(joinpath(root, "cuda_isolated_wavefront_kernels.json"))
 
 summary_md_path = joinpath(root, "benchmark_summary.md")
 generated_paths = String[]
@@ -346,6 +347,48 @@ elseif cuda_precision !== nothing
     precision_notes = ["Reason: $reason"]
     append_ascii_section!(term, "CUDA Precision Split", precision_headers, precision_rows; aligns=[:l, :l], notes=precision_notes)
     append_markdown_section!(md, "CUDA Precision Split", precision_headers, precision_rows; notes=precision_notes)
+end
+
+cuda_isolated_available = maybe_bool(getpath(cuda_isolated, "meta", "available"))
+if cuda_isolated_available
+    isolated_headers = ["Kernel", "FP64 host", "FP64 device", "FP32 host", "FP32 device", "Host64/Dev64", "Host32/Dev32"]
+    isolated_rows = Vector{Vector{String}}()
+    isolated_kernel_data = getpath(cuda_isolated, "kernels")
+    for name in ordered_names(
+        ["prop_qphase", "prop_ptp", "prop_wts", "prop_stw", "prop_circular_aperture", "prop_end_mutating"],
+        isolated_kernel_data,
+    )
+        payload = getpath(cuda_isolated, "kernels", name)
+        fp64 = getpath(payload, "fp64")
+        fp32 = getpath(payload, "fp32")
+        fp64_host = maybe_float(getpath(fp64, "host", "median_ns"))
+        fp64_device = maybe_float(getpath(fp64, "timing", "device", "median_ns"))
+        fp32_host = maybe_float(getpath(fp32, "host", "median_ns"))
+        fp32_device = maybe_float(getpath(fp32, "timing", "device", "median_ns"))
+        push!(isolated_rows, [
+            name,
+            fmt_ns(fp64_host),
+            fmt_ns(fp64_device),
+            fmt_ns(fp32_host),
+            fmt_ns(fp32_device),
+            fp64_host === nothing || fp64_device === nothing ? "-" : fmt_ratio(fp64_host / fp64_device),
+            fp32_host === nothing || fp32_device === nothing ? "-" : fmt_ratio(fp32_host / fp32_device),
+        ])
+    end
+    isolated_notes = [
+        "One kernel per Julia process with extended warmup; host columns use BenchmarkTools wall time and device columns use CUDA.@elapsed.",
+        "Host/device ratios greater than 1.00x mean launch/synchronization overhead exceeds raw device execution time.",
+    ]
+    append_ascii_section!(term, "CUDA Isolated Wavefront Kernels", isolated_headers, isolated_rows; aligns=[:l, :r, :r, :r, :r, :r, :r], notes=isolated_notes)
+    append_markdown_section!(md, "CUDA Isolated Wavefront Kernels", isolated_headers, isolated_rows; notes=isolated_notes)
+    push!(generated_paths, write_csv(joinpath(root, "cuda_isolated_wavefront_kernels.csv"), isolated_headers, isolated_rows))
+elseif cuda_isolated !== nothing
+    reason = replace(String(getpath(cuda_isolated, "reason")), '\n' => ' ')
+    isolated_headers = ["Metric", "Status"]
+    isolated_rows = [["cuda_isolated_wavefront_kernels", "skipped"]]
+    isolated_notes = ["Reason: $reason"]
+    append_ascii_section!(term, "CUDA Isolated Wavefront Kernels", isolated_headers, isolated_rows; aligns=[:l, :l], notes=isolated_notes)
+    append_markdown_section!(md, "CUDA Isolated Wavefront Kernels", isolated_headers, isolated_rows; notes=isolated_notes)
 end
 
 if phase2 !== nothing

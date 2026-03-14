@@ -44,6 +44,7 @@
 - [x] Centered-circle KA specialization: circular aperture now has a centered common-case CUDA/KA path in addition to the general shifted-circle path.
 - [x] CUDA steady-state report reconciliation: the benchmark driver now uses the standalone FP64 workload as the source of truth for the standard CUDA steady-state row, with summary warnings if manual runs generate divergent reports.
 - [x] CUDA wavefront benchmark unification: supported-kernel and precision-split CUDA reports now share one benchmark helper for `prop_qphase`, `prop_ptp`, `prop_wts`, `prop_stw`, `prop_circular_aperture`, and `prop_end_mutating`.
+- [x] Isolated CUDA wavefront microbenchmarks: one-kernel-per-process CUDA reports with longer warmup and host/device timing are now generated and summarized separately.
 - [x] Benchmarked and rejected two CUDA-specific kernel variants on target hardware: a single-kernel full-frame `prop_end!` path and a box-specialized centered circular aperture path were both backed out after regression on the RTX 3050 Ti.
 
 ## Current Workstream (Phase 1)
@@ -87,7 +88,7 @@
 - [ ] Remove the remaining non-ellipse host-staged mask/map paths on CUDA (`docs/CUDA_OPTIMIZATION_PLAN.md`, C4).
 - [x] Split CUDA benchmark interpretation by precision regime (`docs/CUDA_OPTIMIZATION_PLAN.md`, C5).
 - [ ] Review interpolation profiling output on CUDA hardware before committing to any tiling/shared-memory implementation (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, F4/N3).
-- [ ] Define the first prepared-simulation/core API layer on top of `RunContext`/`ProperWorkspace` while keeping `prop_*` wrappers thin (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
+- [x] Define the first prepared-simulation/core API layer on top of `RunContext`/`ProperWorkspace` while keeping `prop_*` wrappers thin (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
 - [ ] Validate the new `prop_end!` full-frame fast path and centered-circle specialization on CUDA hardware and retune priorities based on that data.
 
 ## Latest Pass (2026-03-04)

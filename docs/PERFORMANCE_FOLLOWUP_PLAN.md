@@ -135,6 +135,7 @@ Status: Gated
 
 ### N4: Define a prepared-simulation core API on top of `RunContext` and `ProperWorkspace`
 - Goal: idiomatic Julia core with thin compatibility wrappers.
+Status: In progress
 
 ## Tracking
 - This plan supplements `docs/CUDA_OPTIMIZATION_PLAN.md` and `docs/RUNTIME_OPTIMIZATION_PLAN.md`.
@@ -172,3 +173,10 @@ Status: Gated
   - the shared helper in `bench/common/cuda_wavefront_kernel_cases.jl` now defines the common setup for `prop_qphase`, `prop_ptp`, `prop_wts`, `prop_stw`, `prop_circular_aperture`, and `prop_end_mutating`.
   - both the supported-kernel report and the precision-split report now benchmark those kernels through the same state-restore and warmup path.
   - remaining discrepancies between those reports should now be interpreted as measurement variance or true kernel differences, not benchmark scaffolding drift.
+- 2026-03-13: isolated CUDA wavefront microbench lane implemented.
+  - `bench/julia/cuda/isolated_wavefront_kernel.jl` now benchmarks one wavefront kernel per Julia process with longer warmup and both host wall and device timing.
+  - `bench/julia/cuda/aggregate_isolated_wavefront_kernels.jl` now rolls those per-process reports into a single summary section.
+  - this lane is intended to resolve remaining cross-process drift in `prop_qphase`, `prop_ptp`, `prop_wts`, `prop_stw`, `prop_circular_aperture`, and `prop_end_mutating`.
+- 2026-03-13: prepared core API slice 1 implemented.
+  - added `PreparedPrescription` and `prepare_prescription(...)` on top of `RunContext`.
+  - `prop_run(prepared)` and `prop_run_multi(prepared)` now provide a reusable typed execution object while keeping the public compatibility wrappers intact.

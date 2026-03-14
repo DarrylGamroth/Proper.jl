@@ -1,3 +1,41 @@
+@inline function _prop_run_finalize(result)
+    if result isa WaveFront
+        return prop_end(result)
+    elseif result isa Tuple && length(result) == 2
+        return result
+    end
+    throw(ArgumentError("Prescription must return WaveFront or (psf, sampling)"))
+end
+
+@inline function _call_prescription(fn::F, λm, gridsize::Integer, ::Nothing, kwargs::NamedTuple) where {F<:Function}
+    return fn(λm, gridsize; kwargs...)
+end
+
+@inline function _call_prescription(fn::F, λm, gridsize::Integer, passvalue, kwargs::NamedTuple) where {F<:Function}
+    try
+        return fn(λm, gridsize, passvalue; kwargs...)
+    catch err
+        if err isa MethodError
+            return fn(λm, gridsize; PASSVALUE=passvalue, kwargs...)
+        end
+        rethrow(err)
+    end
+end
+
+function _prop_run_resolved(
+    fn::F,
+    λm,
+    gridsize::Integer,
+    passvalue,
+    context::Union{Nothing,RunContext},
+    kwargs::NamedTuple,
+) where {F<:Function}
+    result = with_run_context(context) do
+        _call_prescription(fn, λm, gridsize, passvalue, kwargs)
+    end
+    return _prop_run_finalize(result)
+end
+
 """Run a prescription function by function object or global name."""
 function prop_run(
     routine_name,
@@ -8,36 +46,16 @@ function prop_run(
     kwargs...,
 )
     λm = float(lambda0_microns) * 1e-6
-    fn = if routine_name isa Function
-        routine_name
-    elseif routine_name isa Symbol
-        getfield(Main, routine_name)
-    elseif routine_name isa AbstractString
-        getfield(Main, Symbol(routine_name))
-    else
-        throw(ArgumentError("routine_name must be Function, Symbol, or String"))
-    end
+    fn = resolve_prescription_routine(routine_name)
+    return _prop_run_resolved(fn, λm, gridsize, PASSVALUE, context, (; kwargs...))
+end
 
-    result = with_run_context(context) do
-        if PASSVALUE === nothing
-            fn(λm, gridsize; kwargs...)
-        else
-            try
-                fn(λm, gridsize, PASSVALUE; kwargs...)
-            catch err
-                if err isa MethodError
-                    fn(λm, gridsize; PASSVALUE=PASSVALUE, kwargs...)
-                else
-                    rethrow(err)
-                end
-            end
-        end
-    end
-
-    if result isa WaveFront
-        return prop_end(result)
-    elseif result isa Tuple && length(result) == 2
-        return result
-    end
-    throw(ArgumentError("Prescription must return WaveFront or (psf, sampling)"))
+function prop_run(
+    prepared::PreparedPrescription;
+    PASSVALUE=prepared.passvalue,
+    context::Union{Nothing,RunContext}=prepared.context,
+    kwargs...,
+)
+    merged_kwargs = merge(prepared.kwargs, (; kwargs...))
+    return _prop_run_resolved(prepared.routine, prepared.wavelength_m, prepared.gridsize, PASSVALUE, context, merged_kwargs)
 end

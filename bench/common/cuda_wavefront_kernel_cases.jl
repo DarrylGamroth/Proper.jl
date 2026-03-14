@@ -1,6 +1,8 @@
+using Statistics
+
 struct CUDABenchmarkCase{SetupF,RunF}
     setup!::SetupF
-    run!::RunF
+    run_async!::RunF
 end
 
 const CUDA_WAVEFRONT_KERNEL_ORDER = (
@@ -14,10 +16,53 @@ const CUDA_WAVEFRONT_KERNEL_ORDER = (
 
 function run_cuda_benchmark_case(case::CUDABenchmarkCase, samples::Integer)
     setup! = case.setup!
-    run! = case.run!
+    run_async! = case.run_async!
     return run(@benchmarkable begin
-        $run!()
+        $run_async!()
+        cuda_sync()
     end setup=($setup!()) evals=1 samples=samples)
+end
+
+function warmup_cuda_benchmark_case(case::CUDABenchmarkCase, warmup_iters::Integer)
+    for _ in 1:warmup_iters
+        case.setup!()
+        case.run_async!()
+        cuda_sync()
+    end
+    return nothing
+end
+
+function sample_stats(values)
+    isempty(values) && return Dict("samples" => 0)
+    data = Float64.(values)
+    return Dict(
+        "median_ns" => median(data),
+        "min_ns" => minimum(data),
+        "max_ns" => maximum(data),
+        "samples" => length(data),
+    )
+end
+
+function collect_cuda_host_device_samples(case::CUDABenchmarkCase, samples::Integer)
+    host_ns = Vector{Float64}(undef, samples)
+    device_ns = Vector{Float64}(undef, samples)
+
+    for i in 1:samples
+        case.setup!()
+        cuda_sync()
+        host_t0 = time_ns()
+        device_elapsed_s = CUDA.@elapsed begin
+            case.run_async!()
+        end
+        cuda_sync()
+        host_ns[i] = time_ns() - host_t0
+        device_ns[i] = device_elapsed_s * 1e9
+    end
+
+    return Dict(
+        "host_wall" => sample_stats(host_ns),
+        "device" => sample_stats(device_ns),
+    )
 end
 
 function build_cuda_wavefront_kernel_cases(::Type{T}, grid_n::Integer) where {T<:AbstractFloat}
@@ -66,27 +111,27 @@ function build_cuda_wavefront_kernel_cases(::Type{T}, grid_n::Integer) where {T<
     return (
         prop_qphase=CUDABenchmarkCase(
             () -> (restore_wavefront_state!(wf_q, snap_q); cuda_sync()),
-            () -> (prop_qphase(wf_q, phase, ctx_q); cuda_sync()),
+            () -> prop_qphase(wf_q, phase, ctx_q),
         ),
         prop_ptp=CUDABenchmarkCase(
             () -> (restore_wavefront_state!(wf_p, snap_p); cuda_sync()),
-            () -> (prop_ptp(wf_p, distance, ctx_p); cuda_sync()),
+            () -> prop_ptp(wf_p, distance, ctx_p),
         ),
         prop_wts=CUDABenchmarkCase(
             () -> (restore_wavefront_state!(wf_w, snap_w); cuda_sync()),
-            () -> (prop_wts(wf_w, distance, ctx_w); cuda_sync()),
+            () -> prop_wts(wf_w, distance, ctx_w),
         ),
         prop_stw=CUDABenchmarkCase(
             () -> (restore_wavefront_state!(wf_s, snap_s); cuda_sync()),
-            () -> (prop_stw(wf_s, distance, ctx_s); cuda_sync()),
+            () -> prop_stw(wf_s, distance, ctx_s),
         ),
         prop_circular_aperture=CUDABenchmarkCase(
             () -> (restore_wavefront_state!(wf_a, snap_a); cuda_sync()),
-            () -> (prop_circular_aperture(wf_a, radius); cuda_sync()),
+            () -> prop_circular_aperture(wf_a, radius),
         ),
         prop_end_mutating=CUDABenchmarkCase(
             () -> (restore_wavefront_state!(wf_e, snap_e); cuda_sync()),
-            () -> (prop_end!(out_end, wf_e); cuda_sync()),
+            () -> prop_end!(out_end, wf_e),
         ),
     )
 end

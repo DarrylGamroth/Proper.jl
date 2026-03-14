@@ -36,10 +36,26 @@ end
     @test size(out) == (16, 16)
     @test s > 0
 
+    prepared = prepare_prescription(dummy, 0.55, 16)
+    out_prepared, s_prepared = prop_run(prepared)
+    @test size(out_prepared) == (16, 16)
+    @test s_prepared > 0
+
     passvals = [1, 2, 3]
     stack, samplings = prop_run_multi(dummy, 0.55, 16; PASSVALUE=passvals)
     @test size(stack) == (16, 16, 3)
     @test length(samplings) == 3
+
+    prepared_multi = prepare_prescription(dummy, 0.55, 16)
+    stack_prepared, samplings_prepared = prop_run_multi(prepared_multi; PASSVALUE=passvals)
+    @test size(stack_prepared) == (16, 16, 3)
+    @test length(samplings_prepared) == 3
+
+    dummy_pass(λm, n, pass; kwargs...) = prop_begin(1.0 + pass, λm, n)
+    prepared_pass = prepare_prescription(dummy_pass, 0.55, 16; PASSVALUE=2)
+    out_pass, s_pass = prop_run(prepared_pass)
+    @test size(out_pass) == (16, 16)
+    @test s_pass > 0
 
     let ctx = RunContext(Matrix{Float32})
         function dummy_scoped(λm, n; kwargs...)
@@ -53,6 +69,12 @@ end
         @test size(out_ctx) == (16, 16)
         @test eltype(out_ctx) == Float32
         @test s_ctx > 0
+
+        prepared_ctx = prepare_prescription(dummy_scoped, 0.55f0, 16; context=ctx)
+        out_prepared_ctx, s_prepared_ctx = prop_run(prepared_ctx)
+        @test size(out_prepared_ctx) == (16, 16)
+        @test eltype(out_prepared_ctx) == Float32
+        @test s_prepared_ctx > 0
 
         wf_begin = prop_begin(1.0, 500f-9, 16; context=ctx)
         @test eltype(wf_begin.field) == ComplexF32
