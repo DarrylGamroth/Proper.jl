@@ -74,44 +74,11 @@ function prop_stw(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
 
     wf.z_m += d
     wf.sampling_m = wf.wavelength_m * abs(d) / (n * wf.sampling_m)
-    _prop_stw_exec!(fft_style(ctx), wf, d, n, ctx, ws)
-    wf.reference_surface = PLANAR
-    return wf
-end
 
-@inline function _prop_stw_exec!(
-    ::CUFFTStyle,
-    wf::WaveFront,
-    d::Real,
-    n::Int,
-    ctx::RunContext,
-    ws::FFTWorkspace,
-)
-    ny, nx = size(wf.field)
-    f = ensure_fft_scratch!(ws, ny, nx)
-    pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
-    copyto!(f, wf.field)
-    if d >= 0
-        LinearAlgebra.mul!(f, pfft, f)
-    else
-        LinearAlgebra.mul!(f, pbfft, f)
-    end
-    f ./= n
-    k = pi / (wf.wavelength_m * float(d))
-    ka_copy_apply_qphase!(wf.field, f, k, wf.sampling_m)
-    return wf
-end
+    _prop_stw_fft_step!(fft_style(ctx), wf, d, n, ctx, ws)
 
-@inline function _prop_stw_exec!(
-    sty::FFTStyle,
-    wf::WaveFront,
-    d::Real,
-    n::Int,
-    ctx::RunContext,
-    ws::FFTWorkspace,
-)
-    _prop_stw_fft_step!(sty, wf, d, n, ctx, ws)
     prop_qphase(wf, d, ctx)
+    wf.reference_surface = PLANAR
     return wf
 end
 

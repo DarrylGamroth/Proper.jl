@@ -352,94 +352,6 @@ end
     end
 end
 
-@kernel function _ka_apply_shifted_circle_aperture_kernel!(
-    field,
-    xoffset_pix,
-    yoffset_pix,
-    threshold_hi2,
-    threshold_lo2,
-    limit2,
-    nsub::Int,
-    ny::Int,
-    nx::Int,
-)
-    I = @index(Global, NTuple)
-    i = I[1]
-    j = I[2]
-
-    if i <= ny && j <= nx
-        @uniform begin
-            T = typeof(threshold_hi2)
-            inv_nsub2 = inv(T(nsub * nsub))
-        end
-        x0 = T(_ka_shifted_index_0based(j - 1, nx)) - xoffset_pix
-        y0 = T(_ka_shifted_index_0based(i - 1, ny)) - yoffset_pix
-        r2 = x0 * x0 + y0 * y0
-
-        if r2 > threshold_hi2
-            field[i, j] = zero(eltype(field))
-        elseif r2 > threshold_lo2
-            cnt = 0
-            for oy_i in 1:nsub
-                ys = y0 + _ka_subsample_offset(oy_i, nsub, one(T))
-                for ox_i in 1:nsub
-                    xs = x0 + _ka_subsample_offset(ox_i, nsub, one(T))
-                    cnt += ((xs * xs + ys * ys) <= limit2)
-                end
-            end
-            pixval = T(cnt) * inv_nsub2
-            if pixval == zero(T)
-                field[i, j] = zero(eltype(field))
-            elseif pixval != one(T)
-                field[i, j] *= pixval
-            end
-        end
-    end
-end
-
-@kernel function _ka_apply_centered_circle_aperture_kernel!(
-    field,
-    threshold_hi2,
-    threshold_lo2,
-    limit2,
-    nsub::Int,
-    ny::Int,
-    nx::Int,
-)
-    I = @index(Global, NTuple)
-    i = I[1]
-    j = I[2]
-
-    if i <= ny && j <= nx
-        @uniform begin
-            T = typeof(threshold_hi2)
-            inv_nsub2 = inv(T(nsub * nsub))
-        end
-        x0 = T(_ka_shifted_index_0based(j - 1, nx))
-        y0 = T(_ka_shifted_index_0based(i - 1, ny))
-        r2 = x0 * x0 + y0 * y0
-
-        if r2 > threshold_hi2
-            field[i, j] = zero(eltype(field))
-        elseif r2 > threshold_lo2
-            cnt = 0
-            for oy_i in 1:nsub
-                ys = y0 + _ka_subsample_offset(oy_i, nsub, one(T))
-                for ox_i in 1:nsub
-                    xs = x0 + _ka_subsample_offset(ox_i, nsub, one(T))
-                    cnt += ((xs * xs + ys * ys) <= limit2)
-                end
-            end
-            pixval = T(cnt) * inv_nsub2
-            if pixval == zero(T)
-                field[i, j] = zero(eltype(field))
-            elseif pixval != one(T)
-                field[i, j] *= pixval
-            end
-        end
-    end
-end
-
 @kernel function _ka_copy_shifted_complex_kernel!(
     out,
     @Const(field),
@@ -506,26 +418,6 @@ end
         x = T(_ka_shifted_index_0based(j - 1, nx)) * dx
         y = T(_ka_shifted_index_0based(i - 1, ny)) * dx
         field[i, j] *= cis(k * (x * x + y * y))
-    end
-end
-
-@kernel function _ka_copy_apply_qphase_kernel!(
-    out,
-    @Const(src),
-    k,
-    dx,
-    ny::Int,
-    nx::Int,
-)
-    I = @index(Global, NTuple)
-    i = I[1]
-    j = I[2]
-
-    if i <= ny && j <= nx
-        T = typeof(dx)
-        x = T(_ka_shifted_index_0based(j - 1, nx)) * dx
-        y = T(_ka_shifted_index_0based(i - 1, ny)) * dx
-        out[i, j] = src[i, j] * cis(k * (x * x + y * y))
     end
 end
 
@@ -1044,60 +936,6 @@ end
     return field
 end
 
-@inline function ka_apply_shifted_circle_aperture!(
-    field::AbstractMatrix{<:Complex},
-    xoffset_pix,
-    yoffset_pix,
-    threshold_hi2,
-    threshold_lo2,
-    limit2;
-    nsub::Int=1,
-)
-    ny, nx = size(field)
-    backend = AK.get_backend(field)
-    _ka_apply_shifted_circle_aperture_kernel!(
-        backend,
-        (16, 16),
-    )(
-        field,
-        xoffset_pix,
-        yoffset_pix,
-        threshold_hi2,
-        threshold_lo2,
-        limit2,
-        nsub,
-        ny,
-        nx;
-        ndrange=(ny, nx),
-    )
-    return field
-end
-
-@inline function ka_apply_centered_circle_aperture!(
-    field::AbstractMatrix{<:Complex},
-    threshold_hi2,
-    threshold_lo2,
-    limit2;
-    nsub::Int=1,
-)
-    ny, nx = size(field)
-    backend = AK.get_backend(field)
-    _ka_apply_centered_circle_aperture_kernel!(
-        backend,
-        (16, 16),
-    )(
-        field,
-        threshold_hi2,
-        threshold_lo2,
-        limit2,
-        nsub,
-        ny,
-        nx;
-        ndrange=(ny, nx),
-    )
-    return field
-end
-
 @inline function ka_copy_shifted_complex!(
     out::AbstractMatrix{<:Complex},
     field::AbstractMatrix{<:Complex},
@@ -1120,18 +958,6 @@ end
     backend = AK.get_backend(field)
     _ka_apply_qphase_kernel!(backend, (16, 16))(field, k, dx, ny, nx; ndrange=(ny, nx))
     return field
-end
-
-@inline function ka_copy_apply_qphase!(
-    out::AbstractMatrix{<:Complex},
-    src::AbstractMatrix{<:Complex},
-    k,
-    dx,
-)
-    ny, nx = size(out)
-    backend = AK.get_backend(out)
-    _ka_copy_apply_qphase_kernel!(backend, (16, 16))(out, src, k, dx, ny, nx; ndrange=(ny, nx))
-    return out
 end
 
 @inline function ka_apply_frequency_phase!(
