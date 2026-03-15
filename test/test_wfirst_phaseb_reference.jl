@@ -33,6 +33,33 @@ using Proper.WFIRSTPhaseBProper
     @test isapprox(sx, 10.0 / expected_mas_per_lamd; rtol=1e-12)
     @test sy == 1.5
 
+    cfg_hlc = Proper.WFIRSTPhaseBProper._phaseb_config("hlc", 0.575e-6, "/tmp"; compact=false, use_fpm=1)
+    @test cfg_hlc.branch == :hlc
+    @test cfg_hlc.n_default == 1024
+    @test cfg_hlc.n_to_fpm == 2048
+    @test occursin("run461_pupil_rotated.fits", cfg_hlc.pupil_file)
+
+    cfg_spc = Proper.WFIRSTPhaseBProper._phaseb_config("spc-ifs_short", 0.66e-6, "/tmp"; compact=false, use_fpm=1)
+    @test cfg_spc.branch == :spc
+    @test cfg_spc.lambda0_m == 0.66e-6
+    @test cfg_spc.n_default == 2048
+    @test cfg_spc.n_mft == 1400
+    @test occursin("SPM_SPC-20190130.fits", cfg_spc.pupil_mask_file)
+
+    cfg_spc_compact = Proper.WFIRSTPhaseBProper._phaseb_config("spc-wide", 0.825e-6, "/tmp"; compact=true, use_fpm=1)
+    @test cfg_spc_compact.branch == :spc
+    @test cfg_spc_compact.n_big == 1400
+    @test occursin("rotated", cfg_spc_compact.pupil_mask_file)
+
+    cfg_none = Proper.WFIRSTPhaseBProper._phaseb_config("none", 0.575e-6, "/tmp"; compact=false, use_fpm=0)
+    @test cfg_none.branch == :none
+    @test cfg_none.lyot_stop_file === nothing
+
+    ws = Proper.WFIRSTPhaseBProper.PhaseBModelWorkspace(8)
+    @test size(Proper.WFIRSTPhaseBProper.phaseb_field(ws, 1400)) == (1400, 1400)
+    @test Proper.WFIRSTPhaseBProper.phaseb_field(ws, 1400) === Proper.WFIRSTPhaseBProper.phaseb_field(ws, 1400)
+    @test Proper.WFIRSTPhaseBProper.phaseb_fft_cache(ws, 1400) === Proper.WFIRSTPhaseBProper.phaseb_fft_cache(ws, 1400)
+
     wf_tilt = prop_begin(1.0, 550e-9, 8)
     field_before_tilt = copy(wf_tilt.field)
     Proper.WFIRSTPhaseBProper._apply_source_offset!(wf_tilt, 6.0, 0.575e-6, 550e-9, 0.1, -0.2)

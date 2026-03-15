@@ -21,11 +21,9 @@ end
 const PhaseBFFTCache = Proper.CenteredFFTCache{Float64}
 
 mutable struct PhaseBModelWorkspace
-    field_1024::Matrix{ComplexF64}
-    field_2048::Matrix{ComplexF64}
+    fields::Dict{Int, Matrix{ComplexF64}}
+    ffts::Dict{Int, PhaseBFFTCache}
     output::Matrix{ComplexF64}
-    fft_1024::PhaseBFFTCache
-    fft_2048::PhaseBFFTCache
 end
 
 struct PhaseBPreparedAssets
@@ -41,6 +39,12 @@ const OLD_LAM_OCCS = [
     "5.89375e-07", "5.90972222222e-07", "5.94166666667e-07", "5.965625e-07", "5.97361111111e-07", "6.00555555556e-07", "6.0375e-07",
 ]
 const OLD_LAM_OCCS_M = parse.(Float64, OLD_LAM_OCCS)
+const ERKIN_LAM_OCCS = [
+    "5.4625e-07", "5.4944e-07", "5.5264e-07", "5.5583e-07", "5.5903e-07", "5.6222e-07", "5.6542e-07",
+    "5.6861e-07", "5.7181e-07", "5.75e-07", "5.7819e-07", "5.8139e-07", "5.8458e-07", "5.8778e-07",
+    "5.9097e-07", "5.9417e-07", "5.9736e-07", "6.0056e-07", "6.0375e-07",
+]
+const ERKIN_LAM_OCCS_M = parse.(Float64, ERKIN_LAM_OCCS)
 
 @inline passget(::Nothing, key::Symbol, default) = default
 @inline function passget(pass::AbstractDict, key::Symbol, default)
@@ -93,12 +97,30 @@ end
 
 function PhaseBModelWorkspace(output_dim::Integer)
     return PhaseBModelWorkspace(
-        Matrix{ComplexF64}(undef, 1024, 1024),
-        Matrix{ComplexF64}(undef, 2048, 2048),
+        Dict(
+            1024 => Matrix{ComplexF64}(undef, 1024, 1024),
+            2048 => Matrix{ComplexF64}(undef, 2048, 2048),
+        ),
+        Dict(
+            1024 => PhaseBFFTCache(1024),
+            2048 => PhaseBFFTCache(2048),
+        ),
         Matrix{ComplexF64}(undef, output_dim, output_dim),
-        PhaseBFFTCache(1024),
-        PhaseBFFTCache(2048),
     )
+end
+
+@inline function phaseb_field(ws::PhaseBModelWorkspace, n::Integer)
+    n > 0 || throw(ArgumentError("grid size must be positive"))
+    return get!(ws.fields, Int(n)) do
+        Matrix{ComplexF64}(undef, Int(n), Int(n))
+    end
+end
+
+@inline function phaseb_fft_cache(ws::PhaseBModelWorkspace, n::Integer)
+    n > 0 || throw(ArgumentError("grid size must be positive"))
+    return get!(ws.ffts, Int(n)) do
+        PhaseBFFTCache(Int(n))
+    end
 end
 
 function phaseb_ffts!(field::Matrix{ComplexF64}, cache::PhaseBFFTCache, direction::Integer)
@@ -189,6 +211,110 @@ end
     keys_vec = collect(keys(assets.occulters_2048))
     key = keys_vec[argmin(abs.(keys_vec .- Float64(λm)))]
     return assets.occulters_2048[key]
+end
+
+@inline function _requested_occ_label(labels::AbstractVector{<:AbstractString}, labels_m::AbstractVector{<:Real}, λm::Real)
+    idx = argmin(abs.(labels_m .- Float64(λm)))
+    return labels[idx]
+end
+
+@inline function _phaseb_config(cor_type::AbstractString, λm::Real, data_root::AbstractString; compact::Bool=false, use_fpm::Integer=1)
+    if cor_type == "hlc"
+        hlc_dir = joinpath(data_root, "hlc_20190210")
+        label = _requested_occ_label(OLD_LAM_OCCS, OLD_LAM_OCCS_M, λm)
+        return (
+            branch=:hlc,
+            data_dir=hlc_dir,
+            pupil_diam_pix=309.0,
+            lambda0_m=0.575e-6,
+            pupil_file=joinpath(hlc_dir, "run461_pupil_rotated.fits"),
+            lyot_stop_file=joinpath(hlc_dir, "run461_lyot.fits"),
+            occulter_real_file=joinpath(hlc_dir, "run461_occ_lam$(label)theta6.69polp_real_rotated.fits"),
+            occulter_imag_file=joinpath(hlc_dir, "run461_occ_lam$(label)theta6.69polp_imag_rotated.fits"),
+            n_small=1024,
+            n_big=compact ? 2048 : (use_fpm != 0 ? 2048 : 1024),
+            n_default=1024,
+            n_to_fpm=use_fpm != 0 ? 2048 : 1024,
+            n_from_lyotstop=1024,
+            field_stop_radius_lam0=9.0,
+        )
+    elseif cor_type == "hlc_erkin"
+        hlc_dir = joinpath(data_root, "hlc_20190206_v3")
+        label = _requested_occ_label(ERKIN_LAM_OCCS, ERKIN_LAM_OCCS_M, λm)
+        return (
+            branch=:hlc,
+            data_dir=hlc_dir,
+            pupil_diam_pix=compact ? 310.0 : 310.0,
+            lambda0_m=0.575e-6,
+            pupil_file=joinpath(hlc_dir, compact ? "dsn17d_run2_pup310_fpm2048_pupil.fits" : "dsn17d_run2_pup310_fpm2048_pupil.fits"),
+            lyot_stop_file=joinpath(hlc_dir, compact ? "dsn17d_run2_pup310_fpm2048_lyot.fits" : "dsn17d_run2_pup310_fpm2048_lyot.fits"),
+            occulter_real_file=joinpath(hlc_dir, compact ? "dsn17d_run2_pup310_fpm2048_occ_lam$(label)theta6.69pols_real.fits" : "dsn17d_run2_pup310_fpm2048_occ_lam$(label)theta6.69pols_real_rotated.fits"),
+            occulter_imag_file=joinpath(hlc_dir, compact ? "dsn17d_run2_pup310_fpm2048_occ_lam$(label)theta6.69pols_imag.fits" : "dsn17d_run2_pup310_fpm2048_occ_lam$(label)theta6.69pols_imag_rotated.fits"),
+            n_small=1024,
+            n_big=2048,
+            n_default=1024,
+            n_to_fpm=use_fpm != 0 ? 2048 : 1024,
+            n_from_lyotstop=1024,
+            field_stop_radius_lam0=9.0,
+        )
+    elseif cor_type in ("spc-ifs_short", "spc-ifs_long", "spc-spec_short", "spc-spec_long")
+        spc_dir = joinpath(data_root, "spc_20190130")
+        is_short = cor_type in ("spc-ifs_short", "spc-spec_short")
+        return (
+            branch=:spc,
+            data_dir=spc_dir,
+            pupil_diam_pix=1000.0,
+            lambda0_m=is_short ? 0.66e-6 : 0.73e-6,
+            pupil_file=joinpath(spc_dir, "pupil_SPC-20190130_rotated.fits"),
+            pupil_mask_file=joinpath(spc_dir, compact ? "SPM_SPC-20190130_rotated.fits" : "SPM_SPC-20190130.fits"),
+            fpm_file=joinpath(spc_dir, "fpm_0.05lamdivD.fits"),
+            lyot_stop_file=joinpath(spc_dir, compact ? "lyotstop_0.5mag.fits" : "LS_SPC-20190130.fits"),
+            fpm_sampling=0.05,
+            fpm_sampling_lambda_m=is_short ? 0.66e-6 : 0.73e-6,
+            n_small=2048,
+            n_big=compact ? 1400 : 2048,
+            n_default=2048,
+            n_to_fpm=2048,
+            n_mft=1400,
+            n_from_lyotstop=compact ? 2048 : 4096,
+        )
+    elseif cor_type == "spc-wide"
+        spc_dir = joinpath(data_root, "spc_20181220")
+        return (
+            branch=:spc,
+            data_dir=spc_dir,
+            pupil_diam_pix=1000.0,
+            lambda0_m=0.825e-6,
+            pupil_file=joinpath(spc_dir, "pupil_SPC-20181220_1k_rotated.fits"),
+            pupil_mask_file=joinpath(spc_dir, compact ? "SPM_SPC-20181220_1000_rounded9_gray_rotated.fits" : "SPM_SPC-20181220_1000_rounded9_gray.fits"),
+            fpm_file=joinpath(spc_dir, "fpm_0.05lamdivD.fits"),
+            lyot_stop_file=joinpath(spc_dir, compact ? "LS_half_symm_CGI180718_Str3.20pct_38D91_N500_pixel.fits" : "LS_SPC-20181220_1k.fits"),
+            fpm_sampling=0.05,
+            fpm_sampling_lambda_m=0.825e-6,
+            n_small=2048,
+            n_big=1400,
+            n_default=2048,
+            n_to_fpm=2048,
+            n_mft=1400,
+            n_from_lyotstop=compact ? 2048 : 4096,
+        )
+    elseif cor_type == "none"
+        hlc_dir = joinpath(data_root, "hlc_20190210")
+        return (
+            branch=:none,
+            data_dir=hlc_dir,
+            pupil_diam_pix=309.0,
+            lambda0_m=0.575e-6,
+            pupil_file=joinpath(hlc_dir, "run461_pupil_rotated.fits"),
+            lyot_stop_file=nothing,
+            n_small=1024,
+            n_big=1024,
+            n_default=1024,
+            n_to_fpm=1024,
+            n_from_lyotstop=1024,
+        )
+    end
+    throw(ArgumentError("Unsupported cor_type: $(cor_type)"))
 end
 
 @inline function _source_offset_lambda_over_d(passvalue, lambda0_m::Real, diam_m::Real)

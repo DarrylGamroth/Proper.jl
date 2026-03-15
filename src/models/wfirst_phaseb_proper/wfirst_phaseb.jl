@@ -1,6 +1,5 @@
 function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     cor_type = String(passget(passvalue, :cor_type, "hlc"))
-    cor_type == "hlc" || throw(ArgumentError("wfirst_phaseb supports only cor_type=hlc for the benchmarked CPU comparison path"))
     use_errors = Int(passget(passvalue, :use_errors, 1))
     use_errors == 0 || throw(ArgumentError("wfirst_phaseb CPU comparison path currently supports only use_errors=0"))
     use_hlc_dm_patterns = Int(passget(passvalue, :use_hlc_dm_patterns, 0))
@@ -20,17 +19,15 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     dm2_ytilt_deg = Float64(passget(passvalue, :dm2_ytilt_deg, 5.7))
     dm2_ztilt_deg = Float64(passget(passvalue, :dm2_ztilt_deg, 0.0))
     use_fpm = Int(passget(passvalue, :use_fpm, 1))
+    use_pupil_mask = Int(passget(passvalue, :use_pupil_mask, 1))
     use_lyot_stop = Int(passget(passvalue, :use_lyot_stop, 1))
     use_field_stop = Int(passget(passvalue, :use_field_stop, 1))
     final_sampling_m = Float64(passget(passvalue, :final_sampling_m, 0.0))
     final_sampling_lam0 = Float64(passget(passvalue, :final_sampling_lam0, 0.0))
     output_dim = Int(passget(passvalue, :output_dim, output_dim0))
     λm = Float64(lambda_m)
-    λ0 = 0.575e-6
-    data = _resolve_assets(passvalue, assets, λm)
-    ws = data.workspace
+    data_root = String(passget(passvalue, :data_dir, phaseb_default_data_root()))
 
-    pupil_diam_pix = 309.0
     diam = 2.3633372
     fl_pri = 2.83459423440 * 1.0013
     d_pri_sec = 2.285150515460035
@@ -92,15 +89,26 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     diam_fold4 = 0.02
     d_fold4_image = 0.050001578514650
 
-    n_default = 1024
-    n_to_fpm = use_fpm != 0 ? 2048 : 1024
-    n_from_lyotstop = 1024
-    field_stop_radius_lam0 = 9.0
+    cfg = _phaseb_config(cor_type, λm, data_root; compact=false, use_fpm=use_fpm)
+    λ0 = cfg.lambda0_m
+    pupil_diam_pix = cfg.pupil_diam_pix
+    data = cfg.branch == :hlc ? _resolve_assets(passvalue, assets, λm) : nothing
+    ws = data === nothing ? PhaseBModelWorkspace(output_dim) : data.workspace
+    if cfg.branch == :none
+        use_fpm = 0
+        use_lyot_stop = 0
+        use_field_stop = 0
+    end
+    n_default = cfg.n_default
+    n_to_fpm = cfg.n_to_fpm
+    n_from_lyotstop = cfg.n_from_lyotstop
+    field_stop_radius_lam0 = get(cfg, :field_stop_radius_lam0, 9.0)
     source_x_offset, source_y_offset = _source_offset_lambda_over_d(passvalue, λ0, diam)
 
     n = n_default
     wf = prop_begin(diam, λm, n; beam_diam_fraction=pupil_diam_pix / n)
-    prop_multiply(wf, data.shared.pupil_1024)
+    pupil = cfg.branch == :hlc ? data.shared.pupil_1024 : trim(Float64.(prop_fits_read(cfg.pupil_file)), n)
+    prop_multiply(wf, pupil)
     prop_define_entrance(wf)
     _apply_source_offset!(wf, pupil_diam_pix, λ0, λm, source_x_offset, source_y_offset)
     prop_lens(wf, fl_pri)
@@ -129,6 +137,7 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
         prop_dm(wf, dm1_m, dm1_xc_act, dm1_yc_act, dm_sampling_m; XTILT=dm1_xtilt_deg, YTILT=dm1_ytilt_deg, ZTILT=dm1_ztilt_deg)
     end
     if use_hlc_dm_patterns != 0
+        cfg.branch == :hlc || throw(ArgumentError("use_hlc_dm_patterns is only valid for HLC configurations"))
         prop_add_phase(wf, data.shared.dm1wfe_1024)
     end
     prop_propagate(wf, d_dm1_dm2, "DM2")
@@ -137,9 +146,12 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
         prop_dm(wf, dm2_m, dm2_xc_act, dm2_yc_act, dm_sampling_m; XTILT=dm2_xtilt_deg, YTILT=dm2_ytilt_deg, ZTILT=dm2_ztilt_deg)
     end
     if use_hlc_dm_patterns != 0
+        cfg.branch == :hlc || throw(ArgumentError("use_hlc_dm_patterns is only valid for HLC configurations"))
         prop_add_phase(wf, data.shared.dm2wfe_1024)
     end
-    prop_multiply(wf, data.shared.dm2mask_1024)
+    if cfg.branch == :hlc
+        prop_multiply(wf, data.shared.dm2mask_1024)
+    end
 
     prop_propagate(wf, d_dm2_oap3, "OAP3")
     prop_lens(wf, fl_oap3)
@@ -147,19 +159,40 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     prop_propagate(wf, d_fold3_oap4, "OAP4")
     prop_lens(wf, fl_oap4)
     prop_propagate(wf, d_oap4_pupilmask, "PUPIL_MASK")
+    if cfg.branch == :spc && use_pupil_mask != 0
+        pupil_mask = trim(Float64.(prop_fits_read(cfg.pupil_mask_file)), n)
+        prop_multiply(wf, pupil_mask)
+    end
 
     diam_pupil = 2 * prop_get_beamradius(wf)
-    prop_end!(ws.field_1024, wf; noabs=true)
+    field_default = phaseb_field(ws, n_default)
+    prop_end!(field_default, wf; noabs=true)
     n = n_to_fpm
-    phaseb_center_copy!(ws.field_2048, ws.field_1024)
+    field_to_fpm = phaseb_field(ws, n)
+    phaseb_center_copy!(field_to_fpm, field_default)
     wf = prop_begin(diam_pupil, λm, n; beam_diam_fraction=pupil_diam_pix / n)
-    phaseb_half_shift!(wf.field, ws.field_2048)
+    phaseb_half_shift!(wf.field, field_to_fpm)
 
     prop_propagate(wf, d_pupilmask_oap5, "OAP5")
     prop_lens(wf, fl_oap5)
     prop_propagate(wf, d_oap5_fpm, "FPM"; TO_PLANE=true)
     if use_fpm == 1
-        prop_multiply(wf, data.occulter_2048)
+        if cfg.branch == :hlc
+            prop_multiply(wf, data.occulter_2048)
+        elseif cfg.branch == :spc
+            prop_end!(field_to_fpm, wf; noabs=true)
+            phaseb_ffts!(field_to_fpm, phaseb_fft_cache(ws, n), +1)
+            field_mft = phaseb_field(ws, cfg.n_mft)
+            phaseb_center_copy!(field_mft, field_to_fpm)
+            fpm = ComplexF64.(prop_fits_read(cfg.fpm_file))
+            nfpm = size(fpm, 2)
+            fpm_sampling_lam = cfg.fpm_sampling * cfg.fpm_sampling_lambda_m / λm
+            field_spc = mft2(field_mft, fpm_sampling_lam, pupil_diam_pix, nfpm, -1)
+            field_spc .*= fpm
+            field_to_fpm = mft2(field_spc, fpm_sampling_lam, pupil_diam_pix, n, +1)
+            phaseb_ffts!(field_to_fpm, phaseb_fft_cache(ws, n), -1)
+            phaseb_half_shift!(wf.field, field_to_fpm)
+        end
     end
 
     prop_propagate(wf, d_fpm_oap6, "OAP6")
@@ -167,20 +200,22 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     prop_propagate(wf, d_oap6_lyotstop, "LYOT_STOP")
 
     diam_lyot = 2 * prop_get_beamradius(wf)
-    prop_end!(ws.field_2048, wf; noabs=true)
+    prop_end!(field_to_fpm, wf; noabs=true)
     n = n_from_lyotstop
-    phaseb_center_copy!(ws.field_1024, ws.field_2048)
+    field_from_lyot = phaseb_field(ws, n)
+    phaseb_center_copy!(field_from_lyot, field_to_fpm)
     wf = prop_begin(diam_lyot, λm, n; beam_diam_fraction=pupil_diam_pix / n)
-    phaseb_half_shift!(wf.field, ws.field_1024)
+    phaseb_half_shift!(wf.field, field_from_lyot)
 
-    if use_lyot_stop != 0
-        prop_multiply(wf, data.shared.lyot_1024)
+    if use_lyot_stop != 0 && cfg.lyot_stop_file !== nothing
+        lyot = cfg.branch == :hlc ? data.shared.lyot_1024 : trim(Float64.(prop_fits_read(cfg.lyot_stop_file)), n)
+        prop_multiply(wf, lyot)
     end
 
     prop_propagate(wf, d_lyotstop_oap7, "OAP7")
     prop_lens(wf, fl_oap7)
     prop_propagate(wf, d_oap7_fieldstop, "FIELD_STOP")
-    if use_field_stop != 0
+    if use_field_stop != 0 && cfg.branch == :hlc
         sampling_lamD = pupil_diam_pix / n
         stop_radius = field_stop_radius_lam0 / sampling_lamD * (λ0 / λm) * prop_get_sampling(wf)
         prop_circular_aperture(wf, stop_radius, 0.0, 0.0)
@@ -195,7 +230,7 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     prop_propagate(wf, d_fold4_image, "IMAGE")
 
     sampling_m = prop_get_sampling(wf)
-    prop_end!(ws.field_1024, wf; noabs=true)
+    prop_end!(field_from_lyot, wf; noabs=true)
     if final_sampling_lam0 != 0 || final_sampling_m != 0
         mag = if final_sampling_m != 0
             sampling_m / final_sampling_m
@@ -205,13 +240,13 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
         sampling_m = final_sampling_m != 0 ? final_sampling_m : sampling_m / mag
         ctx = Proper.active_run_context()
         if ctx === nothing
-            prop_magnify!(ws.output, ws.field_1024, mag; AMP_CONSERVE=true)
+            prop_magnify!(ws.output, field_from_lyot, mag; AMP_CONSERVE=true)
         else
-            prop_magnify!(ws.output, ws.field_1024, mag, ctx; AMP_CONSERVE=true)
+            prop_magnify!(ws.output, field_from_lyot, mag, ctx; AMP_CONSERVE=true)
         end
         return ws.output, sampling_m
     else
-        phaseb_center_copy!(ws.output, ws.field_1024)
+        phaseb_center_copy!(ws.output, field_from_lyot)
         return ws.output, sampling_m
     end
 end
