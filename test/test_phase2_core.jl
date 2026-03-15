@@ -206,6 +206,20 @@ end
         @test eltype(wf_wavefront.field) == ComplexF32
         @test wf_wavefront.workspace === ctx.workspace
     end
+
+    @testset "prop_dm application parity" begin
+        Random.seed!(1234)
+        wf_apply = prop_begin(1.0, 550e-9, 64)
+        wf_manual = prop_begin(1.0, 550e-9, 64)
+        dm = randn(6, 6) .* 1e-9
+
+        dmap_apply = prop_dm(wf_apply, dm, 2.5, 2.5, 1.0e-3)
+        dmap_manual = prop_dm(wf_manual, dm, 2.5, 2.5, 1.0e-3; NO_APPLY=true)
+
+        @test dmap_apply ≈ dmap_manual
+        prop_add_phase(wf_manual, 2 .* dmap_manual)
+        @test wf_apply.field ≈ wf_manual.field
+    end
 end
 
 @testset "Phase 3 FITS/map basics" begin

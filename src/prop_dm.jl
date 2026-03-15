@@ -194,8 +194,7 @@ function prop_dm(
     @views dmap[ymin:ymax, xmin:xmax] .= grid
 
     if !switch_set(:NO_APPLY; kwargs...)
-        # Internal wavefront orientation is transposed relative to exported map layout.
-        prop_add_phase(wf, 2 .* transpose(dmap))
+        prop_add_phase(wf, 2 .* dmap)
     end
 
     return dmap
