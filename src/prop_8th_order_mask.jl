@@ -113,6 +113,12 @@ function prop_8th_order_mask(
     mask .+= RT(float(min_transmission))
     mask .= sqrt.(mask)
 
-    wf.field .*= backend_adapt(wf.field, prop_shift_center(mask))
+    if wf.field isa StridedMatrix
+        scratch = ensure_fft_real_scratch!(wf.workspace.fft, ny, nx)
+        prop_shift_center!(scratch, mask)
+        wf.field .*= scratch
+    else
+        wf.field .*= backend_adapt(wf.field, prop_shift_center(mask))
+    end
     return mask
 end

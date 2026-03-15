@@ -71,6 +71,9 @@ run_step "Julia refactor kernels" julia --project=. bench/julia/steady_state/ref
 run_step "Julia KA interpolation pilot" julia --project=. bench/julia/steady_state/ka_interp_kernels.jl
 run_step "Julia KA geometry/sampling pilot" julia --project=. bench/julia/steady_state/ka_geometry_sampling_kernels.jl
 run_step "Julia example workflows" julia --project=. bench/julia/steady_state/example_workflows.jl
+if [[ "${BENCH_INCLUDE_WFIRST_CPU:-0}" == "1" ]]; then
+  run_step "WFIRST Phase B CPU comparison" ./scripts/benchmark_wfirst_phaseb_cpu.sh
+fi
 run_cuda_benchmarks
 run_step "Julia cold-start / TTFx" julia --project=. bench/julia/cold_start/run.jl
 julia --project=. bench/reports/summarize.jl
