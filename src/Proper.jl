@@ -112,6 +112,7 @@ export prepare_prescription, prepare_prescription_batch, prepare_asset_pool, pre
 export reset_prepared_batch!, reset_prepared_assets!, reset_prepared_model!
 export prop_wavefront, prop_begin, prop_end, prop_add_phase, prop_add_wavefront
 export prop_multiply, prop_divide, prop_shift_center
+export prop_shift_center!
 export prop_radius, prop_ellipse, prop_rectangle
 export prop_circular_aperture, prop_circular_obscuration
 export prop_elliptical_aperture, prop_elliptical_obscuration

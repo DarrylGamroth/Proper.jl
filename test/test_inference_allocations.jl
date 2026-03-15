@@ -20,6 +20,24 @@ using Random
     _ = prop_cubic_conv(img, 7.3, 8.1)
     @test (@allocated prop_cubic_conv(img, 7.3, 8.1)) == 0
 
+    phase_map = rand(rng, Float64, 32, 32)
+    scale_map = rand(rng, Float64, 32, 32) .+ 0.5
+
+    wf_phase = prop_begin(1.0, 500e-9, 32)
+    prop_add_phase(wf_phase, phase_map)
+    add_phase_alloc = @allocated prop_add_phase(wf_phase, phase_map)
+    @test add_phase_alloc < 10_000
+
+    wf_mult = prop_begin(1.0, 500e-9, 32)
+    prop_multiply(wf_mult, scale_map)
+    multiply_alloc = @allocated prop_multiply(wf_mult, scale_map)
+    @test multiply_alloc < 10_000
+
+    wf_div = prop_begin(1.0, 500e-9, 32)
+    prop_divide(wf_div, scale_map)
+    divide_alloc = @allocated prop_divide(wf_div, scale_map)
+    @test divide_alloc < 10_000
+
     mktempdir() do d
         f = joinpath(d, "map.fits")
         prop_fits_write(f, dmap)

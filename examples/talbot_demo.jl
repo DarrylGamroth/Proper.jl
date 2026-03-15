@@ -13,11 +13,12 @@ function talbot_demo()
     nseg = 9
     talbot_length = 2 * period^2 / wavelength_m
     delta_length = talbot_length / (nseg - 1)
+    model = prepare_model(:talbot, talbot, wavelength_microns, n; pool_size=1)
 
     z = 0.0
     plots = Plot[]
     for _ in 1:nseg
-        wavefront, _ = prop_run(talbot, wavelength_microns, n; PASSVALUE=Dict("diam" => diam, "period" => period, "dist" => z))
+        wavefront, _ = prop_run(model; PASSVALUE=Dict("diam" => diam, "period" => period, "dist" => z))
         line = wavefront[:, n ÷ 2 + 1]
         amp = abs.(line) .- mean(abs.(line))
         phase = angle.(line) .- mean(angle.(line))

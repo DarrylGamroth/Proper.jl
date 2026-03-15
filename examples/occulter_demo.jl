@@ -4,10 +4,11 @@ include(joinpath(@__DIR__, "run_occulter.jl"))
 function occulter_demo()
     n = 512
     lambda_um = 0.55
+    model = prepare_model(:run_occulter, run_occulter, lambda_um, n; pool_size=1)
 
-    solid, _ = prop_run(run_occulter, lambda_um, n; PASSVALUE=Dict("occulter_type" => "SOLID"))
-    gaussian, _ = prop_run(run_occulter, lambda_um, n; PASSVALUE=Dict("occulter_type" => "GAUSSIAN"))
-    eighth_order, _ = prop_run(run_occulter, lambda_um, n; PASSVALUE=Dict("occulter_type" => "8TH_ORDER"))
+    solid, _ = prop_run(model; PASSVALUE=Dict("occulter_type" => "SOLID"))
+    gaussian, _ = prop_run(model; PASSVALUE=Dict("occulter_type" => "GAUSSIAN"))
+    eighth_order, _ = prop_run(model; PASSVALUE=Dict("occulter_type" => "8TH_ORDER"))
 
     return solid, gaussian, eighth_order
 end

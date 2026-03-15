@@ -6,10 +6,11 @@ include(joinpath(@__DIR__, "run_coronagraph_dm.jl"))
 function coronagraph_demo()
     n = 512
     lambda_um = 0.55
+    model = prepare_model(:run_coronagraph_dm, run_coronagraph_dm, lambda_um, n; pool_size=1)
 
-    no_errors, _ = prop_run(run_coronagraph_dm, lambda_um, n; PASSVALUE=Dict("use_errors" => false, "use_dm" => false, "occulter_type" => "8TH_ORDER"))
-    with_errors, _ = prop_run(run_coronagraph_dm, lambda_um, n; PASSVALUE=Dict("use_errors" => true, "use_dm" => false, "occulter_type" => "8TH_ORDER"))
-    with_dm, _ = prop_run(run_coronagraph_dm, lambda_um, n; PASSVALUE=Dict("use_errors" => true, "use_dm" => true, "occulter_type" => "8TH_ORDER"))
+    no_errors, _ = prop_run(model; PASSVALUE=Dict("use_errors" => false, "use_dm" => false, "occulter_type" => "8TH_ORDER"))
+    with_errors, _ = prop_run(model; PASSVALUE=Dict("use_errors" => true, "use_dm" => false, "occulter_type" => "8TH_ORDER"))
+    with_dm, _ = prop_run(model; PASSVALUE=Dict("use_errors" => true, "use_dm" => true, "occulter_type" => "8TH_ORDER"))
 
     nd = 256
     p1 = heatmap(center_crop(no_errors, nd) .^ 0.25; aspect_ratio=:equal, colorbar=false, title="No errors")
