@@ -433,6 +433,59 @@ function phaseb_case_definitions()
             ),
             description="Full SPC wide-field model over 10% band without error maps",
         ),
+        "compact_hlc_source_offset" => (
+            func=wfirst_phaseb_compact,
+            output_dim=128,
+            wavelengths_um=hlc_wavelengths_um,
+            wavelengths_m=hlc_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "hlc",
+                "use_hlc_dm_patterns" => 1,
+                "final_sampling_lam0" => 0.1,
+                "source_x_offset" => 3.0,
+            ),
+            description="Compact HLC model with nonzero lambda-D source offset",
+        ),
+        "full_hlc_no_field_stop" => (
+            func=wfirst_phaseb,
+            output_dim=128,
+            wavelengths_um=hlc_wavelengths_um,
+            wavelengths_m=hlc_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "hlc",
+                "use_hlc_dm_patterns" => 1,
+                "final_sampling_lam0" => 0.1,
+                "use_errors" => 0,
+                "use_field_stop" => 0,
+            ),
+            description="Full HLC model without field stop",
+        ),
+        "full_spc_spec_long_no_pupil_mask" => (
+            func=wfirst_phaseb,
+            output_dim=128,
+            wavelengths_um=spec_wavelengths_um,
+            wavelengths_m=spec_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "spc-spec_long",
+                "final_sampling_lam0" => 0.1,
+                "use_errors" => 0,
+                "use_pupil_mask" => 0,
+            ),
+            description="Full SPC spec-long model without pupil mask",
+        ),
+        "full_none" => (
+            func=wfirst_phaseb,
+            output_dim=128,
+            wavelengths_um=hlc_wavelengths_um,
+            wavelengths_m=hlc_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "none",
+                "final_sampling_lam0" => 0.1,
+                "use_errors" => 0,
+                "use_fpm" => 0,
+            ),
+            description="Full pupil-only model without coronagraph elements",
+        ),
     )
 end
 

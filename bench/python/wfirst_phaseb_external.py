@@ -160,6 +160,55 @@ def case_definitions(wfirst_phaseb, wfirst_phaseb_compact):
             },
             "description": "Full SPC wide-field model over 10% band without error maps",
         },
+        "compact_hlc_source_offset": {
+            "func": wfirst_phaseb_compact,
+            "output_dim": 128,
+            "wavelengths_m": hlc_lams_m,
+            "passvalue": {
+                "cor_type": "hlc",
+                "use_hlc_dm_patterns": 1,
+                "final_sampling_lam0": 0.1,
+                "source_x_offset": 3.0,
+            },
+            "description": "Compact HLC model with nonzero lambda-D source offset",
+        },
+        "full_hlc_no_field_stop": {
+            "func": wfirst_phaseb,
+            "output_dim": 128,
+            "wavelengths_m": hlc_lams_m,
+            "passvalue": {
+                "cor_type": "hlc",
+                "use_hlc_dm_patterns": 1,
+                "final_sampling_lam0": 0.1,
+                "use_errors": 0,
+                "use_field_stop": 0,
+            },
+            "description": "Full HLC model without field stop",
+        },
+        "full_spc_spec_long_no_pupil_mask": {
+            "func": wfirst_phaseb,
+            "output_dim": 128,
+            "wavelengths_m": spec_lams_m,
+            "passvalue": {
+                "cor_type": "spc-spec_long",
+                "final_sampling_lam0": 0.1,
+                "use_errors": 0,
+                "use_pupil_mask": 0,
+            },
+            "description": "Full SPC spec-long model without pupil mask",
+        },
+        "full_none": {
+            "func": wfirst_phaseb,
+            "output_dim": 128,
+            "wavelengths_m": hlc_lams_m,
+            "passvalue": {
+                "cor_type": "none",
+                "final_sampling_lam0": 0.1,
+                "use_errors": 0,
+                "use_fpm": 0,
+            },
+            "description": "Full pupil-only model without coronagraph elements",
+        },
     }
 
 
@@ -198,21 +247,16 @@ def main() -> None:
     parser.add_argument(
         "--case",
         default="compact_hlc",
-        choices=(
-            "compact_hlc",
-            "full_hlc",
-            "compact_spc_spec_long",
-            "full_spc_spec_long",
-            "compact_spc_wide",
-            "full_spc_wide",
-        ),
     )
     parser.add_argument("--samples", type=int, default=3)
     parser.add_argument("--write-output-prefix", default="")
+    parser.add_argument("--parity-only", action="store_true")
     args = parser.parse_args()
 
     proper, wfirst_phaseb, wfirst_phaseb_compact, proper_root, models_python_root, data_root = load_python_models()
     cases = case_definitions(wfirst_phaseb, wfirst_phaseb_compact)
+    if args.case not in cases:
+        raise SystemExit(f"unsupported case {args.case}")
     case = cases[args.case]
 
     if data_root is None:
@@ -226,11 +270,13 @@ def main() -> None:
     if args.write_output_prefix:
         write_output_stack(args.write_output_prefix, stack)
 
+    timed = (not args.parity_only) and args.samples > 0
     samples_ns = []
-    for _ in range(args.samples):
-        t0 = time.perf_counter_ns()
-        run_case(case)
-        samples_ns.append(time.perf_counter_ns() - t0)
+    if timed:
+        for _ in range(args.samples):
+            t0 = time.perf_counter_ns()
+            run_case(case)
+            samples_ns.append(time.perf_counter_ns() - t0)
 
     report = {
         "meta": {
@@ -249,14 +295,19 @@ def main() -> None:
             "available": True,
         },
         "stats": {
-            "median_ns": int(statistics.median(samples_ns)),
-            "mean_ns": int(statistics.fmean(samples_ns)),
-            "min_ns": int(min(samples_ns)),
-            "max_ns": int(max(samples_ns)),
+            "timed": timed,
+            "median_ns": int(statistics.median(samples_ns)) if timed else None,
+            "mean_ns": int(statistics.fmean(samples_ns)) if timed else None,
+            "min_ns": int(min(samples_ns)) if timed else None,
+            "max_ns": int(max(samples_ns)) if timed else None,
             "samples": len(samples_ns),
         },
         "output": summarize_output(stack, samplings),
-        "policy": "external WFIRST Phase B Python model timing only; TTFx excluded; direct prescription calls with runtime data_dir override",
+        "policy": (
+            "external WFIRST Phase B Python model timing; TTFx excluded; direct prescription calls with runtime data_dir override"
+            if timed
+            else "external WFIRST Phase B Python model parity-only run; no timing samples collected"
+        ),
     }
 
     outpath = outdir / f"python_wfirst_phaseb_{args.case}.json"

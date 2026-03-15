@@ -43,11 +43,19 @@ using Proper.WFIRSTPhaseBProper
         "full_spc_spec_long",
         "compact_spc_wide",
         "full_spc_wide",
+        "compact_hlc_source_offset",
+        "full_hlc_no_field_stop",
+        "full_spc_spec_long_no_pupil_mask",
+        "full_none",
     ])
     @test cases["compact_hlc"].func === wfirst_phaseb_compact
     @test cases["full_hlc"].func === wfirst_phaseb
     @test cases["compact_spc_spec_long"].passvalue["cor_type"] == "spc-spec_long"
     @test cases["full_spc_wide"].passvalue["cor_type"] == "spc-wide"
+    @test cases["compact_hlc_source_offset"].passvalue["source_x_offset"] == 3.0
+    @test cases["full_hlc_no_field_stop"].passvalue["use_field_stop"] == 0
+    @test cases["full_spc_spec_long_no_pupil_mask"].passvalue["use_pupil_mask"] == 0
+    @test cases["full_none"].passvalue["cor_type"] == "none"
 
     sx, sy = Proper.WFIRSTPhaseBProper._source_offset_lambda_over_d((source_x_offset_mas=10.0, source_y_offset=1.5), 0.575e-6, 2.363)
     expected_mas_per_lamd = 0.575e-6 * 360.0 * 3600.0 / (2π * 2.363) * 1000

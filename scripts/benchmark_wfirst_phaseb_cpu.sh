@@ -55,6 +55,52 @@ run_step() {
   fi
 }
 
+show_help() {
+  cat <<'EOF'
+Usage: ./scripts/benchmark_wfirst_phaseb_cpu.sh [--cases a,b,c] [--samples N] [--parity-only]
+
+Options:
+  --cases         Comma-separated WFIRST case names to run
+  --samples       Timing samples per case in timed mode
+  --parity-only   Skip timing loops and run correctness/output generation only
+
+Environment overrides:
+  WFIRST_CASES
+  WFIRST_SAMPLES
+  WFIRST_PARITY_ONLY=1
+EOF
+}
+
+cases_csv="${WFIRST_CASES:-}"
+samples="${WFIRST_SAMPLES:-3}"
+parity_only="${WFIRST_PARITY_ONLY:-0}"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --cases)
+      cases_csv="$2"
+      shift 2
+      ;;
+    --samples)
+      samples="$2"
+      shift 2
+      ;;
+    --parity-only)
+      parity_only=1
+      shift
+      ;;
+    --help|-h)
+      show_help
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      show_help >&2
+      exit 1
+      ;;
+  esac
+done
+
 setup_json="$(${PYTHON_BIN} bench/python/setup_wfirst_phaseb_compat_data.py)"
 export WFIRST_PHASEB_DATA_ROOT="$(SETUP_JSON="${setup_json}" python3 - <<'PY'
 import json, os
@@ -65,19 +111,30 @@ PY
 echo "Using WFIRST_PHASEB_DATA_ROOT=${WFIRST_PHASEB_DATA_ROOT}"
 echo "Using JULIA_NUM_THREADS=${JULIA_NUM_THREADS}"
 
-cases=(
-  compact_hlc
-  full_hlc
-  compact_spc_spec_long
-  full_spc_spec_long
-  compact_spc_wide
-  full_spc_wide
-)
+if [[ -z "${cases_csv}" ]]; then
+  cases=(
+    compact_hlc
+    full_hlc
+    compact_spc_spec_long
+    full_spc_spec_long
+    compact_spc_wide
+    full_spc_wide
+  )
+else
+  IFS=',' read -r -a cases <<<"${cases_csv}"
+fi
+
+python_extra_args=(--samples "${samples}")
+julia_extra_args=(--samples "${samples}")
+if [[ "${parity_only}" == "1" ]]; then
+  python_extra_args+=(--parity-only)
+  julia_extra_args+=(--parity-only)
+fi
 
 for case_name in "${cases[@]}"; do
   pretty_case="${case_name//_/ }"
-  run_step "Python WFIRST Phase B ${pretty_case}" "${PYTHON_BIN}" bench/python/wfirst_phaseb_external.py --case "${case_name}" --write-output-prefix "bench/reports/python_wfirst_phaseb_${case_name}"
-  run_step "Julia WFIRST Phase B ${pretty_case}" julia --project=. bench/julia/wfirst_phaseb/run_case.jl --case "${case_name}" --data-root "${WFIRST_PHASEB_DATA_ROOT}"
+  run_step "Python WFIRST Phase B ${pretty_case}" "${PYTHON_BIN}" bench/python/wfirst_phaseb_external.py --case "${case_name}" --write-output-prefix "bench/reports/python_wfirst_phaseb_${case_name}" "${python_extra_args[@]}"
+  run_step "Julia WFIRST Phase B ${pretty_case}" julia --project=. bench/julia/wfirst_phaseb/run_case.jl --case "${case_name}" --data-root "${WFIRST_PHASEB_DATA_ROOT}" "${julia_extra_args[@]}"
 done
 
-julia --project=. bench/julia/wfirst_phaseb/compare_cpu.jl
+julia --project=. bench/julia/wfirst_phaseb/compare_cpu.jl --cases "$(IFS=,; echo "${cases[*]}")"

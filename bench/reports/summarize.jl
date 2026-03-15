@@ -66,6 +66,16 @@ function fmt_ratio(x)
     return @sprintf("%.2fx", Float64(x))
 end
 
+function fmt_ms(x)
+    x === nothing && return "n/a"
+    return @sprintf("%.2f ms", Float64(x))
+end
+
+function fmt_sci(x)
+    x === nothing && return "n/a"
+    return @sprintf("%.4g", Float64(x))
+end
+
 function padcell(text::AbstractString, width::Int, align::Symbol)
     return align === :r ? lpad(text, width) : rpad(text, width)
 end
@@ -525,18 +535,18 @@ if wfirst_phaseb_cpu !== nothing
     for row in getpath(wfirst_phaseb_cpu, "cases")
         push!(cmp_rows, [
             String(getkey(row, "case")),
-            @sprintf("%.2f ms", Float64(getkey(row, "python_median_ms"))),
-            @sprintf("%.2f ms", Float64(getkey(row, "julia_median_ms"))),
-            fmt_ratio(getkey(row, "python_over_julia")),
-            @sprintf("%.4g", Float64(getkey(row, "relative_l2"))),
-            @sprintf("%.4g", Float64(getkey(row, "max_abs_diff"))),
-            @sprintf("%.4g", Float64(getkey(row, "max_sampling_abs_diff"))),
-            string(Int(getkey(row, "threads"))),
+            fmt_ms(getkey(row, "python_median_ms")),
+            fmt_ms(getkey(row, "julia_median_ms")),
+            getkey(row, "python_over_julia") === nothing ? "n/a" : fmt_ratio(getkey(row, "python_over_julia")),
+            fmt_sci(getkey(row, "relative_l2")),
+            fmt_sci(getkey(row, "max_abs_diff")),
+            fmt_sci(getkey(row, "max_sampling_abs_diff")),
+            getkey(row, "threads") === nothing ? "n/a" : string(Int(getkey(row, "threads"))),
         ])
     end
     cmp_notes = [
-        "Python-vs-Julia CPU comparison from the WFIRST Phase B HLC subset harness.",
-        "Py/Jl values greater than 1.00x mean Julia is faster.",
+        "Python-vs-Julia CPU comparison from the WFIRST Phase B HLC/SPC reference harness.",
+        "Py/Jl values greater than 1.00x mean Julia is faster. Rows may show n/a when generated in parity-only mode.",
     ]
     append_ascii_section!(term, "WFIRST Phase B CPU Comparison", cmp_headers, cmp_rows; aligns=[:l, :r, :r, :r, :r, :r, :r, :r], notes=cmp_notes)
     append_markdown_section!(md, "WFIRST Phase B CPU Comparison", cmp_headers, cmp_rows; notes=cmp_notes)

@@ -11,6 +11,8 @@ function arg_value(flag::String, default=nothing)
     return ARGS[idx + 1]
 end
 
+has_flag(flag::String) = any(==(flag), ARGS)
+
 function time_samples_ns(workload, samples::Integer)
     samples > 0 || throw(ArgumentError("samples must be positive"))
     times = Vector{Int64}(undef, samples)
@@ -48,7 +50,8 @@ end
 
 function main()
     case_name = String(arg_value("--case", "compact_hlc"))
-    samples = parse(Int, String(arg_value("--samples", "3")))
+    parity_only = has_flag("--parity-only")
+    samples = parse(Int, String(arg_value("--samples", parity_only ? "0" : "3")))
     data_root = String(arg_value("--data-root", phaseb_default_data_root()))
     threaded = String(arg_value("--threaded", "true")) != "false"
 
@@ -59,7 +62,8 @@ function main()
 
     workload() = run_phaseb_case(models; threaded=threaded)
     stack, samplings = workload()
-    trial_times = time_samples_ns(workload, samples)
+    timed = !parity_only && samples > 0
+    trial_times = timed ? time_samples_ns(workload, samples) : Int64[]
 
     outdir = joinpath(@__DIR__, "..", "..", "reports")
     mkpath(outdir)
@@ -81,14 +85,17 @@ function main()
             "threads" => Threads.nthreads(),
         ),
         "stats" => Dict(
-            "median_ns" => Int(round(median(trial_times))),
-            "mean_ns" => Int(round(sum(trial_times) / length(trial_times))),
-            "min_ns" => minimum(trial_times),
-            "max_ns" => maximum(trial_times),
+            "timed" => timed,
+            "median_ns" => timed ? Int(round(median(trial_times))) : nothing,
+            "mean_ns" => timed ? Int(round(sum(trial_times) / length(trial_times))) : nothing,
+            "min_ns" => timed ? minimum(trial_times) : nothing,
+            "max_ns" => timed ? maximum(trial_times) : nothing,
             "samples" => length(trial_times),
         ),
         "output" => summarize_output(stack, samplings),
-        "policy" => "Julia CPU WFIRST Phase B HLC subset timing only; TTFx excluded; uses PreparedModel with shared cached HLC assets",
+        "policy" => timed ?
+            "Julia CPU WFIRST Phase B reference model timing; TTFx excluded; uses PreparedModel with shared cached assets where available" :
+            "Julia CPU WFIRST Phase B reference model parity-only run; no timing samples collected",
     )
 
     open(prefix * ".json", "w") do io
