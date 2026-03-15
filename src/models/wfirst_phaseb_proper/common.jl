@@ -191,6 +191,36 @@ end
     return assets.occulters_2048[key]
 end
 
+@inline function _source_offset_lambda_over_d(passvalue, lambda0_m::Real, diam_m::Real)
+    source_x_offset = Float64(passget(passvalue, :source_x_offset, 0.0))
+    source_y_offset = Float64(passget(passvalue, :source_y_offset, 0.0))
+    mas_per_lamD = lambda0_m * 360.0 * 3600.0 / (2π * diam_m) * 1000
+    source_x_offset_mas = passget(passvalue, :source_x_offset_mas, nothing)
+    source_y_offset_mas = passget(passvalue, :source_y_offset_mas, nothing)
+    if source_x_offset_mas !== nothing
+        source_x_offset = Float64(source_x_offset_mas) / mas_per_lamD
+    end
+    if source_y_offset_mas !== nothing
+        source_y_offset = Float64(source_y_offset_mas) / mas_per_lamD
+    end
+    return source_x_offset, source_y_offset
+end
+
+function _apply_source_offset!(wf, pupil_diam_pix::Real, lambda0_m::Real, lambda_m::Real, source_x_offset::Real, source_y_offset::Real)
+    if source_x_offset == 0 && source_y_offset == 0
+        return wf
+    end
+
+    xtilt_lam = -Float64(source_x_offset) * lambda0_m / lambda_m
+    ytilt_lam = -Float64(source_y_offset) * lambda0_m / lambda_m
+    n = size(wf.field, 1)
+    coords = (collect(0:(n - 1)) .- (n ÷ 2)) ./ (float(pupil_diam_pix) / 2.0)
+    x = repeat(reshape(coords, 1, :), n, 1)
+    y = repeat(reshape(coords, :, 1), 1, n)
+    wf.field .*= cis.(π .* (xtilt_lam .* x .+ ytilt_lam .* y))
+    return wf
+end
+
 
 function phaseb_case_definitions()
     lam0_um = 0.575

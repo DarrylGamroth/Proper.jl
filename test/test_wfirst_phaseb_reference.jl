@@ -28,6 +28,16 @@ using Proper.WFIRSTPhaseBProper
     @test cases["compact_hlc"].func === wfirst_phaseb_compact
     @test cases["full_hlc"].func === wfirst_phaseb
 
+    sx, sy = Proper.WFIRSTPhaseBProper._source_offset_lambda_over_d((source_x_offset_mas=10.0, source_y_offset=1.5), 0.575e-6, 2.363)
+    expected_mas_per_lamd = 0.575e-6 * 360.0 * 3600.0 / (2π * 2.363) * 1000
+    @test isapprox(sx, 10.0 / expected_mas_per_lamd; rtol=1e-12)
+    @test sy == 1.5
+
+    wf_tilt = prop_begin(1.0, 550e-9, 8)
+    field_before_tilt = copy(wf_tilt.field)
+    Proper.WFIRSTPhaseBProper._apply_source_offset!(wf_tilt, 6.0, 0.575e-6, 550e-9, 0.1, -0.2)
+    @test wf_tilt.field != field_before_tilt
+
     mktempdir() do d
         old_root = data_dir()
         try

@@ -4,6 +4,25 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     use_errors = Int(passget(passvalue, :use_errors, 1))
     use_errors == 0 || throw(ArgumentError("wfirst_phaseb CPU comparison path currently supports only use_errors=0"))
     use_hlc_dm_patterns = Int(passget(passvalue, :use_hlc_dm_patterns, 0))
+    use_dm1 = Int(passget(passvalue, :use_dm1, 0))
+    use_dm2 = Int(passget(passvalue, :use_dm2, 0))
+    dm1_m = passget(passvalue, :dm1_m, nothing)
+    dm2_m = passget(passvalue, :dm2_m, nothing)
+    dm_sampling_m = Float64(passget(passvalue, :dm_sampling_m, 0.9906e-3))
+    dm1_xc_act = Float64(passget(passvalue, :dm1_xc_act, 23.5))
+    dm1_yc_act = Float64(passget(passvalue, :dm1_yc_act, 23.5))
+    dm1_xtilt_deg = Float64(passget(passvalue, :dm1_xtilt_deg, 0.0))
+    dm1_ytilt_deg = Float64(passget(passvalue, :dm1_ytilt_deg, 5.7))
+    dm1_ztilt_deg = Float64(passget(passvalue, :dm1_ztilt_deg, 0.0))
+    dm2_xc_act = Float64(passget(passvalue, :dm2_xc_act, 23.5))
+    dm2_yc_act = Float64(passget(passvalue, :dm2_yc_act, 23.5))
+    dm2_xtilt_deg = Float64(passget(passvalue, :dm2_xtilt_deg, 0.0))
+    dm2_ytilt_deg = Float64(passget(passvalue, :dm2_ytilt_deg, 5.7))
+    dm2_ztilt_deg = Float64(passget(passvalue, :dm2_ztilt_deg, 0.0))
+    use_fpm = Int(passget(passvalue, :use_fpm, 1))
+    use_lyot_stop = Int(passget(passvalue, :use_lyot_stop, 1))
+    use_field_stop = Int(passget(passvalue, :use_field_stop, 1))
+    final_sampling_m = Float64(passget(passvalue, :final_sampling_m, 0.0))
     final_sampling_lam0 = Float64(passget(passvalue, :final_sampling_lam0, 0.0))
     output_dim = Int(passget(passvalue, :output_dim, output_dim0))
     λm = Float64(lambda_m)
@@ -74,17 +93,16 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     d_fold4_image = 0.050001578514650
 
     n_default = 1024
-    n_to_fpm = 2048
+    n_to_fpm = use_fpm != 0 ? 2048 : 1024
     n_from_lyotstop = 1024
     field_stop_radius_lam0 = 9.0
-    use_fpm = 1
-    use_lyot_stop = 1
-    use_field_stop = 1
+    source_x_offset, source_y_offset = _source_offset_lambda_over_d(passvalue, λ0, diam)
 
     n = n_default
     wf = prop_begin(diam, λm, n; beam_diam_fraction=pupil_diam_pix / n)
     prop_multiply(wf, data.shared.pupil_1024)
     prop_define_entrance(wf)
+    _apply_source_offset!(wf, pupil_diam_pix, λ0, λm, source_x_offset, source_y_offset)
     prop_lens(wf, fl_pri)
 
     prop_propagate(wf, d_pri_sec, "secondary")
@@ -106,10 +124,18 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     prop_lens(wf, fl_oap2)
 
     prop_propagate(wf, d_oap2_dm1, "DM1")
+    if use_dm1 != 0
+        dm1_m === nothing && throw(ArgumentError("wfirst_phaseb requires dm1_m when use_dm1 != 0"))
+        prop_dm(wf, dm1_m, dm1_xc_act, dm1_yc_act, dm_sampling_m; XTILT=dm1_xtilt_deg, YTILT=dm1_ytilt_deg, ZTILT=dm1_ztilt_deg)
+    end
     if use_hlc_dm_patterns != 0
         prop_add_phase(wf, data.shared.dm1wfe_1024)
     end
     prop_propagate(wf, d_dm1_dm2, "DM2")
+    if use_dm2 != 0
+        dm2_m === nothing && throw(ArgumentError("wfirst_phaseb requires dm2_m when use_dm2 != 0"))
+        prop_dm(wf, dm2_m, dm2_xc_act, dm2_yc_act, dm_sampling_m; XTILT=dm2_xtilt_deg, YTILT=dm2_ytilt_deg, ZTILT=dm2_ztilt_deg)
+    end
     if use_hlc_dm_patterns != 0
         prop_add_phase(wf, data.shared.dm2wfe_1024)
     end
@@ -170,9 +196,13 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
 
     sampling_m = prop_get_sampling(wf)
     prop_end!(ws.field_1024, wf; noabs=true)
-    if final_sampling_lam0 != 0
-        mag = (pupil_diam_pix / n) / final_sampling_lam0 * (λm / λ0)
-        sampling_m /= mag
+    if final_sampling_lam0 != 0 || final_sampling_m != 0
+        mag = if final_sampling_m != 0
+            sampling_m / final_sampling_m
+        else
+            (pupil_diam_pix / n) / final_sampling_lam0 * (λm / λ0)
+        end
+        sampling_m = final_sampling_m != 0 ? final_sampling_m : sampling_m / mag
         ctx = Proper.active_run_context()
         if ctx === nothing
             prop_magnify!(ws.output, ws.field_1024, mag; AMP_CONSERVE=true)
