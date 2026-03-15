@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 import numpy as np
+from astropy.io import fits
 
 
 def project_root() -> Path:
@@ -134,10 +135,19 @@ def summarize_output(stack, samplings):
     }
 
 
+def write_output_stack(prefix: str, stack: np.ndarray) -> None:
+    prefix_path = Path(prefix)
+    prefix_path.parent.mkdir(parents=True, exist_ok=True)
+    for idx, plane in enumerate(stack, start=1):
+        fits.writeto(f"{prefix}_{idx}_real.fits", np.asarray(np.real(plane), dtype=np.float64), overwrite=True)
+        fits.writeto(f"{prefix}_{idx}_imag.fits", np.asarray(np.imag(plane), dtype=np.float64), overwrite=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Benchmark external Python WFIRST Phase B models")
     parser.add_argument("--case", default="compact_hlc", choices=("compact_hlc", "full_hlc"))
     parser.add_argument("--samples", type=int, default=3)
+    parser.add_argument("--write-output-prefix", default="")
     args = parser.parse_args()
 
     proper, wfirst_phaseb, wfirst_phaseb_compact, proper_root, models_python_root, data_root = load_python_models()
@@ -152,6 +162,8 @@ def main() -> None:
     outdir.mkdir(parents=True, exist_ok=True)
 
     stack, samplings = run_case(case)
+    if args.write_output_prefix:
+        write_output_stack(args.write_output_prefix, stack)
 
     samples_ns = []
     for _ in range(args.samples):

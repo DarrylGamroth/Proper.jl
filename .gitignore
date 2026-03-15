@@ -1,9 +1,12 @@
 Manifest.toml
 __pycache__/
+.cache/
 # Generated benchmark artifacts
 bench/reports/*.json
 bench/reports/*.md
 bench/reports/*.csv
+bench/reports/*_real.fits
+bench/reports/*_imag.fits
 
 # Generated parity artifacts
 test/parity/baseline/python334/*.csv

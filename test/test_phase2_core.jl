@@ -2,6 +2,7 @@ using Test
 using Random
 using Statistics
 using Base.Threads
+using FFTW
 
 @testset "Phase 2 core kernels" begin
     wf = prop_begin(1.0, 500e-9, 32)
@@ -28,6 +29,37 @@ using Base.Threads
     @test (@inferred prop_select_propagator(wf4, 0.1)) isa Float64
     @test (@inferred prop_qphase(wf4, 1.2)) === wf4
     @test (@inferred prop_ptp(wf4, 0.01)) === wf4
+end
+
+@testset "Centered core helpers" begin
+    a = reshape(collect(1.0:25.0), 5, 5)
+    out_crop = Matrix{Float64}(undef, 4, 4)
+    Proper.copy_centered!(out_crop, a)
+    @test out_crop == [1.0 6.0 11.0 16.0; 2.0 7.0 12.0 17.0; 3.0 8.0 13.0 18.0; 4.0 9.0 14.0 19.0]
+
+    out_pad = Matrix{Float64}(undef, 7, 7)
+    Proper.copy_centered!(out_pad, a)
+    ref_pad = zeros(7, 7)
+    ref_pad[2:6, 2:6] .= a
+    @test out_pad == ref_pad
+
+    c = reshape(ComplexF64.(1:16), 4, 4)
+    shifted = similar(c)
+    Proper.half_shift_copy!(shifted, c)
+    @test shifted == prop_shift_center(c)
+
+    rev = similar(c)
+    Proper.reverse_shift1!(rev, c)
+    @test rev == circshift(reverse(reverse(c; dims=1); dims=2), (1, 1))
+
+    cache = Proper.CenteredFFTCache(Float64, 4; flags=FFTW.ESTIMATE)
+    fwd = copy(c)
+    Proper.centered_fft!(fwd, cache, -1)
+    @test fwd ≈ circshift(fft(circshift(c, (-2, -2))) ./ length(c), (2, 2))
+
+    invf = copy(c)
+    Proper.centered_fft!(invf, cache, +1)
+    @test invf ≈ circshift(ifft(circshift(c, (-2, -2))) .* length(c), (2, 2))
 end
 
 @testset "Phase 2 run entrypoints" begin

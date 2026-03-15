@@ -14,6 +14,7 @@ include("core/prepared.jl")
 include("core/keywords.jl")
 include("core/grid.jl")
 include("core/resample.jl")
+include("core/centered_ops.jl")
 include("core/fft_dispatch.jl")
 include("internal/unimplemented.jl")
 
