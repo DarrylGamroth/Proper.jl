@@ -77,11 +77,11 @@ function _wfirst_phaseb_compact_impl(lambda_m, output_dim0, passvalue; assets=no
         phaseb_ffts!(field_big, fft_big, +1)
         phaseb_center_copy!(field_small, field_big)
     elseif cfg.branch == :spc
-        field_big = phaseb_field(ws, n_big)
-        phaseb_center_copy!(field_big, field_small)
         fpm = ComplexF64.(prop_fits_read(cfg.fpm_file))
         nfpm = size(fpm, 2)
         fpm_sampling_lam = cfg.fpm_sampling * cfg.fpm_sampling_lambda_m / λm
+        field_big = phaseb_field(ws, n_big)
+        phaseb_center_copy!(field_big, field_small)
         spc_field = mft2(field_big, fpm_sampling_lam, pupil_diam_pix, nfpm, -1)
         spc_field .*= fpm
         spc_pupil_diam_pix = pupil_diam_pix / 2

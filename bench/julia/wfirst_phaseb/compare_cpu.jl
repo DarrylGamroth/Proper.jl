@@ -123,6 +123,8 @@ function main()
     cases = cases_arg === nothing ? [
         "compact_hlc",
         "full_hlc",
+        "compact_spc_spec_short",
+        "full_spc_spec_short",
         "compact_spc_spec_long",
         "full_spc_spec_long",
         "compact_spc_wide",

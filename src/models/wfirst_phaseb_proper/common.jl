@@ -341,8 +341,8 @@ function _apply_source_offset!(wf, pupil_diam_pix::Real, lambda0_m::Real, lambda
     ytilt_lam = -Float64(source_y_offset) * lambda0_m / lambda_m
     n = size(wf.field, 1)
     coords = (collect(0:(n - 1)) .- (n ÷ 2)) ./ (float(pupil_diam_pix) / 2.0)
-    x = repeat(reshape(coords, 1, :), n, 1)
-    y = repeat(reshape(coords, :, 1), 1, n)
+    x = repeat(reshape(coords, :, 1), 1, n)
+    y = repeat(reshape(coords, 1, :), n, 1)
     wf.field .*= cis.(π .* (xtilt_lam .* x .+ ytilt_lam .* y))
     return wf
 end
@@ -357,6 +357,10 @@ function phaseb_case_definitions()
     spec_band = 0.15
     spec_wavelengths_um = collect(range(spec_lam0_um * (1 - spec_band / 2), spec_lam0_um * (1 + spec_band / 2); length=3))
     spec_wavelengths_m = spec_wavelengths_um .* 1.0e-6
+    spec_short_lam0_um = 0.66
+    spec_short_band = 0.15
+    spec_short_wavelengths_um = collect(range(spec_short_lam0_um * (1 - spec_short_band / 2), spec_short_lam0_um * (1 + spec_short_band / 2); length=3))
+    spec_short_wavelengths_m = spec_short_wavelengths_um .* 1.0e-6
     wide_lam0_um = 0.825
     wide_band = 0.1
     wide_wavelengths_um = collect(range(wide_lam0_um * (1 - wide_band / 2), wide_lam0_um * (1 + wide_band / 2); length=3))
@@ -398,6 +402,17 @@ function phaseb_case_definitions()
             ),
             description="Compact SPC spec-long model over 15% band",
         ),
+        "compact_spc_spec_short" => (
+            func=wfirst_phaseb_compact,
+            output_dim=128,
+            wavelengths_um=spec_short_wavelengths_um,
+            wavelengths_m=spec_short_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "spc-spec_short",
+                "final_sampling_lam0" => 0.1,
+            ),
+            description="Compact SPC spec-short model over 15% band",
+        ),
         "full_spc_spec_long" => (
             func=wfirst_phaseb,
             output_dim=128,
@@ -409,6 +424,18 @@ function phaseb_case_definitions()
                 "use_errors" => 0,
             ),
             description="Full SPC spec-long model over 15% band without error maps",
+        ),
+        "full_spc_spec_short" => (
+            func=wfirst_phaseb,
+            output_dim=128,
+            wavelengths_um=spec_short_wavelengths_um,
+            wavelengths_m=spec_short_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "spc-spec_short",
+                "final_sampling_lam0" => 0.1,
+                "use_errors" => 0,
+            ),
+            description="Full SPC spec-short model over 15% band without error maps",
         ),
         "compact_spc_wide" => (
             func=wfirst_phaseb_compact,

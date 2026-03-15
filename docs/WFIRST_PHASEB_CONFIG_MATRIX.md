@@ -4,7 +4,7 @@ Representative configuration-matrix coverage for the Julia reference port and th
 
 | Area | Axis | Permutations | Evidence | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Coronagraph family | `cor_type` | `hlc`, `spc-spec_long`, `spc-wide`, `none` | `scripts/verify_wfirst_phaseb_matrix.sh` | Covered | `hlc_erkin`, `spc-ifs_short`, and `spc-ifs_long` still need parity cases. |
+| Coronagraph family | `cor_type` | `hlc`, `spc-spec_short`, `spc-spec_long`, `spc-wide`, `none` | `scripts/verify_wfirst_phaseb_matrix.sh` | Covered | `hlc_erkin`, `spc-ifs_short`, and `spc-ifs_long` still need dedicated parity cases. |
 | Model size | prescription path | `compact`, `full` | `scripts/verify_wfirst_phaseb_matrix.sh` | Covered | Matrix includes both compact and full runs for HLC and SPC. |
 | Source offset | source tilt | zero, nonzero lambda-D | `compact_hlc_source_offset` | Gap | Current compact HLC parity case exposes a real Python-vs-Julia mismatch and remains under investigation. |
 | Source offset conversion | mas to `lambda/D` | zero, nonzero mas | `test/test_wfirst_phaseb_reference.jl` | Covered | Helper-level coverage; not yet a separate Python-vs-Julia parity row. |

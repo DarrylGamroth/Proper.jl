@@ -90,6 +90,10 @@ def case_definitions(wfirst_phaseb, wfirst_phaseb_compact):
     spec_band = 0.15
     spec_lams_um = np.linspace(spec_lam0_um * (1 - spec_band / 2), spec_lam0_um * (1 + spec_band / 2), 3)
     spec_lams_m = spec_lams_um * 1.0e-6
+    spec_short_lam0_um = 0.66
+    spec_short_band = 0.15
+    spec_short_lams_um = np.linspace(spec_short_lam0_um * (1 - spec_short_band / 2), spec_short_lam0_um * (1 + spec_short_band / 2), 3)
+    spec_short_lams_m = spec_short_lams_um * 1.0e-6
     wide_lam0_um = 0.825
     wide_band = 0.1
     wide_lams_um = np.linspace(wide_lam0_um * (1 - wide_band / 2), wide_lam0_um * (1 + wide_band / 2), 3)
@@ -128,6 +132,16 @@ def case_definitions(wfirst_phaseb, wfirst_phaseb_compact):
             },
             "description": "Compact SPC spec-long model over 15% band",
         },
+        "compact_spc_spec_short": {
+            "func": wfirst_phaseb_compact,
+            "output_dim": 128,
+            "wavelengths_m": spec_short_lams_m,
+            "passvalue": {
+                "cor_type": "spc-spec_short",
+                "final_sampling_lam0": 0.1,
+            },
+            "description": "Compact SPC spec-short model over 15% band",
+        },
         "full_spc_spec_long": {
             "func": wfirst_phaseb,
             "output_dim": 128,
@@ -138,6 +152,17 @@ def case_definitions(wfirst_phaseb, wfirst_phaseb_compact):
                 "use_errors": 0,
             },
             "description": "Full SPC spec-long model over 15% band without error maps",
+        },
+        "full_spc_spec_short": {
+            "func": wfirst_phaseb,
+            "output_dim": 128,
+            "wavelengths_m": spec_short_lams_m,
+            "passvalue": {
+                "cor_type": "spc-spec_short",
+                "final_sampling_lam0": 0.1,
+                "use_errors": 0,
+            },
+            "description": "Full SPC spec-short model over 15% band without error maps",
         },
         "compact_spc_wide": {
             "func": wfirst_phaseb_compact,
