@@ -22,11 +22,32 @@ using Proper.WFIRSTPhaseBProper
 
     m = mft2(c, 0.1, 2.0, 4, -1)
     @test size(m) == (4, 4)
+    let field_in = c, dout = 0.1, D = 2.0, nout = 4, direction = -1
+        nfield_in = size(field_in, 2)
+        x = (collect(0:(nfield_in - 1)) .- (nfield_in ÷ 2))
+        y = (collect(0:(nfield_in - 1)) .- (nfield_in ÷ 2))
+        u = (collect(0:(nout - 1)) .- (nout ÷ 2)) .* (dout / D)
+        v = (collect(0:(nout - 1)) .- (nout ÷ 2)) .* (dout / D)
+        xu = x * transpose(u)
+        yv = y * transpose(v)
+        expxu = (dout / D) .* exp.(-direction * 2π * im .* xu)
+        expyv = transpose(exp.(-direction * 2π * im .* yv))
+        @test m ≈ expyv * field_in * expxu
+    end
 
     cases = phaseb_case_definitions()
-    @test Set(keys(cases)) == Set(["compact_hlc", "full_hlc"])
+    @test Set(keys(cases)) == Set([
+        "compact_hlc",
+        "full_hlc",
+        "compact_spc_spec_long",
+        "full_spc_spec_long",
+        "compact_spc_wide",
+        "full_spc_wide",
+    ])
     @test cases["compact_hlc"].func === wfirst_phaseb_compact
     @test cases["full_hlc"].func === wfirst_phaseb
+    @test cases["compact_spc_spec_long"].passvalue["cor_type"] == "spc-spec_long"
+    @test cases["full_spc_wide"].passvalue["cor_type"] == "spc-wide"
 
     sx, sy = Proper.WFIRSTPhaseBProper._source_offset_lambda_over_d((source_x_offset_mas=10.0, source_y_offset=1.5), 0.575e-6, 2.363)
     expected_mas_per_lamd = 0.575e-6 * 360.0 * 3600.0 / (2π * 2.363) * 1000

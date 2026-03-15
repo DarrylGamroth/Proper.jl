@@ -86,6 +86,7 @@ function _wfirst_phaseb_compact_impl(lambda_m, output_dim0, passvalue; assets=no
         spc_field .*= fpm
         spc_pupil_diam_pix = pupil_diam_pix / 2
         field_big = mft2(spc_field, fpm_sampling_lam, spc_pupil_diam_pix, Int(round(spc_pupil_diam_pix)), +1)
+        pupil_diam_pix = spc_pupil_diam_pix
         phaseb_center_copy!(field_small, field_big)
     end
 

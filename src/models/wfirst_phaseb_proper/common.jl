@@ -147,8 +147,8 @@ function phaseb_mft2(field_in::AbstractMatrix, dout::Real, D::Real, nout::Intege
     v = (collect(0:(nout - 1)) .- (nout ÷ 2) .- yoffset / dout) .* (dout / D)
     xu = x * transpose(u)
     yv = y * transpose(v)
-    expxu = (dout / D) .* exp.(direction * 2π * im .* xu)
-    expyv = transpose(exp.(direction * 2π * im .* yv))
+    expxu = (dout / D) .* exp.(-direction * 2π * im .* xu)
+    expyv = transpose(exp.(-direction * 2π * im .* yv))
     return expyv * field_in * expxu
 end
 
@@ -349,16 +349,24 @@ end
 
 
 function phaseb_case_definitions()
-    lam0_um = 0.575
-    band = 0.1
-    wavelengths_um = collect(range(lam0_um * (1 - band / 2), lam0_um * (1 + band / 2); length=3))
-    wavelengths_m = wavelengths_um .* 1.0e-6
+    hlc_lam0_um = 0.575
+    hlc_band = 0.1
+    hlc_wavelengths_um = collect(range(hlc_lam0_um * (1 - hlc_band / 2), hlc_lam0_um * (1 + hlc_band / 2); length=3))
+    hlc_wavelengths_m = hlc_wavelengths_um .* 1.0e-6
+    spec_lam0_um = 0.73
+    spec_band = 0.15
+    spec_wavelengths_um = collect(range(spec_lam0_um * (1 - spec_band / 2), spec_lam0_um * (1 + spec_band / 2); length=3))
+    spec_wavelengths_m = spec_wavelengths_um .* 1.0e-6
+    wide_lam0_um = 0.825
+    wide_band = 0.1
+    wide_wavelengths_um = collect(range(wide_lam0_um * (1 - wide_band / 2), wide_lam0_um * (1 + wide_band / 2); length=3))
+    wide_wavelengths_m = wide_wavelengths_um .* 1.0e-6
     return Dict(
         "compact_hlc" => (
             func=wfirst_phaseb_compact,
             output_dim=128,
-            wavelengths_um=wavelengths_um,
-            wavelengths_m=wavelengths_m,
+            wavelengths_um=hlc_wavelengths_um,
+            wavelengths_m=hlc_wavelengths_m,
             passvalue=Dict(
                 "cor_type" => "hlc",
                 "use_hlc_dm_patterns" => 1,
@@ -369,8 +377,8 @@ function phaseb_case_definitions()
         "full_hlc" => (
             func=wfirst_phaseb,
             output_dim=128,
-            wavelengths_um=wavelengths_um,
-            wavelengths_m=wavelengths_m,
+            wavelengths_um=hlc_wavelengths_um,
+            wavelengths_m=hlc_wavelengths_m,
             passvalue=Dict(
                 "cor_type" => "hlc",
                 "use_hlc_dm_patterns" => 1,
@@ -379,14 +387,74 @@ function phaseb_case_definitions()
             ),
             description="Full HLC model with default DM patterns over 10% band",
         ),
+        "compact_spc_spec_long" => (
+            func=wfirst_phaseb_compact,
+            output_dim=128,
+            wavelengths_um=spec_wavelengths_um,
+            wavelengths_m=spec_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "spc-spec_long",
+                "final_sampling_lam0" => 0.1,
+            ),
+            description="Compact SPC spec-long model over 15% band",
+        ),
+        "full_spc_spec_long" => (
+            func=wfirst_phaseb,
+            output_dim=128,
+            wavelengths_um=spec_wavelengths_um,
+            wavelengths_m=spec_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "spc-spec_long",
+                "final_sampling_lam0" => 0.1,
+                "use_errors" => 0,
+            ),
+            description="Full SPC spec-long model over 15% band without error maps",
+        ),
+        "compact_spc_wide" => (
+            func=wfirst_phaseb_compact,
+            output_dim=128,
+            wavelengths_um=wide_wavelengths_um,
+            wavelengths_m=wide_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "spc-wide",
+                "final_sampling_lam0" => 0.1,
+            ),
+            description="Compact SPC wide-field model over 10% band",
+        ),
+        "full_spc_wide" => (
+            func=wfirst_phaseb,
+            output_dim=128,
+            wavelengths_um=wide_wavelengths_um,
+            wavelengths_m=wide_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "spc-wide",
+                "final_sampling_lam0" => 0.1,
+                "use_errors" => 0,
+            ),
+            description="Full SPC wide-field model over 10% band without error maps",
+        ),
     )
 end
 
 function prepare_phaseb_models(case::NamedTuple; data_root::AbstractString=phaseb_default_data_root())
-    shared = prepare_phaseb_shared_assets(data_root, case.wavelengths_m)
     passvalue = merge(case.passvalue, Dict("data_dir" => String(data_root)))
-    models = [
-        prepare_model(
+    cor_type = String(case.passvalue["cor_type"])
+    shared = nothing
+    if startswith(cor_type, "hlc")
+        shared = prepare_phaseb_shared_assets(data_root, case.wavelengths_m)
+    end
+    models = map(enumerate(zip(case.wavelengths_um, case.wavelengths_m))) do (i, (λum, λm))
+        if shared === nothing
+            return prepare_model(
+                Symbol("wfirst_" * string(i)),
+                case.func,
+                λum,
+                case.output_dim;
+                PASSVALUE=passvalue,
+                pool_size=1,
+            )
+        end
+        return prepare_model(
             Symbol("wfirst_" * string(i)),
             case.func,
             λum,
@@ -395,8 +463,7 @@ function prepare_phaseb_models(case::NamedTuple; data_root::AbstractString=phase
             assets=prepare_asset_pool(() -> PhaseBPreparedAssets(shared, _nearest_occulter(shared, λm), PhaseBModelWorkspace(case.output_dim)); pool_size=1),
             pool_size=1,
         )
-        for (i, (λum, λm)) in enumerate(zip(case.wavelengths_um, case.wavelengths_m))
-    ]
+    end
     return models, shared
 end
 

@@ -76,6 +76,8 @@ def build_compat_root(force: bool = False) -> Path:
         base = "roman_preflight_proper_public_v2.0.2_python/roman_preflight_proper/preflight_data"
         hlc = f"{base}/hlc_20190210b"
         pol = f"{base}/pol"
+        spc_spec = f"{base}/spc_20200617_spec"
+        spc_wide = f"{base}/spc_20200610_wfov"
 
         available_wavelengths = []
         pattern = re.compile(re.escape(hlc) + r"/hlc_fpm_trans_(\d+\.\d+)um_(real|imag)\.fits$")
@@ -93,6 +95,18 @@ def build_compat_root(force: bool = False) -> Path:
             f"{hlc}/hlc_dm1.fits": out / "hlc_20190210" / "run461_dm1wfe.fits",
             f"{hlc}/hlc_dm2.fits": out / "hlc_20190210" / "run461_dm2wfe.fits",
             f"{hlc}/dm2mask.fits": out / "hlc_20190210" / "run461_dm2mask.fits",
+            f"{spc_spec}/pupil_SPC-20200617_1000_rotated.fits": out / "spc_20190130" / "pupil_SPC-20190130_rotated.fits",
+            f"{spc_spec}/SPM_SPC-20200617_1000_rounded9.fits": out / "spc_20190130" / "SPM_SPC-20190130.fits",
+            f"{spc_spec}/SPM_SPC-20200617_1000_rounded9_rotated.fits": out / "spc_20190130" / "SPM_SPC-20190130_rotated.fits",
+            f"{spc_spec}/fpm_0.05lamD.fits": out / "spc_20190130" / "fpm_0.05lamdivD.fits",
+            f"{spc_spec}/LS_SPC-20200617_1000.fits": out / "spc_20190130" / "LS_SPC-20190130.fits",
+            f"{spc_spec}/LS_SPC-20200617_500.fits": out / "spc_20190130" / "lyotstop_0.5mag.fits",
+            f"{spc_wide}/pupil_SPC-20200610_1000_rotated.fits": out / "spc_20181220" / "pupil_SPC-20181220_1k_rotated.fits",
+            f"{spc_wide}/SPM_SPC-20200610_1000_rounded9_gray.fits": out / "spc_20181220" / "SPM_SPC-20181220_1000_rounded9_gray.fits",
+            f"{spc_wide}/SPM_SPC-20200610_1000_rounded9_gray_rotated.fits": out / "spc_20181220" / "SPM_SPC-20181220_1000_rounded9_gray_rotated.fits",
+            f"{spc_wide}/FPM_SPC-20200610_0.1_lamc_div_D.fits": out / "spc_20181220" / "fpm_0.05lamdivD.fits",
+            f"{spc_wide}/LS_SPC-20200610_1000.fits": out / "spc_20181220" / "LS_SPC-20181220_1k.fits",
+            f"{spc_wide}/LS_SPC-20200610_500.fits": out / "spc_20181220" / "LS_half_symm_CGI180718_Str3.20pct_38D91_N500_pixel.fits",
             f"{pol}/new_toma_amp.fits": out / "pol" / "new_toma_amp.fits",
             f"{pol}/new_toma_pha.fits": out / "pol" / "new_toma_pha.fits",
         }

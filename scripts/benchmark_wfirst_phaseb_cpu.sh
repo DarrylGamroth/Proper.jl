@@ -65,9 +65,19 @@ PY
 echo "Using WFIRST_PHASEB_DATA_ROOT=${WFIRST_PHASEB_DATA_ROOT}"
 echo "Using JULIA_NUM_THREADS=${JULIA_NUM_THREADS}"
 
-run_step "Python WFIRST Phase B compact HLC" "${PYTHON_BIN}" bench/python/wfirst_phaseb_external.py --case compact_hlc --write-output-prefix bench/reports/python_wfirst_phaseb_compact_hlc
-run_step "Python WFIRST Phase B full HLC" "${PYTHON_BIN}" bench/python/wfirst_phaseb_external.py --case full_hlc --write-output-prefix bench/reports/python_wfirst_phaseb_full_hlc
-run_step "Julia WFIRST Phase B compact HLC" julia --project=. bench/julia/wfirst_phaseb/run_case.jl --case compact_hlc --data-root "${WFIRST_PHASEB_DATA_ROOT}"
-run_step "Julia WFIRST Phase B full HLC" julia --project=. bench/julia/wfirst_phaseb/run_case.jl --case full_hlc --data-root "${WFIRST_PHASEB_DATA_ROOT}"
+cases=(
+  compact_hlc
+  full_hlc
+  compact_spc_spec_long
+  full_spc_spec_long
+  compact_spc_wide
+  full_spc_wide
+)
+
+for case_name in "${cases[@]}"; do
+  pretty_case="${case_name//_/ }"
+  run_step "Python WFIRST Phase B ${pretty_case}" "${PYTHON_BIN}" bench/python/wfirst_phaseb_external.py --case "${case_name}" --write-output-prefix "bench/reports/python_wfirst_phaseb_${case_name}"
+  run_step "Julia WFIRST Phase B ${pretty_case}" julia --project=. bench/julia/wfirst_phaseb/run_case.jl --case "${case_name}" --data-root "${WFIRST_PHASEB_DATA_ROOT}"
+done
 
 julia --project=. bench/julia/wfirst_phaseb/compare_cpu.jl

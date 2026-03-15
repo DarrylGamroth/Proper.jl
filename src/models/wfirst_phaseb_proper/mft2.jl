@@ -6,7 +6,7 @@ function mft2(field_in::AbstractMatrix, dout::Real, D::Real, nout::Integer, dire
     v = (collect(0:(nout - 1)) .- (nout ÷ 2) .- yoffset / dout) .* (dout / D)
     xu = x * transpose(u)
     yv = y * transpose(v)
-    expxu = (dout / D) .* exp.(direction * 2π * im .* xu)
-    expyv = transpose(exp.(direction * 2π * im .* yv))
+    expxu = (dout / D) .* exp.(-direction * 2π * im .* xu)
+    expyv = transpose(exp.(-direction * 2π * im .* yv))
     return expyv * field_in * expxu
 end

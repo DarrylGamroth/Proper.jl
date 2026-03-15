@@ -57,7 +57,14 @@ function case_comparison(case_name::AbstractString)
 end
 
 function main()
-    cases = ["compact_hlc", "full_hlc"]
+    cases = [
+        "compact_hlc",
+        "full_hlc",
+        "compact_spc_spec_long",
+        "full_spc_spec_long",
+        "compact_spc_wide",
+        "full_spc_wide",
+    ]
     rows = [case_comparison(case) for case in cases]
     out = Dict("cases" => rows)
     outpath = joinpath(@__DIR__, "..", "..", "reports", "wfirst_phaseb_cpu_comparison.json")

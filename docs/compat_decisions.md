@@ -362,3 +362,16 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Consequences:
   - `run_coronagraph_dm` with deterministic map input now matches Python 3.3.4 executable outputs for no-error, error-only, and DM-corrected cases.
   - Added regression coverage to prevent reintroduction of DM correction divergence.
+
+## D-0037: WFIRST SPC Public-Data Compatibility Mapping
+- Date: 2026-03-14
+- Status: Accepted
+- Context:
+  - The executable Python WFIRST Phase B baseline in `../proper-models/wfirst_cgi/models_phaseb/python` expects legacy SPC data directories (`spc_20190130`, `spc_20181220`) that are not present in this checkout.
+  - The public Roman preflight archive used by this repository contains redistributable SPC assets, but under newer 2020 directory/file names.
+- Decision:
+  - The local compatibility-data builder may alias public Roman SPC assets into the legacy Phase B compatibility layout used by the Python baseline.
+  - Python-vs-Julia WFIRST SPC comparison harnesses in this repository compare both implementations against the same aliased compatibility root rather than the unavailable original private SPC data tree.
+- Consequences:
+  - SPC comparison runs remain executable and reproducible in this repository.
+  - These SPC harnesses validate Julia-vs-Python parity on the shared public-data compatibility root, not historical bitwise equivalence to the unavailable original SPC datasets.
