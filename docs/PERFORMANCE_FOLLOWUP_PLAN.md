@@ -137,6 +137,10 @@ Status: Gated
 - Goal: idiomatic Julia core with thin compatibility wrappers.
 Status: In progress
 
+Completed in this slice:
+- `prop_run_multi(prepared)` now forks the prepared `RunContext` into independent workspaces before threaded execution.
+- prepared execution keeps backend/planning configuration while avoiding shared mutable workspace state across passes.
+
 ## Tracking
 - This plan supplements `docs/CUDA_OPTIMIZATION_PLAN.md` and `docs/RUNTIME_OPTIMIZATION_PLAN.md`.
 - Immediate work in this pass: F1-F4.
@@ -180,3 +184,6 @@ Status: In progress
 - 2026-03-13: prepared core API slice 1 implemented.
   - added `PreparedPrescription` and `prepare_prescription(...)` on top of `RunContext`.
   - `prop_run(prepared)` and `prop_run_multi(prepared)` now provide a reusable typed execution object while keeping the public compatibility wrappers intact.
+- 2026-03-14: prepared core API slice 2 implemented.
+  - prepared parallel execution now forks stored `RunContext` state per pass instead of sharing one mutable workspace across threads.
+  - added regression coverage for backend-preserving prepared context forking and parallel prepared execution.

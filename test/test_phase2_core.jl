@@ -1,6 +1,7 @@
 using Test
 using Random
 using Statistics
+using Base.Threads
 
 @testset "Phase 2 core kernels" begin
     wf = prop_begin(1.0, 500e-9, 32)
@@ -75,6 +76,28 @@ end
         @test size(out_prepared_ctx) == (16, 16)
         @test eltype(out_prepared_ctx) == Float32
         @test s_prepared_ctx > 0
+
+        prepared_ctxs = Proper.prepared_contexts(prepared_ctx, 3)
+        @test length(prepared_ctxs) == 3
+        @test all(c -> c isa RunContext, prepared_ctxs)
+        @test all(c -> c !== ctx, prepared_ctxs)
+        @test all(c -> c.workspace !== ctx.workspace, prepared_ctxs)
+        @test all(c -> eltype(Proper.field_backend_template(c.workspace)) == ComplexF32, prepared_ctxs)
+
+        dummy_prepared_parallel(λm, n, pass; kwargs...) = begin
+            active = Proper.active_run_context()
+            @test active isa RunContext
+            psf = fill(Float32(pass), n, n)
+            psf[1, 1] = Float32(objectid(active.workspace) % 1024)
+            return psf, 1.0f0
+        end
+
+        prepared_parallel = prepare_prescription(dummy_prepared_parallel, 0.55f0, 16; context=ctx)
+        stack_parallel, samplings_parallel = prop_run_multi(prepared_parallel; PASSVALUE=1:3)
+        @test size(stack_parallel) == (16, 16, 3)
+        @test eltype(stack_parallel) == Float32
+        @test length(unique(vec(stack_parallel[1, 1, :]))) == 3
+        @test samplings_parallel == fill(1.0f0, 3)
 
         wf_begin = prop_begin(1.0, 500f-9, 16; context=ctx)
         @test eltype(wf_begin.field) == ComplexF32

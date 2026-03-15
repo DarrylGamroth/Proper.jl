@@ -1,6 +1,8 @@
 @inline workspace_vector(::Type{A}, ::Type{T}, n::Integer=0) where {A<:AbstractArray,T<:AbstractFloat} =
     Vector{T}(undef, n)
 
+@inline workspace_backend_array_type(::Type{A}) where {A<:AbstractArray} = A
+
 @inline workspace_matrix(::Type{A}, ::Type{T}, ny::Integer=0, nx::Integer=0) where {A<:AbstractArray,T<:AbstractFloat} =
     Matrix{T}(undef, ny, nx)
 
@@ -312,4 +314,10 @@ end
     reset_workspace!(ws.mask)
     reset_workspace!(ws.fft)
     return ws
+end
+
+@inline workspace_backend_array_type(ws::ProperWorkspace) = workspace_backend_array_type(typeof(field_backend_template(ws)))
+
+@inline function fresh_workspace(ws::ProperWorkspace{T}) where {T<:AbstractFloat}
+    return ProperWorkspace(workspace_backend_array_type(ws), T)
 end

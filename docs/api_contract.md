@@ -46,6 +46,9 @@ Notes:
   - `prop_run(prepare_prescription(...))`
   - `prop_begin(...; context=ctx)` / `prop_begin(...; workspace=ws)`
   - `prop_wavefront(...; context=ctx)` / `prop_wavefront(...; workspace=ws)`
+- Prepared parallel execution forks stored runtime state per pass:
+  - `prop_run_multi(prepared::PreparedPrescription)` clones the prepared `RunContext` into independent workspaces before threaded execution.
+  - This preserves backend/planning configuration without sharing mutable workspace scratch across threads.
 
 ## 3. Parity Baseline
 - Behavior targets the patched Python 3.3.4 executable baseline used by the parity harness.

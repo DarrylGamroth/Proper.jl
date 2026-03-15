@@ -15,6 +15,20 @@ struct PreparedPrescription{F,T<:AbstractFloat,CTX,KW,P}
     passvalue::P
 end
 
+@inline prepared_context(prepared::PreparedPrescription) = prepared.context
+
+function prepared_contexts(prepared::PreparedPrescription, n::Integer)
+    n >= 0 || throw(ArgumentError("n must be non-negative"))
+    ctx = prepared.context
+    ctx === nothing && return fill(nothing, n)
+
+    contexts = Vector{RunContext}(undef, n)
+    for i in 1:n
+        contexts[i] = fresh_context(ctx; rng=fork_rng(ctx.rng, i))
+    end
+    return contexts
+end
+
 function prepare_prescription(
     routine_name,
     lambda0_microns::Real,

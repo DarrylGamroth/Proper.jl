@@ -1,6 +1,14 @@
 using Random
 using Base.ScopedValues: ScopedValue, with
 
+@inline function _seed_child_rng!(rng, token::Integer)
+    return xor(rand(rng, UInt64), UInt64(token) * 0x9e3779b97f4a7c15)
+end
+
+@inline function fork_rng(rng, token::Integer)
+    return Random.Xoshiro(_seed_child_rng!(rng, token))
+end
+
 @inline function _workspace_float_type(::Type{A}) where {A<:AbstractArray}
     ET = eltype(A)
     if ET <: Number
@@ -93,3 +101,11 @@ end
 @inline interp_workspace(ctx::RunContext) = ctx.workspace.interp
 @inline mask_workspace(ctx::RunContext) = ctx.workspace.mask
 @inline fft_workspace(ctx::RunContext) = ctx.workspace.fft
+
+@inline function fresh_context(ctx::RunContext; rng=fork_rng(ctx.rng, 1))
+    ws = fresh_workspace(ctx.workspace)
+    A = workspace_backend_array_type(ws)
+    return RunContext(A, ws; rng=rng, verbose=ctx.verbose, fft_planning=ctx.planning)
+end
+
+@inline fresh_context(::Nothing; rng=Random.default_rng()) = nothing

@@ -49,8 +49,9 @@ function prop_run_multi(prepared::PreparedPrescription; PASSVALUE=prepared.passv
     passes = PASSVALUE === nothing ? [nothing] : (PASSVALUE isa AbstractVector ? PASSVALUE : [PASSVALUE])
     n = length(passes)
     n > 0 || throw(ArgumentError("PASSVALUE must not be empty"))
+    contexts = prepared_contexts(prepared, n)
 
-    first_out, first_sampling = _run_single_pass(prepared, passes[1], kwargs)
+    first_out, first_sampling = prop_run(prepared; PASSVALUE=passes[1], context=contexts[1], kwargs...)
     first_out isa AbstractMatrix || throw(ArgumentError("prop_run_multi expects matrix outputs"))
 
     outT = typeof(first_out)
@@ -62,7 +63,7 @@ function prop_run_multi(prepared::PreparedPrescription; PASSVALUE=prepared.passv
     sy, sx = size(first_out)
 
     @threads for i in 2:n
-        out, s = _run_single_pass(prepared, passes[i], kwargs)
+        out, s = prop_run(prepared; PASSVALUE=passes[i], context=contexts[i], kwargs...)
         out isa outT || throw(ArgumentError("All prop_run_multi outputs must have the same type"))
         size(out) == (sy, sx) || throw(ArgumentError("All prop_run_multi outputs must have the same size"))
         outputs[i] = out
