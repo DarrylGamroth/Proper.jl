@@ -57,6 +57,14 @@ end
     @test size(stack_batch) == (16, 16, 3)
     @test length(samplings_batch) == 3
 
+    prepared_model = prepare_model(dummy, 0.55, 16; pool_size=2)
+    out_model, s_model = prop_run(prepared_model)
+    @test size(out_model) == (16, 16)
+    @test s_model > 0
+    stack_model, samplings_model = prop_run_multi(prepared_model; PASSVALUE=passvals)
+    @test size(stack_model) == (16, 16, 3)
+    @test length(samplings_model) == 3
+
     dummy_pass(λm, n, pass; kwargs...) = prop_begin(1.0 + pass, λm, n)
     prepared_pass = prepare_prescription(dummy_pass, 0.55, 16; PASSVALUE=2)
     out_pass, s_pass = prop_run(prepared_pass)
@@ -95,6 +103,12 @@ end
         @test length(prepared_batch_ctx.contexts) == 4
         @test all(c -> c.workspace !== ctx.workspace, prepared_batch_ctx.contexts)
 
+        prepared_model_ctx = prepare_model(prepared_ctx; name=:dummy_scoped, pool_size=2)
+        @test prepared_model_ctx.name == :dummy_scoped
+        @test Proper.prepared_assets(prepared_model_ctx) === nothing
+        @test Proper.prepared_batch(prepared_model_ctx) === prepared_model_ctx.batch
+        @test Proper.prepared_prescription(prepared_model_ctx) === prepared_model_ctx.prepared
+
         dummy_prepared_parallel(λm, n, pass; kwargs...) = begin
             active = Proper.active_run_context()
             @test active isa RunContext
@@ -116,6 +130,13 @@ end
         @test eltype(stack_parallel_batch) == Float32
         @test length(unique(vec(stack_parallel_batch[1, 1, :]))) == 3
         @test samplings_parallel_batch == fill(1.0f0, 3)
+
+        prepared_parallel_model = prepare_model(prepared_parallel; name=:dummy_parallel, pool_size=2)
+        stack_parallel_model, samplings_parallel_model = prop_run_multi(prepared_parallel_model; PASSVALUE=1:3)
+        @test size(stack_parallel_model) == (16, 16, 3)
+        @test eltype(stack_parallel_model) == Float32
+        @test length(unique(vec(stack_parallel_model[1, 1, :]))) == 3
+        @test samplings_parallel_model == fill(1.0f0, 3)
 
         wf_begin = prop_begin(1.0, 500f-9, 16; context=ctx)
         @test eltype(wf_begin.field) == ComplexF32

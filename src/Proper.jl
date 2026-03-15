@@ -106,7 +106,9 @@ export BackendStyle, CPUBackend, CUDABackend, UnknownBackend, FFTStyle, FFTWStyl
 export InterpStyle, GenericInterpStyle, CubicInterpStyle, RNGStyle, GenericRNGStyle
 export ShiftKernelStyle, ShiftLoopStyle, ShiftKAStyle
 export RunContext, FFTEstimateStyle, FFTMeasureStyle, ProperConfig, ProperRuntime, WaveFront
-export PreparedPrescription, PreparedBatch, prepare_prescription, prepare_prescription_batch, reset_prepared_batch!
+export PreparedPrescription, PreparedBatch, PreparedModel
+export prepare_prescription, prepare_prescription_batch, prepare_model
+export reset_prepared_batch!, reset_prepared_model!
 export prop_wavefront, prop_begin, prop_end, prop_add_phase, prop_add_wavefront
 export prop_multiply, prop_divide, prop_shift_center
 export prop_radius, prop_ellipse, prop_rectangle

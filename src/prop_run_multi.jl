@@ -45,3 +45,7 @@ function prop_run_multi(batch::PreparedBatch; PASSVALUE=batch.prepared.passvalue
     end
     return stack, samplings
 end
+
+function prop_run_multi(model::PreparedModel; PASSVALUE=model.prepared.passvalue, kwargs...)
+    return prop_run_multi(model.batch; PASSVALUE=PASSVALUE, kwargs...)
+end

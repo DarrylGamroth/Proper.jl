@@ -15,10 +15,10 @@ end
 function cuda_steady_state_prepared(::Type{T}, grid_n::Integer=CUDA_STEADY_GRID_N) where {T<:AbstractFloat}
     wf = cuda_wavefront_begin(T, 2.4, 0.55e-6, grid_n; beam_diam_fraction=T(0.5))
     ctx = RunContext(wf)
-    return prepare_prescription(cuda_steady_state_prescription, T(0.55), grid_n; context=ctx)
+    return prepare_model(:steady_state_cuda, cuda_steady_state_prescription, T(0.55), grid_n; context=ctx, pool_size=1)
 end
 
-function cuda_steady_state_workload(prepared::PreparedPrescription)
+function cuda_steady_state_workload(prepared::Union{PreparedPrescription,PreparedModel})
     prop_run(prepared)
     cuda_sync()
     return nothing

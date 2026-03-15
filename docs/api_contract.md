@@ -31,6 +31,7 @@ Stable entry points:
 - `prop_run_multi`
 - `prepare_prescription`
 - `prepare_prescription_batch`
+- `prepare_model`
 - `prop_begin`
 - `prop_end`
 - `prop_propagate`
@@ -63,8 +64,10 @@ Notes:
 - Prepared execution object:
   - `PreparedPrescription`
   - `PreparedBatch`
+  - `PreparedModel`
   - `prepare_prescription(routine_name, lambda0_microns, gridsize; context=..., PASSVALUE=..., kwargs...)`
   - `prepare_prescription_batch(prepared_or_routine, ...; pool_size=...)`
+  - `prepare_model(prepared_or_routine, ...; pool_size=..., assets=...)`
 - `prop_*` public APIs should consume `RunContext` (or equivalent typed config) without compatibility mode flags.
 
 ## 4. Keyword Argument Contract

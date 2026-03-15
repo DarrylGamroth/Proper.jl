@@ -180,6 +180,9 @@ cuda_jl_fp32 = loadjson(joinpath(root, "julia_cuda_steady_state_fp32.json"))
 cuda_kernels = loadjson(joinpath(root, "cuda_supported_kernels.json"))
 cuda_precision = loadjson(joinpath(root, "cuda_precision_split.json"))
 cuda_isolated = loadjson(joinpath(root, "cuda_isolated_wavefront_kernels.json"))
+wfirst_phaseb_reports = [
+    loadjson(path) for path in sort(filter(path -> startswith(basename(path), "python_wfirst_phaseb_") && endswith(path, ".json"), readdir(root; join=true)))
+]
 
 summary_md_path = joinpath(root, "benchmark_summary.md")
 generated_paths = String[]
@@ -481,6 +484,38 @@ if examples !== nothing
     append_ascii_section!(term, "Example Workflows", example_headers, example_rows; aligns=[:l, :r, :r, :r, :r])
     append_markdown_section!(md, "Example Workflows", example_headers, example_rows)
     push!(generated_paths, write_csv(joinpath(root, "example_workflows.csv"), example_headers, example_rows))
+end
+
+if !isempty(wfirst_phaseb_reports)
+    ext_headers = ["Case", "Median", "Samples", "Output", "Sampling", "Peak |field|", "Mean |field|"]
+    ext_rows = Vector{Vector{String}}()
+    ext_notes = ["Optional external benchmark from ../proper-models/wfirst_cgi/models_phaseb/python."]
+    for report in wfirst_phaseb_reports
+        report === nothing && continue
+        case_name = String(getpath(report, "meta", "case"))
+        if !maybe_bool(getpath(report, "meta", "available"))
+            push!(ext_rows, [case_name, "skipped", "-", "-", "-", "-", "-"])
+            local reason = replace(String(getpath(report, "reason")), '\n' => ' ')
+            push!(ext_notes, "Case $(case_name): $reason")
+            continue
+        end
+        shape = getpath(report, "output", "shape")
+        shape_text = shape === nothing ? "-" : join((string(Int(v)) for v in shape), "x")
+        sampling = getpath(report, "output", "sampling")
+        sampling_text = sampling === nothing ? "-" : join((@sprintf("%.3e", Float64(v)) for v in sampling), ", ")
+        push!(ext_rows, [
+            case_name,
+            fmt_ns(getpath(report, "stats", "median_ns")),
+            fmt_int(getpath(report, "stats", "samples")),
+            shape_text,
+            sampling_text,
+            getpath(report, "output", "peak_abs") === nothing ? "-" : @sprintf("%.3e", Float64(getpath(report, "output", "peak_abs"))),
+            getpath(report, "output", "mean_abs") === nothing ? "-" : @sprintf("%.3e", Float64(getpath(report, "output", "mean_abs"))),
+        ])
+    end
+    append_ascii_section!(term, "External WFIRST Phase B Python", ext_headers, ext_rows; aligns=[:l, :r, :r, :l, :l, :r, :r], notes=ext_notes)
+    append_markdown_section!(md, "External WFIRST Phase B Python", ext_headers, ext_rows; notes=ext_notes)
+    push!(generated_paths, write_csv(joinpath(root, "wfirst_phaseb_python.csv"), ext_headers, ext_rows))
 end
 
 open(summary_md_path, "w") do io

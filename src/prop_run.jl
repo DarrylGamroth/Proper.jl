@@ -76,3 +76,12 @@ function prop_run(
     contexts = ensure_prepared_batch_contexts!(batch, slot)
     return prop_run(batch.prepared; PASSVALUE=PASSVALUE, context=contexts[slot], kwargs...)
 end
+
+function prop_run(
+    model::PreparedModel;
+    PASSVALUE=model.prepared.passvalue,
+    slot::Integer=1,
+    kwargs...,
+)
+    return prop_run(model.batch; PASSVALUE=PASSVALUE, slot=slot, kwargs...)
+end

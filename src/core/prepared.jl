@@ -20,8 +20,18 @@ mutable struct PreparedBatch{P,CV<:AbstractVector}
     contexts::CV
 end
 
+mutable struct PreparedModel{ID,P,B,A}
+    name::ID
+    prepared::P
+    batch::B
+    assets::A
+end
+
 @inline prepared_context(prepared::PreparedPrescription) = prepared.context
 @inline prepared_prescription(batch::PreparedBatch) = batch.prepared
+@inline prepared_prescription(model::PreparedModel) = model.prepared
+@inline prepared_batch(model::PreparedModel) = model.batch
+@inline prepared_assets(model::PreparedModel) = model.assets
 
 function prepared_contexts(prepared::PreparedPrescription, n::Integer)
     n >= 0 || throw(ArgumentError("n must be non-negative"))
@@ -76,6 +86,35 @@ function reset_prepared_batch!(batch::PreparedBatch)
         reset_workspace!(ctx.workspace)
     end
     return batch
+end
+
+function prepare_model(
+    routine_name,
+    lambda0_microns::Real,
+    gridsize::Integer;
+    name=routine_name,
+    assets=nothing,
+    pool_size::Integer=Base.Threads.nthreads(),
+    kwargs...,
+)
+    prepared = prepare_prescription(routine_name, lambda0_microns, gridsize; kwargs...)
+    batch = prepare_prescription_batch(prepared; pool_size=pool_size)
+    return PreparedModel(name, prepared, batch, assets)
+end
+
+function prepare_model(
+    prepared::PreparedPrescription;
+    name=prepared.routine,
+    assets=nothing,
+    pool_size::Integer=Base.Threads.nthreads(),
+)
+    batch = prepare_prescription_batch(prepared; pool_size=pool_size)
+    return PreparedModel(name, prepared, batch, assets)
+end
+
+function reset_prepared_model!(model::PreparedModel)
+    reset_prepared_batch!(model.batch)
+    return model
 end
 
 function prepare_prescription(

@@ -14,7 +14,7 @@ function steady_state_prescription(λm, n; kwargs...)
     return wf
 end
 
-const PREPARED_STEADY_STATE = prepare_prescription(steady_state_prescription, 0.55, 512)
+const PREPARED_STEADY_STATE = prepare_model(:steady_state_cpu, steady_state_prescription, 0.55, 512; pool_size=1)
 
 workload() = prop_run(PREPARED_STEADY_STATE)
 

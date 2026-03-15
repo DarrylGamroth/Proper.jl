@@ -142,6 +142,8 @@ Completed in this slice:
 - prepared execution keeps backend/planning configuration while avoiding shared mutable workspace state across passes.
 - `PreparedBatch` now exposes a reusable pool of forked contexts so repeated prepared multi-runs can keep warmed workspace state instead of reallocating fresh contexts each call.
 - steady-state CPU/CUDA drivers and selected examples now route through `PreparedPrescription` / `PreparedBatch` where the fit is clean.
+- `PreparedModel` now provides the next-layer core execution object: named prepared execution plus reusable batch state and optional assets.
+- added an optional external Python WFIRST Phase B benchmark harness to establish a real-world baseline before a Julia-side port exists.
 
 ## Tracking
 - This plan supplements `docs/CUDA_OPTIMIZATION_PLAN.md` and `docs/RUNTIME_OPTIMIZATION_PLAN.md`.
@@ -193,3 +195,7 @@ Completed in this slice:
   - added `PreparedBatch` and `prepare_prescription_batch(...)` for reusable prepared context pools across repeated runs.
   - `prop_run` / `prop_run_multi` compatibility wrappers now route through prepared execution objects internally.
   - steady-state CPU/CUDA drivers and selected examples now execute through the prepared path.
+- 2026-03-14: prepared core API slice 4 implemented.
+  - added `PreparedModel` as the higher-level core execution object on top of `PreparedPrescription` and `PreparedBatch`.
+  - wired the CPU/CUDA steady-state drivers and representative examples onto the model/prepared path.
+  - added an optional external Python WFIRST Phase B benchmark harness plus summary integration.
