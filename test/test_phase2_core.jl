@@ -112,10 +112,38 @@ end
         dummy_prepared_parallel(λm, n, pass; kwargs...) = begin
             active = Proper.active_run_context()
             @test active isa RunContext
+            if haskey(kwargs, :asset_slot)
+                @test kwargs[:asset_slot] == pass
+                @test kwargs[:asset_model] == "asset_model"
+            end
             psf = fill(Float32(pass), n, n)
             psf[1, 1] = Float32(objectid(active.workspace) % 1024)
             return psf, 1.0f0
         end
+
+        asset_counter = Ref(0)
+        asset_pool = prepare_asset_pool() do slot, model
+            asset_counter[] += 1
+            return (asset_slot=slot, asset_model=String(model.name), asset_token=asset_counter[])
+        end
+        prepared_assets_model = prepare_model(dummy_prepared_parallel, 0.55f0, 16; name=:asset_model, context=ctx, assets=asset_pool, pool_size=2)
+        out_assets, s_assets = prop_run(prepared_assets_model; PASSVALUE=1, slot=1)
+        @test size(out_assets) == (16, 16)
+        @test s_assets == 1.0f0
+        @test asset_counter[] == 1
+        out_assets_repeat, _ = prop_run(prepared_assets_model; PASSVALUE=1, slot=1)
+        @test size(out_assets_repeat) == (16, 16)
+        @test asset_counter[] == 1
+        Proper.ensure_prepared_batch_contexts!(prepared_assets_model.batch, 3)
+        stack_assets_model, samplings_assets_model = prop_run_multi(prepared_assets_model; PASSVALUE=1:3)
+        @test size(stack_assets_model) == (16, 16, 3)
+        @test samplings_assets_model == fill(1.0f0, 3)
+        @test asset_counter[] == 3
+        @test length(unique(vec(stack_assets_model[1, 1, :]))) == 3
+        reset_prepared_model!(prepared_assets_model)
+        @test all(isnothing, prepared_assets_model.assets.cache)
+        _ = prop_run(prepared_assets_model; PASSVALUE=1, slot=1)
+        @test asset_counter[] == 4
 
         prepared_parallel = prepare_prescription(dummy_prepared_parallel, 0.55f0, 16; context=ctx)
         stack_parallel, samplings_parallel = prop_run_multi(prepared_parallel; PASSVALUE=1:3)

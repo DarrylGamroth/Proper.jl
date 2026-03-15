@@ -83,5 +83,8 @@ function prop_run(
     slot::Integer=1,
     kwargs...,
 )
-    return prop_run(model.batch; PASSVALUE=PASSVALUE, slot=slot, kwargs...)
+    assets = prepared_assets(model, slot)
+    merged_kwargs = assets === nothing ? (; kwargs...) :
+        (assets isa NamedTuple ? merge(assets, (; kwargs...)) : merge((; assets=assets), (; kwargs...)))
+    return prop_run(model.batch; PASSVALUE=PASSVALUE, slot=slot, merged_kwargs...)
 end

@@ -93,6 +93,7 @@
 - [x] Make prepared parallel execution workspace-safe by forking stored `RunContext` state per pass while preserving backend/planning configuration (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
 - [x] Add reusable prepared context pools (`PreparedBatch`) and route core run wrappers/steady-state drivers through the prepared execution surface (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
 - [x] Add `PreparedModel` as the higher-level core execution object and optional external WFIRST Phase B Python benchmark harness (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
+- [x] Add `PreparedAssetPool` and slot-scoped asset injection for `PreparedModel` to support future asset-heavy model ports (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
 - [ ] Validate the new `prop_end!` full-frame fast path and centered-circle specialization on CUDA hardware and retune priorities based on that data.
 
 ## Latest Pass (2026-03-04)

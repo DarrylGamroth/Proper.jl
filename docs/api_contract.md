@@ -64,11 +64,19 @@ Notes:
 - Prepared execution object:
   - `PreparedPrescription`
   - `PreparedBatch`
+  - `PreparedAssetPool`
   - `PreparedModel`
   - `prepare_prescription(routine_name, lambda0_microns, gridsize; context=..., PASSVALUE=..., kwargs...)`
   - `prepare_prescription_batch(prepared_or_routine, ...; pool_size=...)`
+  - `prepare_asset_pool(factory; pool_size=...)`
   - `prepare_model(prepared_or_routine, ...; pool_size=..., assets=...)`
 - `prop_*` public APIs should consume `RunContext` (or equivalent typed config) without compatibility mode flags.
+
+Prepared-model asset contract:
+- `PreparedModel` may carry static assets or a `PreparedAssetPool`.
+- `prop_run(model; slot=i)` resolves assets for that slot and merges them into execution kwargs.
+- If the resolved asset is a `NamedTuple`, its entries are merged into kwargs directly.
+- Otherwise it is passed as `assets=...`.
 
 ## 4. Keyword Argument Contract
 - Keyword style support:

@@ -143,6 +143,7 @@ Completed in this slice:
 - `PreparedBatch` now exposes a reusable pool of forked contexts so repeated prepared multi-runs can keep warmed workspace state instead of reallocating fresh contexts each call.
 - steady-state CPU/CUDA drivers and selected examples now route through `PreparedPrescription` / `PreparedBatch` where the fit is clean.
 - `PreparedModel` now provides the next-layer core execution object: named prepared execution plus reusable batch state and optional assets.
+- `PreparedAssetPool` now provides per-slot lazy asset loading and resettable caches for FITS-heavy or model-heavy prepared execution.
 - added an optional external Python WFIRST Phase B benchmark harness to establish a real-world baseline before a Julia-side port exists.
 
 ## Tracking
@@ -199,3 +200,6 @@ Completed in this slice:
   - added `PreparedModel` as the higher-level core execution object on top of `PreparedPrescription` and `PreparedBatch`.
   - wired the CPU/CUDA steady-state drivers and representative examples onto the model/prepared path.
   - added an optional external Python WFIRST Phase B benchmark harness plus summary integration.
+- 2026-03-14: prepared core API slice 5 implemented.
+  - added `PreparedAssetPool` for per-slot lazy asset loading and cache reset semantics.
+  - `PreparedModel` now merges slot-specific assets into execution kwargs, which is the intended hook for asset-heavy models such as WFIRST Phase B.
