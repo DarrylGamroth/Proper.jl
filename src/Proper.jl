@@ -102,6 +102,7 @@ include("prop_writemap.jl")
 include("prop_wts.jl")
 include("prop_zernikes.jl")
 include("switch_set.jl")
+include("models/wfirst_phaseb_proper/__init__.jl")
 
 export BackendStyle, CPUBackend, CUDABackend, UnknownBackend, FFTStyle, FFTWStyle, CUFFTStyle, GenericFFTStyle
 export InterpStyle, GenericInterpStyle, CubicInterpStyle, RNGStyle, GenericRNGStyle
@@ -140,5 +141,6 @@ export prop_get_beamradius, prop_get_distancetofocus, prop_get_fratio
 export prop_get_nyquistsampling, prop_get_refradius
 export prop_run, prop_run_multi
 export switch_set
+export WFIRSTPhaseBProper
 
 end # module Proper

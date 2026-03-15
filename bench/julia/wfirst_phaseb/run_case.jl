@@ -2,8 +2,7 @@ using FITSIO
 using JSON3
 using Proper
 using Statistics
-include(joinpath(@__DIR__, "..", "..", "common", "wfirst_phaseb_cpu_models.jl"))
-using .WFIRSTPhaseBCPUModels
+using Proper.WFIRSTPhaseBProper
 
 function arg_value(flag::String, default=nothing)
     idx = findfirst(==(flag), ARGS)

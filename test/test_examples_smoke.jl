@@ -14,6 +14,7 @@ using Test
         ("talbot_correct.jl", :talbot_correct),
         ("psdtest.jl", :psdtest),
         ("multi_example.jl", :multi_example),
+        ("wfirst_phaseb_reference.jl", :wfirst_phaseb_reference_demo),
     )
 
     for (file, sym) in examples
