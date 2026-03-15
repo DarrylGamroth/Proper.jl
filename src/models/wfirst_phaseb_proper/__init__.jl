@@ -19,12 +19,18 @@ set_data_dir!(path::AbstractString) = (_data_dir_ref[] = abspath(path))
 include("trim.jl")
 include("ffts.jl")
 include("mft2.jl")
+include("polmap.jl")
+include("set_data_dir.jl")
+include("copy_here.jl")
+include("copy_examples_here.jl")
 include("common.jl")
 include("wfirst_phaseb_compact.jl")
 include("wfirst_phaseb.jl")
 
-export map_dir, polfile, data_dir, set_data_dir!, phaseb_default_data_root
+export map_dir, polfile, data_dir, set_data_dir!, set_data_dir, phaseb_default_data_root
+export copy_here, copy_examples_here
 export trim, ffts, ffts!, mft2
+export polmap, polab
 export PhaseBHLCAssets, PhaseBHLCPreparedSharedAssets, PhaseBModelWorkspace, PhaseBPreparedAssets
 export phaseb_case_definitions, load_phaseb_hlc_assets, prepare_phaseb_shared_assets
 export prepare_phaseb_models, run_phaseb_case

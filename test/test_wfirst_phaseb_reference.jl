@@ -1,5 +1,7 @@
 using Test
 using FFTW
+using Statistics
+using Proper
 using Proper.WFIRSTPhaseBProper
 
 @testset "WFIRST Phase B reference helpers" begin
@@ -25,4 +27,40 @@ using Proper.WFIRSTPhaseBProper
     @test Set(keys(cases)) == Set(["compact_hlc", "full_hlc"])
     @test cases["compact_hlc"].func === wfirst_phaseb_compact
     @test cases["full_hlc"].func === wfirst_phaseb
+
+    mktempdir() do d
+        old_root = data_dir()
+        try
+            set_data_dir(d)
+            @test data_dir() == abspath(d)
+
+            copied = joinpath(d, "copied")
+            copy_here(copied)
+            @test isfile(joinpath(copied, "wfirst_phaseb.jl"))
+            @test isfile(joinpath(copied, "wfirst_phaseb_compact.jl"))
+
+            copied_examples = joinpath(d, "examples")
+            copy_examples_here(copied_examples)
+            @test isfile(joinpath(copied_examples, "wfirst_phaseb_reference.jl"))
+
+            polroot = joinpath(d, "coeffs")
+            zamp = zeros(Float64, 2, 2, 6, 22)
+            zpha = zeros(Float64, 2, 2, 6, 22)
+            zamp[1, 1, :, 1] .= 2.0
+            prop_fits_write(polroot * "_amp.fits", zamp)
+            prop_fits_write(polroot * "_pha.fits", zpha)
+
+            amp, pha = polab(polroot, 550e-9, 6.0, -1)
+            @test size(amp) == size(pha)
+            @test all(iszero, pha)
+            @test isapprox(mean(amp), 2.0; atol=1e-12)
+
+            wf = prop_begin(1.0, 550e-9, 8)
+            field_before = copy(wf.field)
+            polmap(wf, polroot, 6.0, -1)
+            @test wf.field ≈ field_before .* 2
+        finally
+            set_data_dir!(old_root)
+        end
+    end
 end
