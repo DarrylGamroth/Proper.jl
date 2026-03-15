@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import importlib
 import json
 import os
 import statistics
@@ -62,13 +63,20 @@ def load_python_models():
     try:
         import proper  # noqa: WPS433
         import wfirst_phaseb_proper  # noqa: WPS433
-        from wfirst_phaseb_proper.wfirst_phaseb import wfirst_phaseb  # noqa: WPS433
-        from wfirst_phaseb_proper.wfirst_phaseb_compact import wfirst_phaseb_compact  # noqa: WPS433
+        wfirst_phaseb_module = importlib.import_module("wfirst_phaseb_proper.wfirst_phaseb")
+        wfirst_phaseb_compact_module = importlib.import_module("wfirst_phaseb_proper.wfirst_phaseb_compact")
     except Exception as exc:  # pragma: no cover - external harness guardrail
         raise RuntimeError(
             "Unable to import Python PROPER or WFIRST Phase B model. "
             f"Interpreter: {sys.executable}"
         ) from exc
+
+    # The compact Phase B script calls `prop_dm(...)` unqualified in its DM branches.
+    # Bind the baseline implementation into the imported module so DM parity cases
+    # exercise the intended Python baseline instead of failing at import scope.
+    wfirst_phaseb_compact_module.prop_dm = proper.prop_dm
+    wfirst_phaseb = wfirst_phaseb_module.wfirst_phaseb
+    wfirst_phaseb_compact = wfirst_phaseb_compact_module.wfirst_phaseb_compact
 
     proper.print_it = False
     proper.verbose = False
@@ -98,6 +106,11 @@ def case_definitions(wfirst_phaseb, wfirst_phaseb_compact):
     wide_band = 0.1
     wide_lams_um = np.linspace(wide_lam0_um * (1 - wide_band / 2), wide_lam0_um * (1 + wide_band / 2), 3)
     wide_lams_m = wide_lams_um * 1.0e-6
+    coords = np.linspace(-1.0, 1.0, 48, dtype=np.float64)
+    x = np.tile(coords.reshape(1, -1), (48, 1))
+    y = np.tile(coords.reshape(-1, 1), (1, 48))
+    dm1_case_m = 35e-9 * np.exp(-4 * (x**2 + y**2)) * (1 + 0.15 * x)
+    dm2_case_m = 20e-9 * np.sin(np.pi * x) * np.cos(np.pi * y)
     return {
         "compact_hlc": {
             "func": wfirst_phaseb_compact,
@@ -238,6 +251,48 @@ def case_definitions(wfirst_phaseb, wfirst_phaseb_compact):
                 "source_x_offset": 3.0,
             },
             "description": "Compact HLC model with nonzero lambda-D source offset",
+        },
+        "compact_hlc_dm_pair": {
+            "func": wfirst_phaseb_compact,
+            "output_dim": 128,
+            "wavelengths_m": hlc_lams_m,
+            "passvalue": {
+                "cor_type": "hlc",
+                "final_sampling_lam0": 0.1,
+                "use_dm1": 1,
+                "use_dm2": 1,
+                "dm1_m": dm1_case_m,
+                "dm2_m": dm2_case_m,
+            },
+            "description": "Compact HLC model with explicit DM1/DM2 actuator maps",
+        },
+        "full_hlc_source_offset": {
+            "func": wfirst_phaseb,
+            "output_dim": 128,
+            "wavelengths_m": hlc_lams_m,
+            "passvalue": {
+                "cor_type": "hlc",
+                "use_hlc_dm_patterns": 1,
+                "final_sampling_lam0": 0.1,
+                "use_errors": 0,
+                "source_x_offset": 3.0,
+            },
+            "description": "Full HLC model with nonzero lambda-D source offset",
+        },
+        "full_hlc_dm_pair": {
+            "func": wfirst_phaseb,
+            "output_dim": 128,
+            "wavelengths_m": hlc_lams_m,
+            "passvalue": {
+                "cor_type": "hlc",
+                "final_sampling_lam0": 0.1,
+                "use_errors": 0,
+                "use_dm1": 1,
+                "use_dm2": 1,
+                "dm1_m": dm1_case_m,
+                "dm2_m": dm2_case_m,
+            },
+            "description": "Full HLC model with explicit DM1/DM2 actuator maps",
         },
         "full_hlc_no_field_stop": {
             "func": wfirst_phaseb,

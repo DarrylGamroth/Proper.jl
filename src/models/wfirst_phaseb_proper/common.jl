@@ -332,6 +332,15 @@ end
     return source_x_offset, source_y_offset
 end
 
+function _phaseb_dm_case_maps(nact::Integer=48)
+    coords = collect(range(-1.0, 1.0; length=nact))
+    x = repeat(reshape(coords, 1, :), nact, 1)
+    y = repeat(reshape(coords, :, 1), 1, nact)
+    dm1 = 35e-9 .* exp.(-4 .* (x .^ 2 .+ y .^ 2)) .* (1 .+ 0.15 .* x)
+    dm2 = 20e-9 .* sin.(π .* x) .* cos.(π .* y)
+    return dm1, dm2
+end
+
 function _apply_source_offset!(wf, pupil_diam_pix::Real, lambda0_m::Real, lambda_m::Real, source_x_offset::Real, source_y_offset::Real)
     if source_x_offset == 0 && source_y_offset == 0
         return wf
@@ -365,6 +374,7 @@ function phaseb_case_definitions()
     wide_band = 0.1
     wide_wavelengths_um = collect(range(wide_lam0_um * (1 - wide_band / 2), wide_lam0_um * (1 + wide_band / 2); length=3))
     wide_wavelengths_m = wide_wavelengths_um .* 1.0e-6
+    dm1_case_m, dm2_case_m = _phaseb_dm_case_maps()
     return Dict(
         "compact_hlc" => (
             func=wfirst_phaseb_compact,
@@ -518,6 +528,51 @@ function phaseb_case_definitions()
                 "source_x_offset" => 3.0,
             ),
             description="Compact HLC model with nonzero lambda-D source offset",
+        ),
+        "compact_hlc_dm_pair" => (
+            func=wfirst_phaseb_compact,
+            output_dim=128,
+            wavelengths_um=hlc_wavelengths_um,
+            wavelengths_m=hlc_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "hlc",
+                "final_sampling_lam0" => 0.1,
+                "use_dm1" => 1,
+                "use_dm2" => 1,
+                "dm1_m" => dm1_case_m,
+                "dm2_m" => dm2_case_m,
+            ),
+            description="Compact HLC model with explicit DM1/DM2 actuator maps",
+        ),
+        "full_hlc_source_offset" => (
+            func=wfirst_phaseb,
+            output_dim=128,
+            wavelengths_um=hlc_wavelengths_um,
+            wavelengths_m=hlc_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "hlc",
+                "use_hlc_dm_patterns" => 1,
+                "final_sampling_lam0" => 0.1,
+                "use_errors" => 0,
+                "source_x_offset" => 3.0,
+            ),
+            description="Full HLC model with nonzero lambda-D source offset",
+        ),
+        "full_hlc_dm_pair" => (
+            func=wfirst_phaseb,
+            output_dim=128,
+            wavelengths_um=hlc_wavelengths_um,
+            wavelengths_m=hlc_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "hlc",
+                "final_sampling_lam0" => 0.1,
+                "use_errors" => 0,
+                "use_dm1" => 1,
+                "use_dm2" => 1,
+                "dm1_m" => dm1_case_m,
+                "dm2_m" => dm2_case_m,
+            ),
+            description="Full HLC model with explicit DM1/DM2 actuator maps",
         ),
         "full_hlc_no_field_stop" => (
             func=wfirst_phaseb,

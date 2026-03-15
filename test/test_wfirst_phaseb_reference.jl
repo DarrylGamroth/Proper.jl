@@ -50,6 +50,9 @@ using Proper.WFIRSTPhaseBProper
         "compact_spc_wide",
         "full_spc_wide",
         "compact_hlc_source_offset",
+        "compact_hlc_dm_pair",
+        "full_hlc_source_offset",
+        "full_hlc_dm_pair",
         "full_hlc_no_field_stop",
         "full_spc_spec_long_no_pupil_mask",
         "full_none",
@@ -65,6 +68,11 @@ using Proper.WFIRSTPhaseBProper
     @test cases["full_spc_ifs_long"].passvalue["cor_type"] == "spc-ifs_long"
     @test cases["full_spc_wide"].passvalue["cor_type"] == "spc-wide"
     @test cases["compact_hlc_source_offset"].passvalue["source_x_offset"] == 3.0
+    @test cases["compact_hlc_dm_pair"].passvalue["use_dm1"] == 1
+    @test size(cases["compact_hlc_dm_pair"].passvalue["dm1_m"]) == (48, 48)
+    @test cases["full_hlc_source_offset"].passvalue["source_x_offset"] == 3.0
+    @test cases["full_hlc_dm_pair"].passvalue["use_dm2"] == 1
+    @test size(cases["full_hlc_dm_pair"].passvalue["dm2_m"]) == (48, 48)
     @test cases["full_hlc_no_field_stop"].passvalue["use_field_stop"] == 0
     @test cases["full_spc_spec_long_no_pupil_mask"].passvalue["use_pupil_mask"] == 0
     @test cases["full_none"].passvalue["cor_type"] == "none"
