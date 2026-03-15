@@ -140,6 +140,8 @@ Status: In progress
 Completed in this slice:
 - `prop_run_multi(prepared)` now forks the prepared `RunContext` into independent workspaces before threaded execution.
 - prepared execution keeps backend/planning configuration while avoiding shared mutable workspace state across passes.
+- `PreparedBatch` now exposes a reusable pool of forked contexts so repeated prepared multi-runs can keep warmed workspace state instead of reallocating fresh contexts each call.
+- steady-state CPU/CUDA drivers and selected examples now route through `PreparedPrescription` / `PreparedBatch` where the fit is clean.
 
 ## Tracking
 - This plan supplements `docs/CUDA_OPTIMIZATION_PLAN.md` and `docs/RUNTIME_OPTIMIZATION_PLAN.md`.
@@ -187,3 +189,7 @@ Completed in this slice:
 - 2026-03-14: prepared core API slice 2 implemented.
   - prepared parallel execution now forks stored `RunContext` state per pass instead of sharing one mutable workspace across threads.
   - added regression coverage for backend-preserving prepared context forking and parallel prepared execution.
+- 2026-03-14: prepared core API slice 3 implemented.
+  - added `PreparedBatch` and `prepare_prescription_batch(...)` for reusable prepared context pools across repeated runs.
+  - `prop_run` / `prop_run_multi` compatibility wrappers now route through prepared execution objects internally.
+  - steady-state CPU/CUDA drivers and selected examples now execute through the prepared path.

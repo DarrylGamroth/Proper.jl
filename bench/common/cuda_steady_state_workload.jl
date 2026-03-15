@@ -4,22 +4,32 @@ using Proper
 const CUDA_STEADY_GRID_N = 512
 const CUDA_STEADY_SAMPLES = 20
 
-function cuda_steady_state_workload(::Type{T}, grid_n::Integer=CUDA_STEADY_GRID_N) where {T<:AbstractFloat}
+function cuda_steady_state_prescription(λm, n; kwargs...)
+    wf = prop_begin(2.4, λm, n; beam_diam_fraction=0.5)
+    prop_circular_aperture(wf, 0.6)
+    prop_lens(wf, 20.0)
+    prop_propagate(wf, 20.0)
+    return wf
+end
+
+function cuda_steady_state_prepared(::Type{T}, grid_n::Integer=CUDA_STEADY_GRID_N) where {T<:AbstractFloat}
     wf = cuda_wavefront_begin(T, 2.4, 0.55e-6, grid_n; beam_diam_fraction=T(0.5))
     ctx = RunContext(wf)
-    prop_circular_aperture(wf, T(0.6))
-    prop_lens(wf, T(20.0), ctx)
-    prop_propagate(wf, T(20.0), ctx)
-    prop_end(wf)
+    return prepare_prescription(cuda_steady_state_prescription, T(0.55), grid_n; context=ctx)
+end
+
+function cuda_steady_state_workload(prepared::PreparedPrescription)
+    prop_run(prepared)
     cuda_sync()
     return nothing
 end
 
 function _run_cuda_steady_state_report(::Type{T}, run_tag::String, report_path::AbstractString; grid_n::Integer=CUDA_STEADY_GRID_N, samples::Integer=CUDA_STEADY_SAMPLES) where {T<:AbstractFloat}
-    cuda_steady_state_workload(T, grid_n)
+    prepared = cuda_steady_state_prepared(T, grid_n)
+    cuda_steady_state_workload(prepared)
 
     trial = run(@benchmarkable begin
-        cuda_steady_state_workload($T, $grid_n)
+        cuda_steady_state_workload($prepared)
         cuda_sync()
     end evals=1 samples=samples)
 

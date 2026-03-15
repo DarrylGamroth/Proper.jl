@@ -45,9 +45,15 @@ function prop_run(
     context::Union{Nothing,RunContext}=nothing,
     kwargs...,
 )
-    λm = float(lambda0_microns) * 1e-6
-    fn = resolve_prescription_routine(routine_name)
-    return _prop_run_resolved(fn, λm, gridsize, PASSVALUE, context, (; kwargs...))
+    prepared = prepare_prescription(
+        routine_name,
+        lambda0_microns,
+        gridsize;
+        PASSVALUE=PASSVALUE,
+        context=context,
+        kwargs...,
+    )
+    return prop_run(prepared)
 end
 
 function prop_run(
@@ -58,4 +64,15 @@ function prop_run(
 )
     merged_kwargs = merge(prepared.kwargs, (; kwargs...))
     return _prop_run_resolved(prepared.routine, prepared.wavelength_m, prepared.gridsize, PASSVALUE, context, merged_kwargs)
+end
+
+function prop_run(
+    batch::PreparedBatch;
+    PASSVALUE=batch.prepared.passvalue,
+    slot::Integer=1,
+    kwargs...,
+)
+    slot > 0 || throw(ArgumentError("slot must be positive"))
+    contexts = ensure_prepared_batch_contexts!(batch, slot)
+    return prop_run(batch.prepared; PASSVALUE=PASSVALUE, context=contexts[slot], kwargs...)
 end

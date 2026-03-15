@@ -52,6 +52,11 @@ end
     @test size(stack_prepared) == (16, 16, 3)
     @test length(samplings_prepared) == 3
 
+    prepared_batch = prepare_prescription_batch(prepared_multi; pool_size=2)
+    stack_batch, samplings_batch = prop_run_multi(prepared_batch; PASSVALUE=passvals)
+    @test size(stack_batch) == (16, 16, 3)
+    @test length(samplings_batch) == 3
+
     dummy_pass(λm, n, pass; kwargs...) = prop_begin(1.0 + pass, λm, n)
     prepared_pass = prepare_prescription(dummy_pass, 0.55, 16; PASSVALUE=2)
     out_pass, s_pass = prop_run(prepared_pass)
@@ -84,6 +89,12 @@ end
         @test all(c -> c.workspace !== ctx.workspace, prepared_ctxs)
         @test all(c -> eltype(Proper.field_backend_template(c.workspace)) == ComplexF32, prepared_ctxs)
 
+        prepared_batch_ctx = prepare_prescription_batch(prepared_ctx; pool_size=2)
+        @test length(prepared_batch_ctx.contexts) == 2
+        Proper.ensure_prepared_batch_contexts!(prepared_batch_ctx, 4)
+        @test length(prepared_batch_ctx.contexts) == 4
+        @test all(c -> c.workspace !== ctx.workspace, prepared_batch_ctx.contexts)
+
         dummy_prepared_parallel(λm, n, pass; kwargs...) = begin
             active = Proper.active_run_context()
             @test active isa RunContext
@@ -98,6 +109,13 @@ end
         @test eltype(stack_parallel) == Float32
         @test length(unique(vec(stack_parallel[1, 1, :]))) == 3
         @test samplings_parallel == fill(1.0f0, 3)
+
+        prepared_parallel_batch = prepare_prescription_batch(prepared_parallel; pool_size=2)
+        stack_parallel_batch, samplings_parallel_batch = prop_run_multi(prepared_parallel_batch; PASSVALUE=1:3)
+        @test size(stack_parallel_batch) == (16, 16, 3)
+        @test eltype(stack_parallel_batch) == Float32
+        @test length(unique(vec(stack_parallel_batch[1, 1, :]))) == 3
+        @test samplings_parallel_batch == fill(1.0f0, 3)
 
         wf_begin = prop_begin(1.0, 500f-9, 16; context=ctx)
         @test eltype(wf_begin.field) == ComplexF32

@@ -30,6 +30,7 @@ Stable entry points:
 - `prop_run`
 - `prop_run_multi`
 - `prepare_prescription`
+- `prepare_prescription_batch`
 - `prop_begin`
 - `prop_end`
 - `prop_propagate`
@@ -44,11 +45,13 @@ Notes:
 - Reusable runtime state may be supplied explicitly:
   - `prop_run(...; context=ctx)`
   - `prop_run(prepare_prescription(...))`
+  - `prop_run(prepare_prescription_batch(...); slot=1)`
   - `prop_begin(...; context=ctx)` / `prop_begin(...; workspace=ws)`
   - `prop_wavefront(...; context=ctx)` / `prop_wavefront(...; workspace=ws)`
 - Prepared parallel execution forks stored runtime state per pass:
   - `prop_run_multi(prepared::PreparedPrescription)` clones the prepared `RunContext` into independent workspaces before threaded execution.
   - This preserves backend/planning configuration without sharing mutable workspace scratch across threads.
+  - `prop_run_multi(prepared_batch::PreparedBatch)` reuses a growable pool of those forked contexts across repeated calls.
 
 ## 3. Parity Baseline
 - Behavior targets the patched Python 3.3.4 executable baseline used by the parity harness.
@@ -59,7 +62,9 @@ Notes:
   - `RunContext(; backend=..., rng=..., workspace=..., fft_planning=...)`
 - Prepared execution object:
   - `PreparedPrescription`
+  - `PreparedBatch`
   - `prepare_prescription(routine_name, lambda0_microns, gridsize; context=..., PASSVALUE=..., kwargs...)`
+  - `prepare_prescription_batch(prepared_or_routine, ...; pool_size=...)`
 - `prop_*` public APIs should consume `RunContext` (or equivalent typed config) without compatibility mode flags.
 
 ## 4. Keyword Argument Contract

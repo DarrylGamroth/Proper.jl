@@ -4,10 +4,11 @@ include(joinpath(@__DIR__, "example_system.jl"))
 function run_example(wavelength::Real, gridsize::Integer)
     state_path = joinpath(mktempdir(), "example_system.state")
     prop_init_savestate(dirname(state_path))
+    prepared = prepare_prescription(example_system, wavelength * 1e6, gridsize; PASSVALUE=Dict("state_path" => state_path))
     psf = nothing
     sampling = 0.0
     for _ in 1:11
-        psf, sampling = prop_run(example_system, wavelength * 1e6, gridsize; PASSVALUE=Dict("state_path" => state_path))
+        psf, sampling = prop_run(prepared)
     end
     prop_end_savestate(prop_begin(1.0, wavelength, gridsize), state_path)
     return psf, sampling

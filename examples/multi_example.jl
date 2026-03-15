@@ -21,7 +21,14 @@ function multi_example(lambda_m::Real, n::Integer, passvalue=Dict("use_dm" => fa
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    stack, samplings = prop_run_multi(multi_example, 0.55, 256; PASSVALUE=[Dict("use_dm" => false), Dict("use_dm" => true, "dm" => zeros(48, 48))])
+    batch = prepare_prescription_batch(
+        multi_example,
+        0.55,
+        256;
+        PASSVALUE=[Dict("use_dm" => false), Dict("use_dm" => true, "dm" => zeros(48, 48))],
+        pool_size=2,
+    )
+    stack, samplings = prop_run_multi(batch)
     println("multi_example: samplings = ", samplings)
     heatmap(log10.(abs.(stack[:, :, 1]) .+ eps()); aspect_ratio=:equal, title="multi_example [0]")
 end

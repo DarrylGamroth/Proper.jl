@@ -91,6 +91,7 @@
 - [ ] Review interpolation profiling output on CUDA hardware before committing to any tiling/shared-memory implementation (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, F4/N3).
 - [x] Define the first prepared-simulation/core API layer on top of `RunContext`/`ProperWorkspace` while keeping `prop_*` wrappers thin (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
 - [x] Make prepared parallel execution workspace-safe by forking stored `RunContext` state per pass while preserving backend/planning configuration (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
+- [x] Add reusable prepared context pools (`PreparedBatch`) and route core run wrappers/steady-state drivers through the prepared execution surface (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
 - [ ] Validate the new `prop_end!` full-frame fast path and centered-circle specialization on CUDA hardware and retune priorities based on that data.
 
 ## Latest Pass (2026-03-04)

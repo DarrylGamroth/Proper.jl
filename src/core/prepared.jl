@@ -15,7 +15,13 @@ struct PreparedPrescription{F,T<:AbstractFloat,CTX,KW,P}
     passvalue::P
 end
 
+mutable struct PreparedBatch{P,CV<:AbstractVector}
+    prepared::P
+    contexts::CV
+end
+
 @inline prepared_context(prepared::PreparedPrescription) = prepared.context
+@inline prepared_prescription(batch::PreparedBatch) = batch.prepared
 
 function prepared_contexts(prepared::PreparedPrescription, n::Integer)
     n >= 0 || throw(ArgumentError("n must be non-negative"))
@@ -27,6 +33,49 @@ function prepared_contexts(prepared::PreparedPrescription, n::Integer)
         contexts[i] = fresh_context(ctx; rng=fork_rng(ctx.rng, i))
     end
     return contexts
+end
+
+function prepare_prescription_batch(prepared::PreparedPrescription; pool_size::Integer=Base.Threads.nthreads())
+    pool_size > 0 || throw(ArgumentError("pool_size must be positive"))
+    return PreparedBatch(prepared, prepared_contexts(prepared, pool_size))
+end
+
+function prepare_prescription_batch(
+    routine_name,
+    lambda0_microns::Real,
+    gridsize::Integer;
+    pool_size::Integer=Base.Threads.nthreads(),
+    kwargs...,
+)
+    prepared = prepare_prescription(routine_name, lambda0_microns, gridsize; kwargs...)
+    return prepare_prescription_batch(prepared; pool_size=pool_size)
+end
+
+function ensure_prepared_batch_contexts!(batch::PreparedBatch, n::Integer)
+    n >= 0 || throw(ArgumentError("n must be non-negative"))
+    current = length(batch.contexts)
+    current >= n && return batch.contexts
+
+    resize!(batch.contexts, n)
+    ctx = prepared_context(batch.prepared)
+    if ctx === nothing
+        @inbounds for i in current + 1:n
+            batch.contexts[i] = nothing
+        end
+    else
+        @inbounds for i in current + 1:n
+            batch.contexts[i] = fresh_context(ctx; rng=fork_rng(ctx.rng, i))
+        end
+    end
+    return batch.contexts
+end
+
+function reset_prepared_batch!(batch::PreparedBatch)
+    for ctx in batch.contexts
+        ctx === nothing && continue
+        reset_workspace!(ctx.workspace)
+    end
+    return batch
 end
 
 function prepare_prescription(

@@ -6,13 +6,17 @@ include(joinpath(@__DIR__, "..", "..", "common", "metadata.jl"))
 using .Workloads
 using .BenchMetadata
 
-function workload()
-    wf = prop_begin(2.4, 0.55e-6, 512; beam_diam_fraction=0.5)
+function steady_state_prescription(λm, n; kwargs...)
+    wf = prop_begin(2.4, λm, n; beam_diam_fraction=0.5)
     prop_circular_aperture(wf, 0.6)
     prop_lens(wf, 20.0)
     prop_propagate(wf, 20.0)
-    prop_end(wf)
+    return wf
 end
+
+const PREPARED_STEADY_STATE = prepare_prescription(steady_state_prescription, 0.55, 512)
+
+workload() = prop_run(PREPARED_STEADY_STATE)
 
 # Warmup: exclude compilation from steady-state timings.
 workload()
