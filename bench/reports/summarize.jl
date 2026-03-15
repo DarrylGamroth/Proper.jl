@@ -180,6 +180,7 @@ cuda_jl_fp32 = loadjson(joinpath(root, "julia_cuda_steady_state_fp32.json"))
 cuda_kernels = loadjson(joinpath(root, "cuda_supported_kernels.json"))
 cuda_precision = loadjson(joinpath(root, "cuda_precision_split.json"))
 cuda_isolated = loadjson(joinpath(root, "cuda_isolated_wavefront_kernels.json"))
+wfirst_phaseb_cpu = loadjson(joinpath(root, "wfirst_phaseb_cpu_comparison.json"))
 wfirst_phaseb_reports = [
     loadjson(path) for path in sort(filter(path -> startswith(basename(path), "python_wfirst_phaseb_") && endswith(path, ".json"), readdir(root; join=true)))
 ]
@@ -516,6 +517,30 @@ if !isempty(wfirst_phaseb_reports)
     append_ascii_section!(term, "External WFIRST Phase B Python", ext_headers, ext_rows; aligns=[:l, :r, :r, :l, :l, :r, :r], notes=ext_notes)
     append_markdown_section!(md, "External WFIRST Phase B Python", ext_headers, ext_rows; notes=ext_notes)
     push!(generated_paths, write_csv(joinpath(root, "wfirst_phaseb_python.csv"), ext_headers, ext_rows))
+end
+
+if wfirst_phaseb_cpu !== nothing
+    cmp_headers = ["Case", "Python", "Julia", "Py/Jl", "RelL2", "MaxAbs", "dSampling", "Threads"]
+    cmp_rows = Vector{Vector{String}}()
+    for row in getpath(wfirst_phaseb_cpu, "cases")
+        push!(cmp_rows, [
+            String(getkey(row, "case")),
+            @sprintf("%.2f ms", Float64(getkey(row, "python_median_ms"))),
+            @sprintf("%.2f ms", Float64(getkey(row, "julia_median_ms"))),
+            fmt_ratio(getkey(row, "python_over_julia")),
+            @sprintf("%.4g", Float64(getkey(row, "relative_l2"))),
+            @sprintf("%.4g", Float64(getkey(row, "max_abs_diff"))),
+            @sprintf("%.4g", Float64(getkey(row, "max_sampling_abs_diff"))),
+            string(Int(getkey(row, "threads"))),
+        ])
+    end
+    cmp_notes = [
+        "Python-vs-Julia CPU comparison from the WFIRST Phase B HLC subset harness.",
+        "Py/Jl values greater than 1.00x mean Julia is faster.",
+    ]
+    append_ascii_section!(term, "WFIRST Phase B CPU Comparison", cmp_headers, cmp_rows; aligns=[:l, :r, :r, :r, :r, :r, :r, :r], notes=cmp_notes)
+    append_markdown_section!(md, "WFIRST Phase B CPU Comparison", cmp_headers, cmp_rows; notes=cmp_notes)
+    push!(generated_paths, write_csv(joinpath(root, "wfirst_phaseb_cpu_comparison.csv"), cmp_headers, cmp_rows))
 end
 
 open(summary_md_path, "w") do io

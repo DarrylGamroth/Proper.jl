@@ -49,14 +49,22 @@ function _prop_errormap!(wf::WaveFront, filename::AbstractString, xshift::Real, 
     )
 
     if opts.rotatemap !== nothing || opts.magnify !== nothing
-        dmap = prop_shift_center(dmap)
+        scratch = ensure_fft_real_scratch!(wf.workspace.fft, size(dmap, 1), size(dmap, 2))
+        prop_shift_center!(scratch, dmap)
+        dmap = scratch
         if opts.rotatemap !== nothing
             dmap = prop_rotate(dmap, opts.rotatemap)
         end
         if opts.magnify !== nothing
             dmap = prop_magnify(dmap, opts.magnify, size(dmap, 1))
         end
-        dmap = prop_shift_center(dmap)
+        if dmap isa StridedMatrix{<:AbstractFloat}
+            scratch = ensure_fft_real_scratch!(wf.workspace.fft, size(dmap, 1), size(dmap, 2))
+            prop_shift_center!(scratch, dmap)
+            dmap = copy(scratch)
+        else
+            dmap = prop_shift_center(dmap)
+        end
     end
 
     if opts.microns

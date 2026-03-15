@@ -56,11 +56,37 @@ end
     return wf
 end
 
+@inline function _phase_from_shifted_map!(
+    wf::WaveFront{T,<:StridedMatrix{Complex{T}}},
+    dmap_shifted::StridedMatrix{T},
+    scale::Real,
+) where {T<:AbstractFloat}
+    scratch = ensure_fft_real_scratch!(wf.workspace.fft, size(dmap_shifted, 1), size(dmap_shifted, 2))
+    prop_shift_center!(scratch, dmap_shifted)
+    wf.field .*= cis.(scale .* scratch)
+    return wf
+end
+
 @inline function _apply_shifted_amplitude_map!(
     field::AbstractMatrix{<:Complex},
     dmap_shifted::AbstractMatrix,
 )
     field .*= backend_adapt(field, prop_shift_center(dmap_shifted))
+    return field
+end
+
+@inline function _apply_shifted_amplitude_map!(
+    field::StridedMatrix{Complex{T}},
+    dmap_shifted::StridedMatrix{T},
+) where {T<:AbstractFloat}
+    ws = active_run_workspace()
+    ws isa ProperWorkspace{T} || begin
+        field .*= prop_shift_center(dmap_shifted)
+        return field
+    end
+    scratch = ensure_fft_real_scratch!(ws.fft, size(dmap_shifted, 1), size(dmap_shifted, 2))
+    prop_shift_center!(scratch, dmap_shifted)
+    field .*= scratch
     return field
 end
 
@@ -89,7 +115,7 @@ end
     if scratch === dmap
         copyto!(dmap, prop_shift_center(dmap))
     else
-        _shift_center_copy!(scratch, dmap)
+        prop_shift_center!(scratch, dmap)
         copyto!(dmap, scratch)
     end
     return dmap
