@@ -92,7 +92,7 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     cfg = _phaseb_config(cor_type, λm, data_root; compact=false, use_fpm=use_fpm)
     λ0 = cfg.lambda0_m
     pupil_diam_pix = cfg.pupil_diam_pix
-    data = cfg.branch == :hlc ? _resolve_assets(passvalue, assets, λm) : nothing
+    data = cfg.branch == :hlc ? _resolve_assets(passvalue, assets, λm, output_dim) : nothing
     ws = data === nothing ? PhaseBModelWorkspace(output_dim) : data.workspace
     if cfg.branch == :none
         use_fpm = 0

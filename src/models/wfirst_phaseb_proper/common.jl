@@ -192,13 +192,13 @@ function prepare_phaseb_shared_assets(data_root::AbstractString, wavelengths_m::
     )
 end
 
-@inline function _resolve_assets(passvalue, assets, λm::Real)
+@inline function _resolve_assets(passvalue, assets, λm::Real, output_dim::Integer)
     if assets !== nothing
         return assets
     end
     data_root = String(passget(passvalue, :data_dir, phaseb_default_data_root()))
     shared = prepare_phaseb_shared_assets(data_root, [λm])
-    return PhaseBPreparedAssets(shared, _nearest_occulter(shared, λm), PhaseBModelWorkspace(128))
+    return PhaseBPreparedAssets(shared, _nearest_occulter(shared, λm), PhaseBModelWorkspace(output_dim))
 end
 
 @inline function _nearest_occulter(assets::PhaseBHLCAssets, λm::Real)
@@ -413,6 +413,17 @@ function phaseb_case_definitions()
             ),
             description="Compact SPC spec-short model over 15% band",
         ),
+        "compact_spc_ifs_short" => (
+            func=wfirst_phaseb_compact,
+            output_dim=128,
+            wavelengths_um=spec_short_wavelengths_um,
+            wavelengths_m=spec_short_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "spc-ifs_short",
+                "final_sampling_lam0" => 0.1,
+            ),
+            description="Compact SPC IFS-short model over 15% band",
+        ),
         "full_spc_spec_long" => (
             func=wfirst_phaseb,
             output_dim=128,
@@ -425,6 +436,17 @@ function phaseb_case_definitions()
             ),
             description="Full SPC spec-long model over 15% band without error maps",
         ),
+        "compact_spc_ifs_long" => (
+            func=wfirst_phaseb_compact,
+            output_dim=128,
+            wavelengths_um=spec_wavelengths_um,
+            wavelengths_m=spec_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "spc-ifs_long",
+                "final_sampling_lam0" => 0.1,
+            ),
+            description="Compact SPC IFS-long model over 15% band",
+        ),
         "full_spc_spec_short" => (
             func=wfirst_phaseb,
             output_dim=128,
@@ -436,6 +458,30 @@ function phaseb_case_definitions()
                 "use_errors" => 0,
             ),
             description="Full SPC spec-short model over 15% band without error maps",
+        ),
+        "full_spc_ifs_short" => (
+            func=wfirst_phaseb,
+            output_dim=128,
+            wavelengths_um=spec_short_wavelengths_um,
+            wavelengths_m=spec_short_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "spc-ifs_short",
+                "final_sampling_lam0" => 0.1,
+                "use_errors" => 0,
+            ),
+            description="Full SPC IFS-short model over 15% band without error maps",
+        ),
+        "full_spc_ifs_long" => (
+            func=wfirst_phaseb,
+            output_dim=128,
+            wavelengths_um=spec_wavelengths_um,
+            wavelengths_m=spec_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "spc-ifs_long",
+                "final_sampling_lam0" => 0.1,
+                "use_errors" => 0,
+            ),
+            description="Full SPC IFS-long model over 15% band without error maps",
         ),
         "compact_spc_wide" => (
             func=wfirst_phaseb_compact,

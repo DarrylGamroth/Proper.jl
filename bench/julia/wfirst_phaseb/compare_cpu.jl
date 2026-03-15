@@ -125,8 +125,12 @@ function main()
         "full_hlc",
         "compact_spc_spec_short",
         "full_spc_spec_short",
+        "compact_spc_ifs_short",
+        "full_spc_ifs_short",
         "compact_spc_spec_long",
         "full_spc_spec_long",
+        "compact_spc_ifs_long",
+        "full_spc_ifs_long",
         "compact_spc_wide",
         "full_spc_wide",
     ] : filter!(!isempty, split(String(cases_arg), ','))

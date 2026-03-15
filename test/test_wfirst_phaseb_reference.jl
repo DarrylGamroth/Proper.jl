@@ -41,8 +41,12 @@ using Proper.WFIRSTPhaseBProper
         "full_hlc",
         "compact_spc_spec_short",
         "full_spc_spec_short",
+        "compact_spc_ifs_short",
+        "full_spc_ifs_short",
         "compact_spc_spec_long",
         "full_spc_spec_long",
+        "compact_spc_ifs_long",
+        "full_spc_ifs_long",
         "compact_spc_wide",
         "full_spc_wide",
         "compact_hlc_source_offset",
@@ -54,7 +58,11 @@ using Proper.WFIRSTPhaseBProper
     @test cases["full_hlc"].func === wfirst_phaseb
     @test cases["compact_spc_spec_short"].passvalue["cor_type"] == "spc-spec_short"
     @test cases["full_spc_spec_short"].passvalue["cor_type"] == "spc-spec_short"
+    @test cases["compact_spc_ifs_short"].passvalue["cor_type"] == "spc-ifs_short"
+    @test cases["full_spc_ifs_short"].passvalue["cor_type"] == "spc-ifs_short"
     @test cases["compact_spc_spec_long"].passvalue["cor_type"] == "spc-spec_long"
+    @test cases["compact_spc_ifs_long"].passvalue["cor_type"] == "spc-ifs_long"
+    @test cases["full_spc_ifs_long"].passvalue["cor_type"] == "spc-ifs_long"
     @test cases["full_spc_wide"].passvalue["cor_type"] == "spc-wide"
     @test cases["compact_hlc_source_offset"].passvalue["source_x_offset"] == 3.0
     @test cases["full_hlc_no_field_stop"].passvalue["use_field_stop"] == 0
@@ -78,6 +86,10 @@ using Proper.WFIRSTPhaseBProper
     @test cfg_spc.n_default == 2048
     @test cfg_spc.n_mft == 1400
     @test occursin("SPM_SPC-20190130.fits", cfg_spc.pupil_mask_file)
+
+    cfg_spc_long = Proper.WFIRSTPhaseBProper._phaseb_config("spc-ifs_long", 0.73e-6, "/tmp"; compact=false, use_fpm=1)
+    @test cfg_spc_long.branch == :spc
+    @test cfg_spc_long.lambda0_m == 0.73e-6
 
     cfg_spc_compact = Proper.WFIRSTPhaseBProper._phaseb_config("spc-wide", 0.825e-6, "/tmp"; compact=true, use_fpm=1)
     @test cfg_spc_compact.branch == :spc

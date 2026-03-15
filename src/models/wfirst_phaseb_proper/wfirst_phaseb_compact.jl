@@ -28,7 +28,7 @@ function _wfirst_phaseb_compact_impl(lambda_m, output_dim0, passvalue; assets=no
     n_small = cfg.n_small
     n_big = cfg.n_big
     source_x_offset, source_y_offset = _source_offset_lambda_over_d(passvalue, λ0, diam_at_dm1)
-    data = cfg.branch == :hlc ? _resolve_assets(passvalue, assets, λm) : nothing
+    data = cfg.branch == :hlc ? _resolve_assets(passvalue, assets, λm, output_dim) : nothing
     ws = data === nothing ? PhaseBModelWorkspace(output_dim) : data.workspace
     field_small = phaseb_field(ws, n_small)
     fft_small = phaseb_fft_cache(ws, n_small)
