@@ -56,7 +56,8 @@ function polab(polfile::AbstractString, lambda_m::Real, pupil_diam_pix::Real, co
 
     n = Int(round(float(pupil_diam_pix) * 1.1))
     n = isodd(n) ? n + 1 : n
-    x = (collect(0:(n - 1)) .- n ÷ 2) ./ (float(pupil_diam_pix) / 2.0)
+    dx = 2.0 / float(pupil_diam_pix)
+    x = range(-(n ÷ 2) * dx, step=dx, length=n)
 
     amp = zeros(Float64, n, n)
     pha = zeros(Float64, n, n)

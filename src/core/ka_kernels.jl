@@ -1218,10 +1218,97 @@ end
     table::AbstractMatrix,
     mag,
 )
-    n_out = size(out, 1)
-    k = size(table, 2)
+    return ka_szoom_apply!(out, image_in, table, table, mag)
+end
+
+@kernel function _ka_szoom_apply_rect_kernel!(
+    out,
+    @Const(image_in),
+    @Const(tablex),
+    @Const(tabley),
+    mag,
+    n_iny::Int,
+    n_inx::Int,
+    n_outy::Int,
+    n_outx::Int,
+    k::Int,
+)
+    I = @index(Global, NTuple)
+    row_out = I[1]
+    col_out = I[2]
+
+    if row_out <= n_outy && col_out <= n_outx
+        T = typeof(float(real(zero(eltype(out)))))
+        yin = T(row_out - 1 - (n_outy ÷ 2)) / mag
+        ypix = _ka_szoom_round(yin) + T(n_iny ÷ 2)
+        y1 = Int(ypix) - (k ÷ 2)
+        y2_excl = Int(ypix) + (k ÷ 2) + 1
+
+        xin = T(col_out - 1 - (n_outx ÷ 2)) / mag
+        xpix = _ka_szoom_round(xin) + T(n_inx ÷ 2)
+        x1 = Int(xpix) - (k ÷ 2)
+        x2_excl = Int(xpix) + (k ÷ 2) + 1
+
+        if y1 < 0 || y2_excl > n_iny || x1 < 0 || x2_excl > n_inx
+            out[row_out, col_out] = zero(eltype(out))
+        elseif eltype(image_in) <: Complex
+            acc_re = zero(T)
+            acc_im = zero(T)
+            for co in 0:(k - 1)
+                col = x1 + co + 1
+                s_re = zero(T)
+                s_im = zero(T)
+                for ro in 0:(k - 1)
+                    row = y1 + ro + 1
+                    wrow = tabley[row_out, ro + 1]
+                    z = image_in[row, col]
+                    s_re += T(real(z)) * wrow
+                    s_im += T(imag(z)) * wrow
+                end
+                wcol = tablex[col_out, co + 1]
+                acc_re += s_re * wcol
+                acc_im += s_im * wcol
+            end
+            out[row_out, col_out] = complex(acc_re, acc_im)
+        else
+            acc = zero(T)
+            for co in 0:(k - 1)
+                col = x1 + co + 1
+                scol = zero(T)
+                for ro in 0:(k - 1)
+                    row = y1 + ro + 1
+                    scol += T(image_in[row, col]) * tabley[row_out, ro + 1]
+                end
+                acc += scol * tablex[col_out, co + 1]
+            end
+            out[row_out, col_out] = acc
+        end
+    end
+end
+
+@inline function ka_szoom_apply!(
+    out::AbstractMatrix,
+    image_in::AbstractMatrix,
+    tablex::AbstractMatrix,
+    tabley::AbstractMatrix,
+    mag,
+)
+    n_outy, n_outx = size(out)
+    k = size(tablex, 2)
     backend = AK.get_backend(out)
-    _ka_szoom_apply_kernel!(backend, (16, 16))(out, image_in, table, mag, size(image_in, 1), n_out, k; ndrange=size(out))
+    _ka_szoom_apply_rect_kernel!(backend, (16, 16))(
+        out,
+        image_in,
+        tablex,
+        tabley,
+        mag,
+        size(image_in, 1),
+        size(image_in, 2),
+        n_outy,
+        n_outx,
+        k;
+        ndrange=size(out),
+    )
     return out
 end
 

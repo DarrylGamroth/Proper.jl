@@ -371,8 +371,11 @@ end
     @test libcconvthread(rand(8, 8), 4.2, 3.7) isa Real
     @test size(prop_szoom(rand(8, 8), 2.0), 1) == 3
     @test size(prop_szoom(rand(8, 8), 2.0, 16), 1) == 16
+    @test size(prop_szoom(rand(16, 20), 0.95; NOX=14, NOY=10)) == (10, 14)
     szoom_out = zeros(16, 16)
     @test prop_szoom!(szoom_out, rand(8, 8), 2.0) === szoom_out
+    rect_out = zeros(10, 14)
+    @test prop_szoom!(rect_out, rand(16, 20), 0.95) === rect_out
 end
 
 @testset "Phase 8 geometry and zernike parity groundwork" begin
@@ -436,4 +439,6 @@ end
     out = prop_cubic_conv(a, [1.0, 2.0, 3.0], [1.0, 2.0]; grid=true)
     @test size(out) == (2, 3)
     @test size(prop_szoom(a, 2.0, 8), 1) == 8
+    @test size(prop_magnify(rand(16, 20), 0.95), 1) == 15
+    @test size(prop_magnify(rand(16, 20), 0.95), 2) == 19
 end

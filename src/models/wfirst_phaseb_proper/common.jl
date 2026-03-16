@@ -141,10 +141,11 @@ end
 
 function phaseb_mft2(field_in::AbstractMatrix, dout::Real, D::Real, nout::Integer, direction::Integer; xoffset::Real=0, yoffset::Real=0, xc::Real=0, yc::Real=0)
     nfield_in = size(field_in, 2)
-    x = (collect(0:(nfield_in - 1)) .- (nfield_in ÷ 2) .- xc)
-    y = (collect(0:(nfield_in - 1)) .- (nfield_in ÷ 2) .- yc)
-    u = (collect(0:(nout - 1)) .- (nout ÷ 2) .- xoffset / dout) .* (dout / D)
-    v = (collect(0:(nout - 1)) .- (nout ÷ 2) .- yoffset / dout) .* (dout / D)
+    x = range(-(nfield_in ÷ 2) - xc, step=1.0, length=nfield_in)
+    y = range(-(nfield_in ÷ 2) - yc, step=1.0, length=nfield_in)
+    du = dout / D
+    u = range((-(nout ÷ 2) - xoffset / dout) * du, step=du, length=nout)
+    v = range((-(nout ÷ 2) - yoffset / dout) * du, step=du, length=nout)
     xu = x * transpose(u)
     yv = y * transpose(v)
     expxu = (dout / D) .* exp.(-direction * 2π * im .* xu)
@@ -228,15 +229,27 @@ end
     return PhaseBPreparedAssets(shared, _nearest_occulter(shared, λm), PhaseBModelWorkspace(output_dim))
 end
 
+@inline function _nearest_occ_key(dict::AbstractDict{<:Real}, λm::Real)
+    λ = Float64(λm)
+    best_key = first(keys(dict))
+    best_dist = abs(Float64(best_key) - λ)
+    for key in keys(dict)
+        dist = abs(Float64(key) - λ)
+        if dist < best_dist
+            best_key = key
+            best_dist = dist
+        end
+    end
+    return best_key
+end
+
 @inline function _nearest_occulter(assets::PhaseBHLCAssets, λm::Real)
-    keys_vec = collect(keys(assets.occulters))
-    key = keys_vec[argmin(abs.(keys_vec .- Float64(λm)))]
+    key = _nearest_occ_key(assets.occulters, λm)
     return assets.occulters[key]
 end
 
 @inline function _nearest_occulter(assets::PhaseBHLCPreparedSharedAssets, λm::Real)
-    keys_vec = collect(keys(assets.occulters_2048))
-    key = keys_vec[argmin(abs.(keys_vec .- Float64(λm)))]
+    key = _nearest_occ_key(assets.occulters_2048, λm)
     return assets.occulters_2048[key]
 end
 
@@ -360,7 +373,7 @@ end
 end
 
 function _phaseb_dm_case_maps(nact::Integer=48)
-    coords = collect(range(-1.0, 1.0; length=nact))
+    coords = range(-1.0, 1.0; length=nact)
     x = repeat(reshape(coords, 1, :), nact, 1)
     y = repeat(reshape(coords, :, 1), 1, nact)
     dm1 = 35e-9 .* exp.(-4 .* (x .^ 2 .+ y .^ 2)) .* (1 .+ 0.15 .* x)
@@ -376,7 +389,8 @@ function _apply_source_offset!(wf, pupil_diam_pix::Real, lambda0_m::Real, lambda
     xtilt_lam = -Float64(source_x_offset) * lambda0_m / lambda_m
     ytilt_lam = -Float64(source_y_offset) * lambda0_m / lambda_m
     n = size(wf.field, 1)
-    coords = (collect(0:(n - 1)) .- (n ÷ 2)) ./ (float(pupil_diam_pix) / 2.0)
+    dx = 2.0 / float(pupil_diam_pix)
+    coords = range(-(n ÷ 2) * dx, step=dx, length=n)
     x = repeat(reshape(coords, 1, :), n, 1)
     y = repeat(reshape(coords, :, 1), 1, n)
     tilt = cis.(π .* (xtilt_lam .* x .+ ytilt_lam .* y))
@@ -387,19 +401,19 @@ end
 function phaseb_case_definitions()
     hlc_lam0_um = 0.575
     hlc_band = 0.1
-    hlc_wavelengths_um = collect(range(hlc_lam0_um * (1 - hlc_band / 2), hlc_lam0_um * (1 + hlc_band / 2); length=3))
+    hlc_wavelengths_um = range(hlc_lam0_um * (1 - hlc_band / 2), hlc_lam0_um * (1 + hlc_band / 2); length=3)
     hlc_wavelengths_m = hlc_wavelengths_um .* 1.0e-6
     spec_lam0_um = 0.73
     spec_band = 0.15
-    spec_wavelengths_um = collect(range(spec_lam0_um * (1 - spec_band / 2), spec_lam0_um * (1 + spec_band / 2); length=3))
+    spec_wavelengths_um = range(spec_lam0_um * (1 - spec_band / 2), spec_lam0_um * (1 + spec_band / 2); length=3)
     spec_wavelengths_m = spec_wavelengths_um .* 1.0e-6
     spec_short_lam0_um = 0.66
     spec_short_band = 0.15
-    spec_short_wavelengths_um = collect(range(spec_short_lam0_um * (1 - spec_short_band / 2), spec_short_lam0_um * (1 + spec_short_band / 2); length=3))
+    spec_short_wavelengths_um = range(spec_short_lam0_um * (1 - spec_short_band / 2), spec_short_lam0_um * (1 + spec_short_band / 2); length=3)
     spec_short_wavelengths_m = spec_short_wavelengths_um .* 1.0e-6
     wide_lam0_um = 0.825
     wide_band = 0.1
-    wide_wavelengths_um = collect(range(wide_lam0_um * (1 - wide_band / 2), wide_lam0_um * (1 + wide_band / 2); length=3))
+    wide_wavelengths_um = range(wide_lam0_um * (1 - wide_band / 2), wide_lam0_um * (1 + wide_band / 2); length=3)
     wide_wavelengths_m = wide_wavelengths_um .* 1.0e-6
     dm1_case_m, dm2_case_m = _phaseb_dm_case_maps()
     return Dict(

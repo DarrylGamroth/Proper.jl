@@ -147,6 +147,22 @@ using Test
         @test isapprox(table_ka, table_loop; atol=0, rtol=0)
         Proper.ka_szoom_apply!(szoom_ka, img, table_ka, mag)
         @test isapprox(szoom_ka, szoom_loop; atol=1e-6, rtol=1e-6)
+
+        rect_img = rand(Float32, n, n + 16)
+        rect_loop = prop_szoom(rect_img, mag; NOX=120, NOY=96)
+        rect_ka = similar(rect_loop)
+        tablex_loop = Matrix{Float32}(undef, 120, Proper.SZOOM_K)
+        tabley_loop = Matrix{Float32}(undef, 96, Proper.SZOOM_K)
+        tablex_ka = similar(tablex_loop)
+        tabley_ka = similar(tabley_loop)
+        Proper._fill_szoom_table_loop!(tablex_loop, mag)
+        Proper._fill_szoom_table_loop!(tabley_loop, mag)
+        Proper.ka_szoom_table!(tablex_ka, mag, 120, Proper.SZOOM_K, Proper.SZOOM_DK)
+        Proper.ka_szoom_table!(tabley_ka, mag, 96, Proper.SZOOM_K, Proper.SZOOM_DK)
+        @test isapprox(tablex_ka, tablex_loop; atol=0, rtol=0)
+        @test isapprox(tabley_ka, tabley_loop; atol=0, rtol=0)
+        Proper.ka_szoom_apply!(rect_ka, rect_img, tablex_ka, tabley_ka, mag)
+        @test isapprox(rect_ka, rect_loop; atol=1e-6, rtol=1e-6)
     end
 
     @testset "Context-routed propagation kernels" begin

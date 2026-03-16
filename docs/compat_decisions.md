@@ -585,4 +585,20 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   - The default non-QUICK path remains square-only until `prop_szoom` itself is generalized.
 - Consequences:
   - Quick cubic magnification now matches MATLAB behavior on non-square arrays.
-  - Callers that need non-square magnification today must use `QUICK=true`.
+  - This decision established the first non-square magnify path before `prop_szoom` itself was generalized.
+
+## D-0051: `prop_szoom` Supports MATLAB Non-Square Output Semantics
+- Date: 2026-03-16
+- Status: Accepted
+- Context:
+  - MATLAB `prop_szoom` accepts independent `nox` / `noy` output dimensions and supports non-square inputs and outputs.
+  - Julia had remained square-only in both the public `prop_szoom` API and the default non-`QUICK` `prop_magnify` path.
+  - This was a real remaining semantic gap after `D-0050`.
+- Decision:
+  - Generalize `prop_szoom!` and `prop_szoom` to support rectangular inputs and independent output dimensions.
+  - Support MATLAB-style `NOX` / `NOY` keywords in the public wrapper.
+  - Allow the default non-`QUICK` `prop_magnify` path to compute rectangular output sizes independently once it routes through the generalized `prop_szoom`.
+- Consequences:
+  - Core damped-sinc magnification now matches MATLAB behavior on non-square arrays instead of only on square inputs.
+  - `prop_magnify(...; QUICK=false)` no longer needs a square-input restriction when `size_out` is omitted.
+  - Backend kernels must preserve the same rectangular semantics as the loop reference path.

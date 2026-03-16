@@ -104,7 +104,7 @@ function prop_dm(
     dx_inf = dx_inf_native * dx_dm / dx_dm_inf
 
     dm_cmd = if switch_set(:FIT; kwargs...)
-        x = ((collect(0:4) .- 2) .* dx_dm)
+        x = dx_dm .* (-2:2)
         inf_kernel = prop_cubic_conv(transpose(inf), x ./ dx_inf .+ xc_inf, x ./ dx_inf .+ yc_inf; grid=true)
         fitted, _ = prop_fit_dm(dm_z, inf_kernel)
         fitted
@@ -136,8 +136,8 @@ function prop_dm(
     xdim = min(round(Int, sqrt(2) * nx_grid * dx_inf / dx_surf), n)
     ydim = min(round(Int, sqrt(2) * ny_grid * dx_inf / dx_surf), n)
 
-    xax = (collect(0:(xdim - 1)) .- (xdim ÷ 2)) .* dx_surf
-    yax = (collect(0:(ydim - 1)) .- (ydim ÷ 2)) .* dx_surf
+    xax = range(-(xdim ÷ 2) * dx_surf, step=dx_surf, length=xdim)
+    yax = range(-(ydim ÷ 2) * dx_surf, step=dx_surf, length=ydim)
     x = repeat(reshape(xax, 1, :), ydim, 1)
     y = repeat(reshape(yax, :, 1), 1, xdim)
 

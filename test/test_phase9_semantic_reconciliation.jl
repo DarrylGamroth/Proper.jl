@@ -222,6 +222,22 @@ end
         @test isapprox(got, ref; atol=1e-12, rtol=1e-12)
     end
 
+    @testset "prop_szoom supports non-square MATLAB output semantics" begin
+        a = reshape(collect(1.0:320.0), 16, 20)
+        ref = _matlab_szoom_ref(a, 0.95; nox=14, noy=10)
+        got = prop_szoom(a, 0.95; NOX=14, NOY=10)
+        @test size(got) == (10, 14)
+        @test isapprox(got, ref; atol=1e-12, rtol=1e-12)
+    end
+
+    @testset "prop_magnify default path supports non-square output sizing" begin
+        a = reshape(collect(1.0:320.0), 16, 20)
+        got = prop_magnify(a, 0.95)
+        ref = _matlab_szoom_ref(a, 0.95; nox=size(got, 2), noy=size(got, 1))
+        @test size(got) == (15, 19)
+        @test isapprox(got, ref; atol=1e-12, rtol=1e-12)
+    end
+
     @testset "prop_pixellate sampling overload matches MATLAB formula" begin
         a = reshape(collect(1.0:64.0), 8, 8)
         ref = _matlab_pixellate_ref(a, 0.5, 1.0, 4)
@@ -263,7 +279,7 @@ end
             ref = prop_shift_center(ref; inverse=true)
 
             @test read_got == ref
-            @test read_got != FFTW.ifftshift(dmap)
+            @test read_got != Proper.FFTW.ifftshift(dmap)
         end
     end
 

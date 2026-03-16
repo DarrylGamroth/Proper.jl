@@ -50,7 +50,6 @@ end
         fill_affine_axis!(fillsty, ycoords, cy_out, invmag, cy_in)
         prop_cubic_conv_grid!(out, sty, image_in, xcoords, ycoords)
     else
-        size(out, 1) == size(out, 2) || throw(ArgumentError("output must be square unless QUICK=true"))
         prop_szoom!(out, image_in, mag)
     end
 
@@ -139,10 +138,11 @@ function prop_magnify(
         return prop_magnify!(out, image_in, mag, opts)
     end
 
-    ny == nx || throw(ArgumentError("prop_magnify default path currently requires square input unless QUICK=true"))
-    out_n = floor(Int, ny * mag)
-    out_n > 0 || throw(ArgumentError("size_out must be positive"))
-    out = similar(image_in, out_n, out_n)
+    noy = floor(Int, ny * mag)
+    nox = floor(Int, nx * mag)
+    noy > 0 || throw(ArgumentError("output height must be positive"))
+    nox > 0 || throw(ArgumentError("output width must be positive"))
+    out = similar(image_in, noy, nox)
     return prop_magnify!(out, image_in, mag, opts)
 end
 
@@ -172,9 +172,10 @@ function prop_magnify(
         return prop_magnify!(out, image_in, mag, opts, ctx)
     end
 
-    ny == nx || throw(ArgumentError("prop_magnify default path currently requires square input unless QUICK=true"))
-    out_n = floor(Int, ny * mag)
-    out_n > 0 || throw(ArgumentError("size_out must be positive"))
-    out = similar(image_in, out_n, out_n)
+    noy = floor(Int, ny * mag)
+    nox = floor(Int, nx * mag)
+    noy > 0 || throw(ArgumentError("output height must be positive"))
+    nox > 0 || throw(ArgumentError("output width must be positive"))
+    out = similar(image_in, noy, nox)
     return prop_magnify!(out, image_in, mag, opts, ctx)
 end
