@@ -327,6 +327,10 @@ end
     @test size(pix) == (16, 16)
     pix_out = similar(pix)
     @test prop_pixellate!(pix_out, rand(32, 32), 2) === pix_out
+    psf = prop_pixellate(rand(32, 32), 0.5, 1.0, 16)
+    @test size(psf) == (16, 16)
+    psf_out = similar(psf)
+    @test prop_pixellate!(psf_out, rand(32, 32), 0.5, 1.0) === psf_out
 
     m1 = prop_polygon(wf, 6, 0.2)
     m2 = prop_irregular_polygon(wf, [-0.1, 0.1, 0.1, -0.1], [-0.1, -0.1, 0.1, 0.1])

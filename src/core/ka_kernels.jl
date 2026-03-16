@@ -51,7 +51,7 @@ end
 end
 
 @inline function _ka_szoom_round(x::T) where {T<:AbstractFloat}
-    return x < zero(T) ? floor(x) : ceil(x)
+    return x > zero(T) ? floor(x + T(0.5)) : -floor(-x + T(0.5))
 end
 
 @inline function _ka_bilinear_sample(a::AbstractMatrix{T}, y::Real, x::Real) where {T}

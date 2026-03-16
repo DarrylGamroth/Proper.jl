@@ -459,3 +459,19 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   - `compact_hlc_erkin` and `full_hlc_erkin` are executable and numerically matched in this repository using the same public-data compatibility root for both Python and Julia.
   - The WFIRST configuration matrix can mark `hlc_erkin` as covered for this repository's shared public-data baseline.
   - Future availability of the original private `hlc_20190206_v3` tree would justify a separate historical-parity check, but it is not required for the current public, reproducible validation surface.
+
+## D-0043: `prop_szoom`/`prop_pixellate` Follow MATLAB Core Semantics
+- Date: 2026-03-16
+- Status: Accepted
+- Context:
+  - The current Julia `prop_szoom` implementation used a ceil/floor rounding rule inherited from the Python pure fallback, while the MATLAB reference and upstream `prop_szoom_c.c` both use nearest-integer rounding.
+  - The current Julia `prop_pixellate` surface was only an integer box-downsampling helper, not the upstream PROPER PSF-integration API defined by MATLAB and Python (`prop_pixellate(image, sampling_in, sampling_out, n_out)`).
+  - Julia is column-major like MATLAB/IDL, and this audit is explicitly using MATLAB as the semantic reference for core array operations unless there is a stronger accepted reason not to.
+- Decision:
+  - Change `prop_szoom` to use the MATLAB/C nearest-integer rounding rule.
+  - Change `prop_magnify` default output sizing to use `fix` semantics for positive magnifications.
+  - Add the real upstream `prop_pixellate(image, sampling_in, sampling_out, n_out=0)` overload, while retaining the simple integer-factor helper as a separate Julia extension for existing internal uses.
+- Consequences:
+  - Core magnification and detector-pixel integration paths now match the MATLAB formulas more closely.
+  - The integer-factor pixellation helper remains available, but it is no longer the only `prop_pixellate` behavior in Julia.
+  - Future parity/debug work for magnification and detector-integration behavior should treat the MATLAB formulas as the semantic source unless a later accepted decision says otherwise.

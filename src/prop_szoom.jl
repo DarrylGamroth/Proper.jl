@@ -1,7 +1,9 @@
 const SZOOM_DK = 6
 const SZOOM_K = 13
 
-@inline _szoom_round(x::T) where {T<:AbstractFloat} = x < zero(T) ? floor(x) : ceil(x)
+@inline function _szoom_round(x::T) where {T<:AbstractFloat}
+    return x > zero(T) ? floor(x + T(0.5)) : -floor(-x + T(0.5))
+end
 
 @inline function _szoom_magtype(image_in::AbstractMatrix, mag0::Real)
     Tin = typeof(real(zero(eltype(image_in))))

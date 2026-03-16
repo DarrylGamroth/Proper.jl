@@ -1,6 +1,77 @@
 using Test
 using Random
 
+function _matlab_round(x::Real)
+    return x > 0 ? floor(x + 0.5) : -floor(-x + 0.5)
+end
+
+function _matlab_szoom_ref(arri::AbstractMatrix, magn::Real; nox::Integer=0, noy::Integer=0)
+    fsp = 6
+    ks = 1 + 2 * fsp
+    niy, nix = size(arri)
+    nox = nox > 0 ? nox : floor(Int, nix * magn) - ks
+    noy = noy > 0 ? noy : nox
+    iicx = (nix ÷ 2) + 1
+    iocx = (nox ÷ 2) + 1
+    iicy = (niy ÷ 2) + 1
+    iocy = (noy ÷ 2) + 1
+
+    function build_table(nout)
+        tbl = Matrix{Float64}(undef, nout, ks)
+        vk = collect(0:(ks - 1)) .- (ks ÷ 2)
+        vp = (collect(0:(nout - 1)) .- (nout ÷ 2)) ./ magn
+        vp .-= map(_matlab_round, vp)
+        for row in 1:nout
+            for col in 1:ks
+                at = (vk[col] - vp[row]) * pi
+                if abs(vk[col] - vp[row]) <= fsp
+                    tbl[row, col] = at == 0 ? 1.0 : (sin(at) / at) * (sin(at / fsp) / (at / fsp))
+                else
+                    tbl[row, col] = 0.0
+                end
+            end
+        end
+        return tbl
+    end
+
+    tblx = build_table(nox)
+    tbly = noy == nox ? tblx : build_table(noy)
+    out = zeros(Float64, noy, nox)
+    for ioy in 1:noy
+        iiy = Int(_matlab_round((ioy - iocy) / magn) + iicy)
+        iiy1 = iiy - fsp
+        iiy2 = iiy + fsp
+        if iiy1 < 1 || iiy2 > niy
+            continue
+        end
+        strp = arri[iiy1:iiy2, :] .* tbly[ioy, :]
+        for iox in 1:nox
+            iix = Int(_matlab_round((iox - iocx) / magn) + iicx)
+            iix1 = iix - fsp
+            iix2 = iix + fsp
+            if iix1 < 1 || iix2 > nix
+                continue
+            end
+            out[ioy, iox] = sum(sum(strp[:, iix1:iix2], dims=1)[:] .* tblx[iox, :])
+        end
+    end
+    return out
+end
+
+function _matlab_pixellate_ref(aimi::AbstractMatrix, sami::Real, samo::Real, npo::Integer=0)
+    npiy, npix = size(aimi)
+    icix = (npix ÷ 2) + 1
+    iciy = (npiy ÷ 2) + 1
+    magn = sami / samo
+    vx = Proper.FFTW.ifftshift(collect(1:npix) .- icix) ./ (icix - 1) ./ 2.0 ./ magn
+    vy = Proper.FFTW.ifftshift(collect(1:npiy) .- iciy) ./ (iciy - 1) ./ 2.0 ./ magn
+    pmtf = [sinc(y) * sinc(x) for y in vy, x in vx]
+    amtf = pmtf .* Proper.fft(Proper.FFTW.ifftshift(aimi))
+    cimc = Proper.FFTW.fftshift(abs.(Proper.ifft(amtf)) ./ (magn * magn))
+    out_n = npo > 0 ? npo : floor(Int, magn * npix)
+    return prop_magnify(cimc, magn, out_n)
+end
+
 @testset "Phase 9 semantic reconciliation hotspots" begin
     @testset "prop_resamplemap uses independent yshift" begin
         wf = prop_begin(1.0, 500e-9, 16)
@@ -49,6 +120,26 @@ using Random
         ref = Proper.prop_cubic_conv_grid!(Matrix{Float64}(undef, noy, nox), a, xcoords, ycoords)
         got = prop_magnify(a, mag, nox; QUICK=true)
         @test got == ref
+    end
+
+    @testset "prop_magnify default output sizing uses fix semantics" begin
+        a = reshape(collect(1.0:64.0), 8, 8)
+        @test size(prop_magnify(a, 1.6), 1) == 12
+        @test size(prop_magnify(a, 1.6; QUICK=true), 1) == 12
+    end
+
+    @testset "prop_szoom matches MATLAB rounding semantics" begin
+        a = reshape(collect(1.0:64.0), 8, 8)
+        ref = _matlab_szoom_ref(a, 0.95; nox=16, noy=16)
+        got = prop_szoom(a, 0.95, 16)
+        @test isapprox(got, ref; atol=1e-12, rtol=1e-12)
+    end
+
+    @testset "prop_pixellate sampling overload matches MATLAB formula" begin
+        a = reshape(collect(1.0:64.0), 8, 8)
+        ref = _matlab_pixellate_ref(a, 0.5, 1.0, 4)
+        got = prop_pixellate(a, 0.5, 1.0, 4)
+        @test isapprox(got, ref; atol=1e-12, rtol=1e-12)
     end
 
     @testset "prop_end extract semantics are integer-safe" begin
