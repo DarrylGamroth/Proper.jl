@@ -128,8 +128,8 @@ using Proper.WFIRSTPhaseBProper
 
     wf_ref = prop_begin(1.0, 550e-9, 8)
     coords = (collect(0:7) .- 4) ./ (6.0 / 2.0)
-    x = repeat(reshape(coords, :, 1), 1, 8)
-    y = repeat(reshape(coords, 1, :), 8, 1)
+    x = repeat(reshape(coords, 1, :), 8, 1)
+    y = repeat(reshape(coords, :, 1), 1, 8)
     tilt = cis.(π .* ((-0.1 * 0.575e-6 / 550e-9) .* x .+ (0.2 * 0.575e-6 / 550e-9) .* y))
     prop_multiply(wf_ref, tilt)
     @test wf_tilt.field ≈ wf_ref.field
