@@ -131,7 +131,7 @@ using Test
         @test isapprox(round_ka, round_loop; atol=1e-12, rtol=1e-12)
 
         img = rand(Float32, n, n)
-        pix_loop = prop_pixellate(img, 2)
+        pix_loop = Proper._prop_pixellate_factor(img, 2)
         pix_ka = similar(pix_loop)
         Proper.ka_pixellate!(pix_ka, img, 2)
         @test isapprox(pix_ka, pix_loop; atol=0, rtol=0)
@@ -197,7 +197,7 @@ using Test
             m = prop_magnify(a, 1.1, 16, ctx; QUICK=true)
             r = prop_rotate(a, 5.0, ctx)
             s = prop_szoom(a, 1.1, 16)
-            p = prop_pixellate(a, 2)
+            p = Proper._prop_pixellate_factor(a, 2)
             wf_resample = Proper.WaveFront(CUDA.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
             ropts = Proper.ResampleMapOptions(wf_resample, wf_resample.sampling_m, 8f0, 8f0)
             res = similar(a)

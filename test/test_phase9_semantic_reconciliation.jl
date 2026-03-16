@@ -72,6 +72,34 @@ function _matlab_pixellate_ref(aimi::AbstractMatrix, sami::Real, samo::Real, npo
     return prop_magnify(cimc, magn, out_n)
 end
 
+function _cubic_conv_ref(a::AbstractMatrix, y::Real, x::Real)
+    ny, nx = size(a)
+    roundval(v) = v > 0 ? floor(v + 0.5) : -floor(-v + 0.5)
+    kernel_terms(d) = d <= 1 ? (d^2 * (2d - 3) + 1, d^2 * (d - 1)) :
+        d <= 2 ? (0.0, d * (d^2 - 5d + 8) - 4) : (0.0, 0.0)
+    acoef = -0.5
+    ypix = clamp(Int(roundval(y)), 2, ny - 2)
+    xpix = clamp(Int(roundval(x)), 2, nx - 2)
+    yc = roundval(y) - y
+    xc = roundval(x) - x
+    ky = [kernel_terms(abs(yc + j)) for j in -2:2]
+    kx = [kernel_terms(abs(xc + j)) for j in -2:2]
+    acc = 0.0
+    for j in 1:5
+        yoff = ypix + j - 2
+        1 <= yoff <= ny || continue
+        for i in 1:5
+            xoff = xpix + i - 2
+            1 <= xoff <= nx || continue
+            kx0, kx1 = kx[i]
+            ky0, ky1 = ky[j]
+            k = kx0 * ky0 + acoef * (kx0 * ky1 + kx1 * ky0) + acoef^2 * kx1 * ky1
+            acc += k * a[yoff, xoff]
+        end
+    end
+    return acc
+end
+
 @testset "Phase 9 semantic reconciliation hotspots" begin
     @testset "prop_resamplemap uses independent yshift" begin
         wf = prop_begin(1.0, 500e-9, 16)
@@ -140,6 +168,15 @@ end
         ref = _matlab_pixellate_ref(a, 0.5, 1.0, 4)
         got = prop_pixellate(a, 0.5, 1.0, 4)
         @test isapprox(got, ref; atol=1e-12, rtol=1e-12)
+    end
+
+    @testset "prop_cubic_conv matches upstream C kernel semantics" begin
+        a = reshape(collect(1.0:36.0), 6, 6)
+        @test prop_cubic_conv(a, 2.4, 3.6) ≈ _cubic_conv_ref(a, 2.4, 3.6) atol=1e-12
+        @test prop_cubic_conv(a, -0.8, 7.2) ≈ _cubic_conv_ref(a, -0.8, 7.2) atol=1e-12
+        grid = prop_cubic_conv(a, [0.5, 2.4, 5.6], [-1.0, 1.8, 7.1]; grid=true)
+        ref = [_cubic_conv_ref(a, y, x) for y in (-1.0, 1.8, 7.1), x in (0.5, 2.4, 5.6)]
+        @test isapprox(grid, ref; atol=1e-12, rtol=1e-12)
     end
 
     @testset "prop_end extract semantics are integer-safe" begin

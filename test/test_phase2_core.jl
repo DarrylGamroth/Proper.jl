@@ -323,10 +323,10 @@ end
     @test size(prop_zernikes(wf, 3)) == (32, 32, 3)
     @test length(prop_fit_zernikes(wf, 3)) == 3
 
-    pix = prop_pixellate(rand(32, 32), 2)
+    pix = Proper._prop_pixellate_factor(rand(32, 32), 2)
     @test size(pix) == (16, 16)
     pix_out = similar(pix)
-    @test prop_pixellate!(pix_out, rand(32, 32), 2) === pix_out
+    @test Proper._prop_pixellate_factor!(pix_out, rand(32, 32), 2) === pix_out
     psf = prop_pixellate(rand(32, 32), 0.5, 1.0, 16)
     @test size(psf) == (16, 16)
     psf_out = similar(psf)

@@ -217,8 +217,8 @@ using FFTW
         @test isapprox(sout, sref; atol=1e-6, rtol=1e-6)
 
         pix_out = similar(img, 8, 8)
-        Proper.prop_pixellate!(pix_out, img, 2)
-        pix_ref = prop_pixellate(img, 2)
+        Proper._prop_pixellate_factor!(pix_out, img, 2)
+        pix_ref = Proper._prop_pixellate_factor(img, 2)
         @test isapprox(pix_out, pix_ref; atol=0, rtol=0)
     end
 

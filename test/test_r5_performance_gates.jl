@@ -87,9 +87,9 @@ using Random
         @test (@allocated prop_szoom!(szoom_out, img, 0.95)) < 50_000
 
         pix_out = similar(img, 32, 32)
-        @test (@inferred prop_pixellate!(pix_out, img, 2)) === pix_out
-        prop_pixellate!(pix_out, img, 2) # warmup
-        @test (@allocated prop_pixellate!(pix_out, img, 2)) == 0
+        @test (@inferred Proper._prop_pixellate_factor!(pix_out, img, 2)) === pix_out
+        Proper._prop_pixellate_factor!(pix_out, img, 2) # warmup
+        @test (@allocated Proper._prop_pixellate_factor!(pix_out, img, 2)) == 0
 
         wf_psd = prop_begin(0.212, 500e-9, 64)
         m = prop_psd_errormap(wf_psd, 3.29e-23, 212.26, 7.8; no_apply=true, rng=MersenneTwister(7))

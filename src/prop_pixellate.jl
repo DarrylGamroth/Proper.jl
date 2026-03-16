@@ -77,7 +77,7 @@ function _prop_pixellate_resample(img::AbstractMatrix, sampling_in::Real, sampli
     return prop_magnify(cimc, mag, out_n)
 end
 
-function prop_pixellate!(
+function _prop_pixellate_factor!(
     out::AbstractMatrix,
     img::AbstractMatrix,
     factor::Integer,
@@ -90,7 +90,7 @@ function prop_pixellate!(
     return _prop_pixellate_factor!(out, img, f)
 end
 
-function prop_pixellate(
+function _prop_pixellate_factor(
     img::AbstractMatrix,
     factor::Integer,
 )

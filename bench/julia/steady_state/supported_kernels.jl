@@ -74,7 +74,7 @@ function bench_supported_kernels()
     prop_rotate!(rot_out, img, 12.0, ctx_img)
     prop_magnify!(mag_out, img, 1.1, ctx_img; QUICK=true)
     prop_szoom!(szoom_out, img, 1.1)
-    prop_pixellate!(pix_out, img, 2)
+    Proper._prop_pixellate_factor!(pix_out, img, 2)
     prop_resamplemap!(res_out, wf_map, dmap, res_opts, ctx_map)
     prop_rectangle!(rect_out, wf_map, 0.4, 0.2, 0.03, -0.05; ROTATION=22.0, NORM=true)
     prop_rounded_rectangle!(round_out, wf_map, 0.05, 0.3, 0.2, 0.01, -0.02)
@@ -116,7 +116,7 @@ function bench_supported_kernels()
     end evals=1 samples=samples)
 
     px = run(@benchmarkable begin
-        prop_pixellate!($pix_out, $img, 2)
+        Proper._prop_pixellate_factor!($pix_out, $img, 2)
     end evals=1 samples=samples)
 
     rs = run(@benchmarkable begin

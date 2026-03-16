@@ -470,8 +470,10 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Decision:
   - Change `prop_szoom` to use the MATLAB/C nearest-integer rounding rule.
   - Change `prop_magnify` default output sizing to use `fix` semantics for positive magnifications.
-  - Add the real upstream `prop_pixellate(image, sampling_in, sampling_out, n_out=0)` overload, while retaining the simple integer-factor helper as a separate Julia extension for existing internal uses.
+  - Add the real upstream `prop_pixellate(image, sampling_in, sampling_out, n_out=0)` overload.
+  - Demote the simple integer-factor pixellation helper to an internal-only helper for tests/benchmarks instead of keeping it as a public `prop_pixellate` overload.
 - Consequences:
   - Core magnification and detector-pixel integration paths now match the MATLAB formulas more closely.
-  - The integer-factor pixellation helper remains available, but it is no longer the only `prop_pixellate` behavior in Julia.
+  - The public `prop_pixellate` surface now matches upstream semantics instead of exposing an extra non-upstream overload.
+  - The old integer-factor helper remains available only as an internal benchmark/test utility.
   - Future parity/debug work for magnification and detector-integration behavior should treat the MATLAB formulas as the semantic source unless a later accepted decision says otherwise.
