@@ -537,3 +537,22 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Regression coverage:
   - `test/test_phase9_semantic_reconciliation.jl` checks `prop_fit_dm` against a direct MATLAB-style zero-padded reference implementation.
   - `test/test_phase2_core.jl` checks that the direct mirror helper applies negative reflection phase.
+
+## D-0048: `prop_readmap` Keeps Executable-Baseline Center Coordinates
+- Date: 2026-03-16
+- Status: Accepted
+- Context:
+  - `prop_writemap` now writes FITS `XC_PIX` / `YC_PIX` metadata using PROPER/MATLAB `floor(n/2)+1`.
+  - `prop_readmap` does not consume those header center coordinates; like the Python executable baseline, it derives default map centers from array size and passes them into `prop_resamplemap`.
+  - The accepted `prop_resamplemap` contract is the executable-baseline contract used by `prop_cubic_conv`, not a MATLAB `interp2` one-based coordinate space.
+  - Changing `prop_readmap` defaults to the FITS one-based metadata convention would silently change existing executable-baseline behavior in all map-reading callers.
+- Decision:
+  - Keep `prop_readmap` / `prop_resamplemap` center-coordinate semantics aligned with the executable baseline.
+  - Keep the MATLAB-style FITS header metadata from `prop_writemap` as exported metadata only; it does not redefine the internal resampling coordinate contract.
+- Consequences:
+  - FITS metadata and internal readmap-center coordinates intentionally use different conventions.
+  - This is awkward but traceable, and it matches the current precedence rule: Python executable baseline for behavior, MATLAB for semantics when there is a clear translation defect.
+  - Future cleanup should only change this if the full map pipeline is migrated together under a new accepted decision.
+- Regression coverage:
+  - `test/test_phase9_semantic_reconciliation.jl` checks the default odd-grid `prop_readmap` result against the explicit executable-baseline coordinate formula and confirms it is not the same as a plain `ifftshift` roundtrip.
+  - `test/test_phase2_core.jl` checks exact FITS read/write data roundtrips on non-square odd-sized maps.

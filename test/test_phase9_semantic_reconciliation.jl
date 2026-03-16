@@ -213,11 +213,40 @@ end
 
     @testset "prop_cubic_conv matches upstream C kernel semantics" begin
         a = reshape(collect(1.0:36.0), 6, 6)
+        @test prop_cubic_conv(a, 0.0, 0.0) ≈ _cubic_conv_ref(a, 0.0, 0.0) atol=1e-12
+        @test prop_cubic_conv(a, 1.0, 2.0) ≈ _cubic_conv_ref(a, 1.0, 2.0) atol=1e-12
         @test prop_cubic_conv(a, 2.4, 3.6) ≈ _cubic_conv_ref(a, 2.4, 3.6) atol=1e-12
         @test prop_cubic_conv(a, -0.8, 7.2) ≈ _cubic_conv_ref(a, -0.8, 7.2) atol=1e-12
         grid = prop_cubic_conv(a, [0.5, 2.4, 5.6], [-1.0, 1.8, 7.1]; grid=true)
         ref = [_cubic_conv_ref(a, y, x) for y in (-1.0, 1.8, 7.1), x in (0.5, 2.4, 5.6)]
         @test isapprox(grid, ref; atol=1e-12, rtol=1e-12)
+
+        xint = collect(0.0:5.0)
+        yint = collect(0.0:5.0)
+        gint = prop_cubic_conv(a, xint, yint; grid=true)
+        refint = [_cubic_conv_ref(a, y, x) for y in yint, x in xint]
+        @test isapprox(gint, refint; atol=1e-12, rtol=1e-12)
+    end
+
+    @testset "prop_readmap default center follows executable-baseline coordinate contract" begin
+        dmap = reshape(collect(1.0:25.0), 5, 5)
+        wf = prop_begin(1.0, 500e-9, 5)
+        wf.sampling_m = 1.0
+
+        mktempdir() do d
+            f = joinpath(d, "map.fits")
+            prop_writemap(dmap, f; SAMPLING=wf.sampling_m)
+
+            read_got = prop_readmap(wf, f; SAMPLING=wf.sampling_m)
+
+            xcoords = ((collect(1.0:5.0) .- floor(5 / 2) .- 1) .* (wf.sampling_m / wf.sampling_m)) .+ (size(dmap, 2) ÷ 2)
+            ycoords = ((collect(1.0:5.0) .- floor(5 / 2) .- 1) .* (wf.sampling_m / wf.sampling_m)) .+ (size(dmap, 1) ÷ 2)
+            ref = Proper.prop_cubic_conv_grid!(Matrix{Float64}(undef, 5, 5), dmap, xcoords, ycoords)
+            ref = prop_shift_center(ref; inverse=true)
+
+            @test read_got == ref
+            @test read_got != FFTW.ifftshift(dmap)
+        end
     end
 
     @testset "prop_errormap mirror-surface uses negative reflection phase" begin
