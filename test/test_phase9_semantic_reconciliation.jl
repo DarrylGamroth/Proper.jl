@@ -259,6 +259,67 @@ end
         end
     end
 
+    @testset "prop_fit_dm uses MATLAB conv2 same zero-padding semantics" begin
+        dm = [
+            0.0 1.0 0.0
+            1.0 2.0 1.0
+            0.0 1.0 0.0
+        ]
+        ker = [
+            0.0 0.25 0.0
+            0.25 0.5 0.25
+            0.0 0.25 0.0
+        ]
+
+        function conv_same_zero_ref(a::AbstractMatrix, k::AbstractMatrix)
+            ny, nx = size(a)
+            ky, kx = size(k)
+            cy = fld(ky, 2) + 1
+            cx = fld(kx, 2) + 1
+            out = zeros(promote_type(eltype(a), eltype(k)), ny, nx)
+            @inbounds for y in 1:ny, x in 1:nx
+                acc = zero(eltype(out))
+                for j in 1:ky, i in 1:kx
+                    yy = y + (j - cy)
+                    xx = x + (i - cx)
+                    if 1 <= yy <= ny && 1 <= xx <= nx
+                        acc += a[yy, xx] * k[j, i]
+                    end
+                end
+                out[y, x] = acc
+            end
+            out
+        end
+
+        function prop_fit_dm_ref(dmz::AbstractMatrix, infk::AbstractMatrix)
+            e0 = 1.0e6
+            dmzc = copy(dmz)
+            last = copy(dmzc)
+            dmsf = conv_same_zero_ref(dmzc, infk)
+            diff = dmz .- dmsf
+            erms = sqrt(sum(abs2, diff))
+            while erms < e0 && (e0 - erms) / erms > 0.01
+                last .= dmzc
+                e0 = erms
+                dmzc .+= diff
+                dmsf = conv_same_zero_ref(dmzc, infk)
+                diff = dmz .- dmsf
+                maximum(abs, diff) < 1e-15 && break
+                erms = sqrt(sum(abs2, diff))
+            end
+            if erms > e0
+                dmzc .= last
+                dmsf = conv_same_zero_ref(dmzc, infk)
+            end
+            return dmzc, dmsf
+        end
+
+        cmd_ref, surf_ref = prop_fit_dm_ref(dm, ker)
+        cmd_got, surf_got = prop_fit_dm(dm, ker)
+        @test isapprox(cmd_got, cmd_ref; atol=1e-12, rtol=1e-12)
+        @test isapprox(surf_got, surf_ref; atol=1e-12, rtol=1e-12)
+    end
+
     @testset "prop_8th_order_mask odd-grid axes match MATLAB formula" begin
         wf = prop_begin(1.0, 500e-9, 5)
         mask = prop_8th_order_mask(wf, 3.0; circular=true)

@@ -519,3 +519,21 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Consequences:
   - FITS maps written by Julia now expose center metadata consistent with PROPER/MATLAB expectations.
   - This does not change the accepted internal `prop_resamplemap` coordinate contract; it only fixes exported metadata.
+
+## D-0047: `prop_fit_dm` Uses MATLAB `conv2(..., "same")` Semantics
+- Date: 2026-03-16
+- Status: Accepted
+- Context:
+  - `prop_fit_dm` is a core DM-fitting helper used by `prop_dm`.
+  - MATLAB implements it with `conv2(dmzc, infk, "same")`, which is zero-padded outside the array bounds.
+  - Julia had drifted to a reflect-boundary convolution, which is neither the MATLAB semantics nor an accepted compatibility decision.
+  - The direct Julia-only helper `prop_dm(wf, dm_map; mirror=true)` should also follow the established mirror-surface phase sign already used in `prop_errormap` and `prop_psd_errormap`.
+- Decision:
+  - `prop_fit_dm` uses zero-padded same-size convolution semantics matching MATLAB `conv2(..., "same")`.
+  - `prop_dm(wf, dm_map; mirror=true)` applies mirror-surface phase with negative reflection sign `-4π/λ`.
+- Consequences:
+  - DM fitting now follows the MATLAB-first core-semantics policy instead of the previous non-upstream reflect-edge behavior.
+  - Existing callers that relied on reflect-edge fitting were relying on a Julia-only behavior and now follow PROPER semantics.
+- Regression coverage:
+  - `test/test_phase9_semantic_reconciliation.jl` checks `prop_fit_dm` against a direct MATLAB-style zero-padded reference implementation.
+  - `test/test_phase2_core.jl` checks that the direct mirror helper applies negative reflection phase.

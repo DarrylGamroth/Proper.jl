@@ -255,6 +255,14 @@ end
         @test wf_apply.field ≈ wf_manual.field
     end
 
+    @testset "prop_dm direct mirror helper uses negative reflection phase" begin
+        wf = prop_begin(1.0, 500e-9, 4)
+        dm = fill(1.25e-9, 4, 4)
+        prop_dm(wf, dm; mirror=true)
+        expected = cis(-4pi * 1.25e-9 / wf.wavelength_m)
+        @test all(isapprox.(wf.field, fill(expected, size(wf.field)); atol=1e-12, rtol=0))
+    end
+
     @testset "prop_zernikes application parity" begin
         wf_apply = prop_begin(1.0, 550e-9, 64)
         wf_manual = prop_begin(1.0, 550e-9, 64)
