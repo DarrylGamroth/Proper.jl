@@ -477,3 +477,19 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   - The public `prop_pixellate` surface now matches upstream semantics instead of exposing an extra non-upstream overload.
   - The old integer-factor helper remains available only as an internal benchmark/test utility.
   - Future parity/debug work for magnification and detector-integration behavior should treat the MATLAB formulas as the semantic source unless a later accepted decision says otherwise.
+
+## D-0044: `prop_errormap` Follows Upstream Mirror-Surface And Rotate Semantics
+- Date: 2026-03-16
+- Status: Accepted
+- Context:
+  - MATLAB and Python both apply mirror-surface maps as `exp(-4πi map / λ)`, reflecting the sign convention for reflected optical path delay.
+  - MATLAB and Python both rotate error maps through the explicit cubic interpolation path after centering the map.
+  - Julia had drifted on both points:
+    - mirror-surface maps were applied with the wrong sign in `prop_errormap` and `prop_psd_errormap`
+    - rotated error maps were using the new default linear `prop_rotate` path instead of explicit cubic semantics
+- Decision:
+  - Apply mirror-surface phase with negative sign in both `prop_errormap` and `prop_psd_errormap`.
+  - Make the `ROTATEMAP` path in `prop_errormap` call `prop_rotate(...; METH=\"cubic\", MISSING=0.0)` explicitly.
+- Consequences:
+  - Core error-map application is again aligned with upstream PROPER semantics.
+  - The project can keep the MATLAB-aligned default `prop_rotate` behavior while still preserving upstream `prop_errormap` behavior through an explicit cubic call.

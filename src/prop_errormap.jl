@@ -53,7 +53,7 @@ function _prop_errormap!(wf::WaveFront, filename::AbstractString, xshift::Real, 
         prop_shift_center!(scratch, dmap)
         dmap = scratch
         if opts.rotatemap !== nothing
-            dmap = prop_rotate(dmap, opts.rotatemap)
+            dmap = prop_rotate(dmap, opts.rotatemap; METH="cubic", MISSING=0.0)
         end
         if opts.magnify !== nothing
             dmap = prop_magnify(dmap, opts.magnify, size(dmap, 1))
@@ -80,7 +80,7 @@ function _prop_errormap!(wf::WaveFront, filename::AbstractString, xshift::Real, 
     if maptype === :amplitude
         wf.field .*= backend_adapt(wf.field, dmap)
     else
-        scale = maptype === :mirror_surface ? 4pi / wf.wavelength_m : 2pi / wf.wavelength_m
+        scale = maptype === :mirror_surface ? -4pi / wf.wavelength_m : 2pi / wf.wavelength_m
         wf.field .*= cis.(scale .* backend_adapt(wf.field, dmap))
     end
     return wf

@@ -179,6 +179,45 @@ end
         @test isapprox(grid, ref; atol=1e-12, rtol=1e-12)
     end
 
+    @testset "prop_errormap mirror-surface uses negative reflection phase" begin
+        wf = prop_begin(1.0, 500e-9, 8)
+        dmap = fill(2.5e-9, 8, 8)
+        mktempdir() do d
+            f = joinpath(d, "mirror_map.fits")
+            prop_writemap(dmap, f; SAMPLING=wf.sampling_m)
+            prop_errormap(wf, f; SAMPLING=wf.sampling_m, MIRROR_SURFACE=true)
+            expected = cis(-4pi * 2.5e-9 / wf.wavelength_m)
+            @test all(isapprox.(wf.field, fill(expected, size(wf.field)); atol=1e-12, rtol=0))
+        end
+    end
+
+    @testset "prop_psd_errormap mirror-surface uses negative reflection phase" begin
+        wf = prop_begin(1.0, 500e-9, 16)
+        dmap = prop_psd_errormap(wf, 1e-18, 10.0, 3.0; no_apply=true, MIRROR=true, rng=MersenneTwister(4))
+        wf_apply = prop_begin(1.0, 500e-9, 16)
+        prop_psd_errormap(wf_apply, 1e-18, 10.0, 3.0; MIRROR=true, rng=MersenneTwister(4))
+        expected = cis.(-4pi .* prop_shift_center(dmap; inverse=true) ./ wf_apply.wavelength_m)
+        @test isapprox(wf_apply.field, expected; atol=1e-12, rtol=1e-12)
+    end
+
+    @testset "prop_errormap rotate path uses cubic rotate semantics" begin
+        wf_ref = prop_begin(1.0, 500e-9, 16)
+        wf_got = prop_begin(1.0, 500e-9, 16)
+        dmap = reshape(collect(1.0:256.0), 16, 16) .* 1e-9
+        mktempdir() do d
+            f = joinpath(d, "rot_map.fits")
+            prop_writemap(dmap, f; SAMPLING=wf_ref.sampling_m)
+            map = prop_readmap(wf_ref, f; SAMPLING=wf_ref.sampling_m)
+            map = prop_shift_center(map)
+            map = prop_rotate(map, 17.0; METH="cubic", MISSING=0.0)
+            map = prop_shift_center(map; inverse=true)
+            wf_ref.field .*= cis.(2pi .* map ./ wf_ref.wavelength_m)
+
+            prop_errormap(wf_got, f; SAMPLING=wf_got.sampling_m, ROTATEMAP=17.0, WAVEFRONT=true)
+            @test isapprox(wf_got.field, wf_ref.field; atol=1e-12, rtol=1e-12)
+        end
+    end
+
     @testset "prop_end extract semantics are integer-safe" begin
         wf = prop_begin(1.0, 500e-9, 15)
         out5, _ = prop_end(wf; extract=5)

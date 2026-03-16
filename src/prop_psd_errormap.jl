@@ -374,7 +374,7 @@ function _prop_psd_errormap!(
             end
         end
     elseif !opts.no_apply
-        scale = maptype === :mirror_surface ? 4pi / wf.wavelength_m : 2pi / wf.wavelength_m
+        scale = maptype === :mirror_surface ? -4pi / wf.wavelength_m : 2pi / wf.wavelength_m
         if map_is_shifted
             _phase_from_shifted_map!(wf, dmap, scale)
         else
