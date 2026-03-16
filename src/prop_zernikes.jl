@@ -188,9 +188,21 @@ function prop_zernikes(
 
     if !no_apply
         if amplitude
-            wf.field .*= backend_adapt(wf.field, dmap)
+            if same_backend_style(typeof(wf.field), typeof(dmap)) && wf.field isa StridedMatrix
+                scratch = ensure_fft_real_scratch!(wf.workspace.fft, size(dmap, 1), size(dmap, 2))
+                prop_shift_center!(scratch, dmap)
+                wf.field .*= scratch
+            else
+                wf.field .*= backend_adapt(wf.field, prop_shift_center(dmap))
+            end
         else
-            wf.field .*= cis.((2pi / wf.wavelength_m) .* backend_adapt(wf.field, dmap))
+            if same_backend_style(typeof(wf.field), typeof(dmap)) && wf.field isa StridedMatrix
+                scratch = ensure_fft_real_scratch!(wf.workspace.fft, size(dmap, 1), size(dmap, 2))
+                prop_shift_center!(scratch, dmap)
+                wf.field .*= cis.((2pi / wf.wavelength_m) .* scratch)
+            else
+                wf.field .*= cis.((2pi / wf.wavelength_m) .* backend_adapt(wf.field, prop_shift_center(dmap)))
+            end
         end
     end
 

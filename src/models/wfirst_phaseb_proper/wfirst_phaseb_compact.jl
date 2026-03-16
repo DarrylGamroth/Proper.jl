@@ -35,7 +35,7 @@ function _wfirst_phaseb_compact_impl(lambda_m, output_dim0, passvalue; assets=no
 
     n = n_small
     wf = prop_begin(diam_at_dm1, λm, n; beam_diam_fraction=pupil_diam_pix / n)
-    pupil = cfg.branch == :hlc ? data.shared.pupil_1024 : trim(Float64.(prop_fits_read(cfg.pupil_file)), n)
+    pupil = cfg.branch == :hlc ? data.shared.pupil_1024 : trim(Float64.(_phaseb_python_fits(cfg.pupil_file)), n)
     prop_multiply(wf, pupil)
     prop_define_entrance(wf)
     _apply_source_offset!(wf, pupil_diam_pix, λ0, λm, source_x_offset, source_y_offset)
@@ -65,7 +65,7 @@ function _wfirst_phaseb_compact_impl(lambda_m, output_dim0, passvalue; assets=no
 
     prop_end!(field_small, wf; noabs=true)
     if cfg.branch == :spc
-        pupil_mask = trim(Float64.(prop_fits_read(cfg.pupil_mask_file)), n_small)
+        pupil_mask = trim(Float64.(_phaseb_python_fits(cfg.pupil_mask_file)), n_small)
         field_small .*= pupil_mask
     end
     if cfg.branch == :hlc
@@ -77,7 +77,7 @@ function _wfirst_phaseb_compact_impl(lambda_m, output_dim0, passvalue; assets=no
         phaseb_ffts!(field_big, fft_big, +1)
         phaseb_center_copy!(field_small, field_big)
     elseif cfg.branch == :spc
-        fpm = ComplexF64.(prop_fits_read(cfg.fpm_file))
+        fpm = ComplexF64.(_phaseb_python_fits(cfg.fpm_file))
         nfpm = size(fpm, 2)
         fpm_sampling_lam = cfg.fpm_sampling * cfg.fpm_sampling_lambda_m / λm
         field_big = phaseb_field(ws, n_big)
@@ -91,7 +91,7 @@ function _wfirst_phaseb_compact_impl(lambda_m, output_dim0, passvalue; assets=no
     end
 
     if cfg.lyot_stop_file !== nothing
-        lyot = cfg.branch == :hlc ? data.shared.lyot_1024 : trim(Float64.(prop_fits_read(cfg.lyot_stop_file)), n_small)
+        lyot = cfg.branch == :hlc ? data.shared.lyot_1024 : trim(Float64.(_phaseb_python_fits(cfg.lyot_stop_file)), n_small)
         field_small .*= lyot
     end
     field_small .*= n_small

@@ -2,6 +2,9 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     cor_type = String(passget(passvalue, :cor_type, "hlc"))
     use_errors = Int(passget(passvalue, :use_errors, 1))
     use_errors == 0 || throw(ArgumentError("wfirst_phaseb CPU comparison path currently supports only use_errors=0"))
+    polaxis = Int(passget(passvalue, :polaxis, 0))
+    zindex = Int.(collect(passget(passvalue, :zindex, [0, 0])))
+    zval_m = Float64.(collect(passget(passvalue, :zval_m, [0.0, 0.0])))
     use_hlc_dm_patterns = Int(passget(passvalue, :use_hlc_dm_patterns, 0))
     use_dm1 = Int(passget(passvalue, :use_dm1, 0))
     use_dm2 = Int(passget(passvalue, :use_dm2, 0))
@@ -107,11 +110,17 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
 
     n = n_default
     wf = prop_begin(diam, λm, n; beam_diam_fraction=pupil_diam_pix / n)
-    pupil = cfg.branch == :hlc ? data.shared.pupil_1024 : trim(Float64.(prop_fits_read(cfg.pupil_file)), n)
+    pupil = cfg.branch == :hlc ? data.shared.pupil_1024 : trim(Float64.(_phaseb_python_fits(cfg.pupil_file)), n)
     prop_multiply(wf, pupil)
+    if polaxis != 0
+        polmap(wf, joinpath(data_root, "pol", "new_toma"), pupil_diam_pix, polaxis)
+    end
     prop_define_entrance(wf)
     _apply_source_offset!(wf, pupil_diam_pix, λ0, λm, source_x_offset, source_y_offset)
     prop_lens(wf, fl_pri)
+    if !isempty(zindex) && zindex[1] != 0
+        Proper.prop_zernikes(wf, zindex, zval_m)
+    end
 
     prop_propagate(wf, d_pri_sec, "secondary")
     prop_lens(wf, fl_sec)
@@ -160,7 +169,7 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     prop_lens(wf, fl_oap4)
     prop_propagate(wf, d_oap4_pupilmask, "PUPIL_MASK")
     if cfg.branch == :spc && use_pupil_mask != 0
-        pupil_mask = trim(Float64.(prop_fits_read(cfg.pupil_mask_file)), n)
+        pupil_mask = trim(Float64.(_phaseb_python_fits(cfg.pupil_mask_file)), n)
         prop_multiply(wf, pupil_mask)
     end
 
@@ -184,7 +193,7 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
             phaseb_ffts!(field_to_fpm, phaseb_fft_cache(ws, n), +1)
             field_mft = phaseb_field(ws, cfg.n_mft)
             phaseb_center_copy!(field_mft, field_to_fpm)
-            fpm = ComplexF64.(prop_fits_read(cfg.fpm_file))
+            fpm = ComplexF64.(_phaseb_python_fits(cfg.fpm_file))
             nfpm = size(fpm, 2)
             fpm_sampling_lam = cfg.fpm_sampling * cfg.fpm_sampling_lambda_m / λm
             field_spc = mft2(field_mft, fpm_sampling_lam, pupil_diam_pix, nfpm, -1)
@@ -208,7 +217,7 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     phaseb_half_shift!(wf.field, field_from_lyot)
 
     if use_lyot_stop != 0 && cfg.lyot_stop_file !== nothing
-        lyot = cfg.branch == :hlc ? data.shared.lyot_1024 : trim(Float64.(prop_fits_read(cfg.lyot_stop_file)), n)
+        lyot = cfg.branch == :hlc ? data.shared.lyot_1024 : trim(Float64.(_phaseb_python_fits(cfg.lyot_stop_file)), n)
         prop_multiply(wf, lyot)
     end
 

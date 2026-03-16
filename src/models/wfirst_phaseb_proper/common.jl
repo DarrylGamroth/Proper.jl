@@ -159,17 +159,17 @@ end
 
 function load_phaseb_hlc_assets(data_root::AbstractString, wavelengths_m::AbstractVector{<:Real})
     hlc_dir = joinpath(data_root, "hlc_20190210")
-    pupil = Float64.(prop_fits_read(joinpath(hlc_dir, "run461_pupil_rotated.fits")))
-    lyot = Float64.(prop_fits_read(joinpath(hlc_dir, "run461_lyot.fits")))
-    dm1wfe = Float64.(prop_fits_read(joinpath(hlc_dir, "run461_dm1wfe.fits")))
-    dm2wfe = Float64.(prop_fits_read(joinpath(hlc_dir, "run461_dm2wfe.fits")))
-    dm2mask = Float64.(prop_fits_read(joinpath(hlc_dir, "run461_dm2mask.fits")))
+    pupil = Float64.(_phaseb_python_fits(joinpath(hlc_dir, "run461_pupil_rotated.fits")))
+    lyot = Float64.(_phaseb_python_fits(joinpath(hlc_dir, "run461_lyot.fits")))
+    dm1wfe = Float64.(_phaseb_python_fits(joinpath(hlc_dir, "run461_dm1wfe.fits")))
+    dm2wfe = Float64.(_phaseb_python_fits(joinpath(hlc_dir, "run461_dm2wfe.fits")))
+    dm2mask = Float64.(_phaseb_python_fits(joinpath(hlc_dir, "run461_dm2mask.fits")))
     occulters = Dict{Float64, Matrix{ComplexF64}}()
     for λm0 in wavelengths_m
         λm = Float64(λm0)
         label = _requested_occ_label(λm)
-        real_part = Float64.(prop_fits_read(joinpath(hlc_dir, "run461_occ_lam$(label)theta6.69polp_real_rotated.fits")))
-        imag_part = Float64.(prop_fits_read(joinpath(hlc_dir, "run461_occ_lam$(label)theta6.69polp_imag_rotated.fits")))
+        real_part = Float64.(_phaseb_python_fits(joinpath(hlc_dir, "run461_occ_lam$(label)theta6.69polp_real_rotated.fits")))
+        imag_part = Float64.(_phaseb_python_fits(joinpath(hlc_dir, "run461_occ_lam$(label)theta6.69polp_imag_rotated.fits")))
         occulters[λm] = ComplexF64.(real_part .+ im .* imag_part)
     end
     return PhaseBHLCAssets(String(data_root), pupil, lyot, dm1wfe, dm2wfe, dm2mask, occulters)
@@ -557,6 +557,35 @@ function phaseb_case_definitions()
                 "source_x_offset" => 3.0,
             ),
             description="Full HLC model with nonzero lambda-D source offset",
+        ),
+        "full_hlc_polaxis_10" => (
+            func=wfirst_phaseb,
+            output_dim=128,
+            wavelengths_um=hlc_wavelengths_um,
+            wavelengths_m=hlc_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "hlc",
+                "use_hlc_dm_patterns" => 1,
+                "final_sampling_lam0" => 0.1,
+                "use_errors" => 0,
+                "polaxis" => 10,
+            ),
+            description="Full HLC model with mean polarization aberrations",
+        ),
+        "full_hlc_zernike" => (
+            func=wfirst_phaseb,
+            output_dim=128,
+            wavelengths_um=hlc_wavelengths_um,
+            wavelengths_m=hlc_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "hlc",
+                "use_hlc_dm_patterns" => 1,
+                "final_sampling_lam0" => 0.1,
+                "use_errors" => 0,
+                "zindex" => [4, 7],
+                "zval_m" => [20e-9, -15e-9],
+            ),
+            description="Full HLC model with injected Zernike aberrations",
         ),
         "full_hlc_dm_pair" => (
             func=wfirst_phaseb,

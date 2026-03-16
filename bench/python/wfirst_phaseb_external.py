@@ -279,6 +279,33 @@ def case_definitions(wfirst_phaseb, wfirst_phaseb_compact):
             },
             "description": "Full HLC model with nonzero lambda-D source offset",
         },
+        "full_hlc_polaxis_10": {
+            "func": wfirst_phaseb,
+            "output_dim": 128,
+            "wavelengths_m": hlc_lams_m,
+            "passvalue": {
+                "cor_type": "hlc",
+                "use_hlc_dm_patterns": 1,
+                "final_sampling_lam0": 0.1,
+                "use_errors": 0,
+                "polaxis": 10,
+            },
+            "description": "Full HLC model with mean polarization aberrations",
+        },
+        "full_hlc_zernike": {
+            "func": wfirst_phaseb,
+            "output_dim": 128,
+            "wavelengths_m": hlc_lams_m,
+            "passvalue": {
+                "cor_type": "hlc",
+                "use_hlc_dm_patterns": 1,
+                "final_sampling_lam0": 0.1,
+                "use_errors": 0,
+                "zindex": [4, 7],
+                "zval_m": [20e-9, -15e-9],
+            },
+            "description": "Full HLC model with injected Zernike aberrations",
+        },
         "full_hlc_dm_pair": {
             "func": wfirst_phaseb,
             "output_dim": 128,

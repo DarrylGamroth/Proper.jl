@@ -220,6 +220,18 @@ end
         prop_add_phase(wf_manual, 2 .* dmap_manual)
         @test wf_apply.field ≈ wf_manual.field
     end
+
+    @testset "prop_zernikes application parity" begin
+        wf_apply = prop_begin(1.0, 550e-9, 64)
+        wf_manual = prop_begin(1.0, 550e-9, 64)
+
+        zmap_apply = prop_zernikes(wf_apply, [4, 7], [20e-9, -15e-9])
+        zmap_manual = prop_zernikes(wf_manual, [4, 7], [20e-9, -15e-9]; no_apply=true)
+
+        @test zmap_apply ≈ zmap_manual
+        prop_add_phase(wf_manual, zmap_manual)
+        @test wf_apply.field ≈ wf_manual.field
+    end
 end
 
 @testset "Phase 3 FITS/map basics" begin

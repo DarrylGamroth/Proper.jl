@@ -1,35 +1,48 @@
-@inline function _uniform_lagrange4(x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, xq::Real)
+@inline function _uniform_cubic_spline(x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, xq::Real)
     n = length(x)
+    n == length(y) || throw(ArgumentError("x/y size mismatch"))
     n >= 4 || throw(ArgumentError("need at least 4 samples for cubic interpolation"))
-    if xq <= x[2]
-        idxs = 1:4
-    elseif xq >= x[end - 1]
-        idxs = (n - 3):n
-    else
-        upper = searchsortedfirst(x, xq)
-        center = clamp(upper - 1, 2, n - 2)
-        idxs = (center - 1):(center + 2)
-    end
 
-    acc = zero(promote_type(eltype(x), eltype(y), typeof(float(xq))))
-    for j in idxs
-        term = float(y[j])
-        xj = float(x[j])
-        for m in idxs
-            m == j && continue
-            term *= (float(xq) - float(x[m])) / (xj - float(x[m]))
-        end
-        acc += term
+    xqf = clamp(float(xq), float(first(x)), float(last(x)))
+    xf = float.(x)
+    yf = float.(y)
+    h = diff(xf)
+    all(isapprox(hi, h[1]; rtol=0, atol=eps(h[1]) * 8) for hi in h) || throw(ArgumentError("expected uniform wavelength spacing"))
+    h0 = h[1]
+
+    A = zeros(Float64, n, n)
+    b = zeros(Float64, n)
+
+    A[1, 1] = -1 / h0
+    A[1, 2] = 2 / h0
+    A[1, 3] = -1 / h0
+    for i in 2:(n - 1)
+        him1 = h[i - 1]
+        hi = h[i == n ? n - 1 : i]
+        A[i, i - 1] = him1
+        A[i, i] = 2 * (him1 + hi)
+        A[i, i + 1] = hi
+        b[i] = 6 * (((yf[i + 1] - yf[i]) / hi) - ((yf[i] - yf[i - 1]) / him1))
     end
-    return acc
+    A[n, n - 2] = -1 / h0
+    A[n, n - 1] = 2 / h0
+    A[n, n] = -1 / h0
+
+    m = A \ b
+    upper = searchsortedfirst(xf, xqf)
+    idx = clamp(upper - 1, 1, n - 1)
+    hi = xf[idx + 1] - xf[idx]
+    a = (xf[idx + 1] - xqf) / hi
+    c = (xqf - xf[idx]) / hi
+    return a * yf[idx] + c * yf[idx + 1] + ((a^3 - a) * m[idx] + (c^3 - c) * m[idx + 1]) * hi^2 / 6
 end
 
 function polab(polfile::AbstractString, lambda_m::Real, pupil_diam_pix::Real, condition::Integer)
     dir_out = abs(condition) == 1 ? 1 : 2
     dir_in = condition < 0 ? 1 : 2
 
-    zamp_array = Proper.prop_fits_read(polfile * "_amp.fits")
-    zpha_array = Proper.prop_fits_read(polfile * "_pha.fits")
+    zamp_array = _phaseb_python_fits(polfile * "_amp.fits")
+    zpha_array = _phaseb_python_fits(polfile * "_pha.fits")
     nlam = size(zamp_array, 3)
     lam_array_m = nlam == 6 ? ((0:5) .* 100 .+ 450) .* 1.0e-9 : ((0:10) .* 50 .+ 450) .* 1.0e-9
     lam = clamp(float(lambda_m), first(lam_array_m), last(lam_array_m))
@@ -37,8 +50,8 @@ function polab(polfile::AbstractString, lambda_m::Real, pupil_diam_pix::Real, co
     zamp = zeros(Float64, 22)
     zpha = zeros(Float64, 22)
     @inbounds for iz in 1:22
-        zamp[iz] = _uniform_lagrange4(lam_array_m, vec(Float64.(zamp_array[dir_out, dir_in, :, iz])), lam)
-        zpha[iz] = _uniform_lagrange4(lam_array_m, vec(Float64.(zpha_array[dir_out, dir_in, :, iz])), lam)
+        zamp[iz] = _uniform_cubic_spline(lam_array_m, vec(Float64.(zamp_array[dir_out, dir_in, :, iz])), lam)
+        zpha[iz] = _uniform_cubic_spline(lam_array_m, vec(Float64.(zpha_array[dir_out, dir_in, :, iz])), lam)
     end
 
     n = Int(round(float(pupil_diam_pix) * 1.1))

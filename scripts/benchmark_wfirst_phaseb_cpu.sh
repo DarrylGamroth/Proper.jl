@@ -143,4 +143,4 @@ for case_name in "${cases[@]}"; do
   run_step "Julia WFIRST Phase B ${pretty_case}" julia --project=. bench/julia/wfirst_phaseb/run_case.jl --case "${case_name}" --data-root "${WFIRST_PHASEB_DATA_ROOT}" "${julia_extra_args[@]}"
 done
 
-julia --project=. bench/julia/wfirst_phaseb/compare_cpu.jl --cases "$(IFS=,; echo "${cases[*]}")"
+"${PYTHON_BIN}" bench/python/compare_wfirst_phaseb_outputs.py --cases "$(IFS=,; echo "${cases[*]}")"

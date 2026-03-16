@@ -17,6 +17,13 @@ phaseb_default_data_root() = _data_dir_ref[]
 data_dir() = _data_dir_ref[]
 set_data_dir!(path::AbstractString) = (_data_dir_ref[] = abspath(path))
 
+@inline function _phaseb_python_fits(path::AbstractString)
+    data = prop_fits_read(path)
+    nd = ndims(data)
+    nd <= 1 && return data
+    return permutedims(data, Tuple(nd:-1:1))
+end
+
 include("trim.jl")
 include("ffts.jl")
 include("mft2.jl")

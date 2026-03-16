@@ -52,6 +52,8 @@ using Proper.WFIRSTPhaseBProper
         "compact_hlc_source_offset",
         "compact_hlc_dm_pair",
         "full_hlc_source_offset",
+        "full_hlc_polaxis_10",
+        "full_hlc_zernike",
         "full_hlc_dm_pair",
         "full_hlc_no_field_stop",
         "full_spc_spec_long_no_pupil_mask",
@@ -71,6 +73,8 @@ using Proper.WFIRSTPhaseBProper
     @test cases["compact_hlc_dm_pair"].passvalue["use_dm1"] == 1
     @test size(cases["compact_hlc_dm_pair"].passvalue["dm1_m"]) == (48, 48)
     @test cases["full_hlc_source_offset"].passvalue["source_x_offset"] == 3.0
+    @test cases["full_hlc_polaxis_10"].passvalue["polaxis"] == 10
+    @test cases["full_hlc_zernike"].passvalue["zindex"] == [4, 7]
     @test cases["full_hlc_dm_pair"].passvalue["use_dm2"] == 1
     @test size(cases["full_hlc_dm_pair"].passvalue["dm2_m"]) == (48, 48)
     @test cases["full_hlc_no_field_stop"].passvalue["use_field_stop"] == 0
@@ -142,9 +146,9 @@ using Proper.WFIRSTPhaseBProper
             @test isfile(joinpath(copied_examples, "wfirst_phaseb_reference.jl"))
 
             polroot = joinpath(d, "coeffs")
-            zamp = zeros(Float64, 2, 2, 6, 22)
-            zpha = zeros(Float64, 2, 2, 6, 22)
-            zamp[1, 1, :, 1] .= 2.0
+            zamp = zeros(Float64, 22, 6, 2, 2)
+            zpha = zeros(Float64, 22, 6, 2, 2)
+            zamp[1, :, 1, 1] .= 2.0
             prop_fits_write(polroot * "_amp.fits", zamp)
             prop_fits_write(polroot * "_pha.fits", zpha)
 
