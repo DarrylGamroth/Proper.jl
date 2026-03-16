@@ -19,6 +19,9 @@ This guide summarizes compatibility expectations for users migrating prescriptio
 - `prop_end`: integer-safe centered extraction semantics.
 - `prop_state`: full wavefront state restoration in-place.
 - `prop_psd_errormap`: file reuse/write semantics and parity quirk handling are explicitly implemented.
+- `prop_rotate`: defaults to MATLAB-style linear interpolation; request cubic explicitly with `METH="cubic"` when needed.
+- `prop_pixellate`: public API follows upstream PROPER PSF-integration semantics (`image, sampling_in, sampling_out, n_out`) rather than a simple integer box-downsample helper.
+- `prop_writemap`: exported `XC_PIX` / `YC_PIX` FITS metadata now follows the PROPER/MATLAB `floor(n/2)+1` convention.
 
 ## Parity Interpretation
 - Parity acceptance is evaluated with combined relative + absolute metrics.

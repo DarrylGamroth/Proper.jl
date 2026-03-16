@@ -506,3 +506,16 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Consequences:
   - Odd-grid 8th-order masks now match MATLAB semantics.
   - Existing even-grid results remain unchanged.
+
+## D-0046: `prop_writemap` Header Centers Use PROPER/MATLAB Coordinates
+- Date: 2026-03-16
+- Status: Accepted
+- Context:
+  - `prop_writemap` writes `XC_PIX` / `YC_PIX` metadata that users may inspect or feed to external PROPER tooling.
+  - MATLAB writes these center coordinates as `floor(n/2)+1`, while the Julia implementation was writing `n÷2`.
+  - The difference is visible on odd and non-square maps and is user-facing metadata, not an internal interpolation detail.
+- Decision:
+  - Write `XC_PIX` and `YC_PIX` using the PROPER/MATLAB convention `floor(n/2)+1`.
+- Consequences:
+  - FITS maps written by Julia now expose center metadata consistent with PROPER/MATLAB expectations.
+  - This does not change the accepted internal `prop_resamplemap` coordinate contract; it only fixes exported metadata.

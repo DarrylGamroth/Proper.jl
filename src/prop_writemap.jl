@@ -11,8 +11,8 @@ function prop_writemap(dmap::AbstractMatrix, filename::AbstractString; kwargs...
     hdr = Dict{String,Tuple{Any,String}}(
         "MAPTYPE" => (maptype, "error map type"),
         "X_UNIT" => ("meters", "X & Y units"),
-        "XC_PIX" => (nx ÷ 2, "Center X pixel coordinate"),
-        "YC_PIX" => (ny ÷ 2, "Center Y pixel coordinate"),
+        "XC_PIX" => (fld(nx, 2) + 1, "Center X pixel coordinate"),
+        "YC_PIX" => (fld(ny, 2) + 1, "Center Y pixel coordinate"),
     )
     if maptype != "amplitude"
         hdr["Z_UNIT"] = ("meters", "Error units")

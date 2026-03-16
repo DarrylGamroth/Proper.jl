@@ -282,6 +282,17 @@ end
         prop_fits_write(f2, dmap)
         r2 = prop_fits_read(f2)
         @test size(r2) == size(dmap)
+
+        odd = randn(5, 7)
+        f3 = joinpath(d, "odd_map.fits")
+        prop_writemap(odd, f3; SAMPLING=wf.sampling_m)
+        _, hdr3 = Proper.prop_fits_read_with_header(f3)
+        @test hdr3["XC_PIX"] == 4
+        @test hdr3["YC_PIX"] == 3
+
+        wf_odd = prop_begin(1.0, 500e-9, 5)
+        read_odd = prop_readmap(wf_odd, f3; SAMPLING=wf_odd.sampling_m)
+        @test size(read_odd) == size(wf_odd.field)
     end
 end
 
