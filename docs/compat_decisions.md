@@ -392,3 +392,18 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Consequences:
   - Future array-order-sensitive bugs should be evaluated against both the Python executable baseline and the MATLAB column-major reference before changing core semantics.
   - Python-order accommodations should remain local to compatibility layers or model-specific loaders unless a core PROPER routine is shown to be semantically wrong.
+
+## D-0039: `prop_rotate` Follows Python Cubic-Interpolation Coordinates
+- Date: 2026-03-16
+- Status: Accepted
+- Context:
+  - MATLAB `prop_rotate` delegates to `interp2` with the default one-based image-coordinate convention and centers at `fix(nx/2)+1`, `fix(ny/2)+1`.
+  - The executable Python 3.3.4 baseline uses `prop_cubic_conv`, which in turn uses the upstream `cubic_conv_c.c` zero-based coordinate convention. That makes the cubic `prop_rotate` path semantically different from MATLAB on small synthetic arrays even at `theta = 0`.
+  - Julia `prop_resamplemap` already matches the MATLAB source formulation, but `prop_rotate` must choose one executable convention.
+- Decision:
+  - Keep `prop_rotate` aligned with the executable Python baseline for both CPU and KA cubic/linear rotate kernels.
+  - Document the MATLAB difference explicitly instead of trying to force both behaviors through one implementation.
+  - Continue to use MATLAB as the semantic reference for column-major-sensitive routines, but not when that would break the accepted executable Python baseline without a broader compatibility decision.
+- Consequences:
+  - `prop_rotate` regression tests should encode the Python baseline behavior, not MATLAB `interp2` identity expectations on tiny arrays.
+  - `prop_resamplemap` remains a separate MATLAB-aligned path and should not be conflated with `prop_rotate` coordinate semantics.
