@@ -16,6 +16,41 @@ using Random
         @test !isapprox(mx, my; atol=0, rtol=0)
     end
 
+    @testset "prop_resamplemap axis construction matches MATLAB formula" begin
+        wf = prop_begin(1.0, 500e-9, 5)
+        dmap = reshape(collect(1.0:25.0), 5, 5)
+        pix = wf.sampling_m
+
+        # MATLAB:
+        # o1x = ([1:nx] - fix(nx/2) - 1) * bm.dx / pxsc + cpx - xshift/pxsc
+        # o1y = ([1:ny] - fix(ny/2) - 1) * bm.dx / pxsc + cpy - yshift/pxsc
+        xshift = pix
+        yshift = -pix
+        xcoords = ((collect(1.0:5.0) .- floor(5 / 2) .- 1) .* (wf.sampling_m / pix)) .+ 2.0 .- xshift / pix
+        ycoords = ((collect(1.0:5.0) .- floor(5 / 2) .- 1) .* (wf.sampling_m / pix)) .+ 2.0 .- yshift / pix
+
+        ref = Proper.prop_cubic_conv_grid!(Matrix{Float64}(undef, 5, 5), dmap, xcoords, ycoords)
+        got = prop_resamplemap(wf, dmap, pix, 2.0, 2.0, xshift, yshift)
+        @test got == ref
+    end
+
+    @testset "prop_magnify QUICK axis construction matches MATLAB formula" begin
+        a = reshape(collect(1.0:16.0), 4, 4)
+        mag = 2.0
+        nox = 8
+        noy = 8
+        cx = floor(size(a, 2) / 2) + 1
+        cy = floor(size(a, 1) / 2) + 1
+        sx = floor(nox / 2) + 1
+        sy = floor(noy / 2) + 1
+        xcoords = ((collect(1.0:nox) .- sx) ./ mag) .+ cx
+        ycoords = ((collect(1.0:noy) .- sy) ./ mag) .+ cy
+
+        ref = Proper.prop_cubic_conv_grid!(Matrix{Float64}(undef, noy, nox), a, xcoords, ycoords)
+        got = prop_magnify(a, mag, nox; QUICK=true)
+        @test got == ref
+    end
+
     @testset "prop_end extract semantics are integer-safe" begin
         wf = prop_begin(1.0, 500e-9, 15)
         out5, _ = prop_end(wf; extract=5)
