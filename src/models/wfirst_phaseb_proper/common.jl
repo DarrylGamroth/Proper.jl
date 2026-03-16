@@ -352,8 +352,8 @@ function _apply_source_offset!(wf, pupil_diam_pix::Real, lambda0_m::Real, lambda
     coords = (collect(0:(n - 1)) .- (n ÷ 2)) ./ (float(pupil_diam_pix) / 2.0)
     x = repeat(reshape(coords, :, 1), 1, n)
     y = repeat(reshape(coords, 1, :), n, 1)
-    wf.field .*= cis.(π .* (xtilt_lam .* x .+ ytilt_lam .* y))
-    return wf
+    tilt = cis.(π .* (xtilt_lam .* x .+ ytilt_lam .* y))
+    return prop_multiply(wf, tilt)
 end
 
 

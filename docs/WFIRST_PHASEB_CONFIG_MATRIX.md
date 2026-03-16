@@ -6,7 +6,7 @@ Representative configuration-matrix coverage for the Julia reference port and th
 | --- | --- | --- | --- | --- | --- |
 | Coronagraph family | `cor_type` | `hlc`, `spc-spec_short`, `spc-spec_long`, `spc-ifs_short`, `spc-ifs_long`, `spc-wide`, `none` | `scripts/verify_wfirst_phaseb_matrix.sh` | Covered | `hlc_erkin` still needs dedicated parity cases and compatible public data. |
 | Model size | prescription path | `compact`, `full` | `scripts/verify_wfirst_phaseb_matrix.sh` | Covered | Matrix includes both compact and full runs for HLC and SPC. |
-| Source offset | source tilt | zero, nonzero lambda-D | `compact_hlc_source_offset`, `full_hlc_source_offset` | Gap | Both compact and full HLC source-offset parity rows still expose a real Python-vs-Julia mismatch and remain under investigation. |
+| Source offset | source tilt | zero, nonzero lambda-D | `compact_hlc_source_offset`, `full_hlc_source_offset` | Covered | HLC source-offset parity now matches at machine precision on both compact and full rows. |
 | Source offset conversion | mas to `lambda/D` | zero, nonzero mas | `test/test_wfirst_phaseb_reference.jl` | Covered | Helper-level coverage; not yet a separate Python-vs-Julia parity row. |
 | HLC field stop | `use_field_stop` | `1`, `0` | `full_hlc`, `full_hlc_no_field_stop` | Covered | Full HLC path only. |
 | SPC pupil mask | `use_pupil_mask` | `1`, `0` | `full_spc_spec_long`, `full_spc_spec_long_no_pupil_mask` | Covered | Spec-long branch only. |
