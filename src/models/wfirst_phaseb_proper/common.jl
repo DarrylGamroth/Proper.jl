@@ -157,26 +157,52 @@ function _requested_occ_label(λm::Real)
     return OLD_LAM_OCCS[idx]
 end
 
-function load_phaseb_hlc_assets(data_root::AbstractString, wavelengths_m::AbstractVector{<:Real})
-    hlc_dir = joinpath(data_root, "hlc_20190210")
-    pupil = Float64.(_phaseb_python_fits(joinpath(hlc_dir, "run461_pupil_rotated.fits")))
-    lyot = Float64.(_phaseb_python_fits(joinpath(hlc_dir, "run461_lyot.fits")))
-    dm1wfe = Float64.(_phaseb_python_fits(joinpath(hlc_dir, "run461_dm1wfe.fits")))
-    dm2wfe = Float64.(_phaseb_python_fits(joinpath(hlc_dir, "run461_dm2wfe.fits")))
-    dm2mask = Float64.(_phaseb_python_fits(joinpath(hlc_dir, "run461_dm2mask.fits")))
+function load_phaseb_hlc_assets(cor_type::AbstractString, data_root::AbstractString, wavelengths_m::AbstractVector{<:Real})
+    hlc_dir, pupil_file, lyot_file, dm1_file, dm2_file, dm2mask_file, labels, labels_m, occ_prefix = if cor_type == "hlc"
+        (
+            joinpath(data_root, "hlc_20190210"),
+            "run461_pupil_rotated.fits",
+            "run461_lyot.fits",
+            "run461_dm1wfe.fits",
+            "run461_dm2wfe.fits",
+            "run461_dm2mask.fits",
+            OLD_LAM_OCCS,
+            OLD_LAM_OCCS_M,
+            "run461_occ_lam",
+        )
+    elseif cor_type == "hlc_erkin"
+        (
+            joinpath(data_root, "hlc_20190206_v3"),
+            "dsn17d_run2_pup310_fpm2048_pupil.fits",
+            "dsn17d_run2_pup310_fpm2048_lyot.fits",
+            "dsn17d_run2_pup310_fpm2048_dm1wfe.fits",
+            "dsn17d_run2_pup310_fpm2048_dm2wfe.fits",
+            "dsn17d_run2_pup310_fpm2048_dm2mask.fits",
+            ERKIN_LAM_OCCS,
+            ERKIN_LAM_OCCS_M,
+            "dsn17d_run2_pup310_fpm2048_occ_lam",
+        )
+    else
+        throw(ArgumentError("Unsupported HLC cor_type for asset loading: $(cor_type)"))
+    end
+    pupil = Float64.(_phaseb_python_fits(joinpath(hlc_dir, pupil_file)))
+    lyot = Float64.(_phaseb_python_fits(joinpath(hlc_dir, lyot_file)))
+    dm1wfe = Float64.(_phaseb_python_fits(joinpath(hlc_dir, dm1_file)))
+    dm2wfe = Float64.(_phaseb_python_fits(joinpath(hlc_dir, dm2_file)))
+    dm2mask = Float64.(_phaseb_python_fits(joinpath(hlc_dir, dm2mask_file)))
     occulters = Dict{Float64, Matrix{ComplexF64}}()
     for λm0 in wavelengths_m
         λm = Float64(λm0)
-        label = _requested_occ_label(λm)
-        real_part = Float64.(_phaseb_python_fits(joinpath(hlc_dir, "run461_occ_lam$(label)theta6.69polp_real_rotated.fits")))
-        imag_part = Float64.(_phaseb_python_fits(joinpath(hlc_dir, "run461_occ_lam$(label)theta6.69polp_imag_rotated.fits")))
+        label = _requested_occ_label(labels, labels_m, λm)
+        real_part = Float64.(_phaseb_python_fits(joinpath(hlc_dir, "$(occ_prefix)$(label)theta6.69" * (cor_type == "hlc_erkin" ? "pols" : "polp") * "_real_rotated.fits")))
+        imag_part = Float64.(_phaseb_python_fits(joinpath(hlc_dir, "$(occ_prefix)$(label)theta6.69" * (cor_type == "hlc_erkin" ? "pols" : "polp") * "_imag_rotated.fits")))
         occulters[λm] = ComplexF64.(real_part .+ im .* imag_part)
     end
     return PhaseBHLCAssets(String(data_root), pupil, lyot, dm1wfe, dm2wfe, dm2mask, occulters)
 end
 
-function prepare_phaseb_shared_assets(data_root::AbstractString, wavelengths_m::AbstractVector{<:Real})
-    raw = load_phaseb_hlc_assets(data_root, wavelengths_m)
+function prepare_phaseb_shared_assets(cor_type::AbstractString, data_root::AbstractString, wavelengths_m::AbstractVector{<:Real})
+    raw = load_phaseb_hlc_assets(cor_type, data_root, wavelengths_m)
     occulters_2048 = Dict{Float64, Matrix{ComplexF64}}()
     for (λm, occ) in raw.occulters
         occulters_2048[Float64(λm)] = phaseb_prepare_complex(occ, 2048)
@@ -197,7 +223,8 @@ end
         return assets
     end
     data_root = String(passget(passvalue, :data_dir, phaseb_default_data_root()))
-    shared = prepare_phaseb_shared_assets(data_root, [λm])
+    cor_type = String(passget(passvalue, :cor_type, "hlc"))
+    shared = prepare_phaseb_shared_assets(cor_type, data_root, [λm])
     return PhaseBPreparedAssets(shared, _nearest_occulter(shared, λm), PhaseBModelWorkspace(output_dim))
 end
 
@@ -413,6 +440,31 @@ function phaseb_case_definitions()
                 "use_errors" => 1,
             ),
             description="Full HLC model with optical surface phase errors over 10% band",
+        ),
+        "compact_hlc_erkin" => (
+            func=wfirst_phaseb_compact,
+            output_dim=128,
+            wavelengths_um=hlc_wavelengths_um,
+            wavelengths_m=hlc_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "hlc_erkin",
+                "use_hlc_dm_patterns" => 1,
+                "final_sampling_lam0" => 0.1,
+            ),
+            description="Compact HLC Erkin compatibility model over 10% band",
+        ),
+        "full_hlc_erkin" => (
+            func=wfirst_phaseb,
+            output_dim=128,
+            wavelengths_um=hlc_wavelengths_um,
+            wavelengths_m=hlc_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "hlc_erkin",
+                "use_hlc_dm_patterns" => 1,
+                "final_sampling_lam0" => 0.1,
+                "use_errors" => 0,
+            ),
+            description="Full HLC Erkin compatibility model over 10% band",
         ),
         "compact_spc_spec_long" => (
             func=wfirst_phaseb_compact,
@@ -676,7 +728,7 @@ function prepare_phaseb_models(case::NamedTuple; data_root::AbstractString=phase
     cor_type = String(case.passvalue["cor_type"])
     shared = nothing
     if startswith(cor_type, "hlc")
-        shared = prepare_phaseb_shared_assets(data_root, case.wavelengths_m)
+        shared = prepare_phaseb_shared_assets(cor_type, data_root, case.wavelengths_m)
     end
     models = map(enumerate(zip(case.wavelengths_um, case.wavelengths_m))) do (i, (λum, λm))
         if shared === nothing

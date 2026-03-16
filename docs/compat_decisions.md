@@ -443,3 +443,19 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   - Representative `use_errors=1` HLC and SPC rows now match the executable Python baseline on the shared public-data compatibility root at the same numerical-fidelity scale as the rest of the WFIRST matrix.
   - The repository remains explicit that this is parity against the executable Python baseline on shared public data, not historical bitwise equivalence to the unavailable original private error-map tree.
   - Any future core `prop_errormap` semantic change still requires core PROPER evidence and should not be inferred from WFIRST alone.
+
+## D-0042: WFIRST `hlc_erkin` Uses A Public-Data Compatibility Alias
+- Date: 2026-03-16
+- Status: Accepted
+- Context:
+  - The executable Python WFIRST Phase B baseline includes an `hlc_erkin` branch that expects a private legacy asset tree under `hlc_20190206_v3/` with `dsn17d_run2_pup310_fpm2048_*` filenames.
+  - That original private dataset is not available in this repository, so direct historical parity against the original `hlc_erkin` files is not possible here.
+  - The same repository already uses explicit public-data compatibility mappings for SPC and WFIRST error-map validation when the original private trees are unavailable.
+- Decision:
+  - Extend the local compatibility-data builder to synthesize the legacy `hlc_20190206_v3/` layout expected by the Python baseline from the nearest public HLC asset family available in the Roman preflight archive, `hlc_20190210b`.
+  - Validate Julia-vs-Python `hlc_erkin` parity against that shared public-data compatibility root rather than the unavailable original private `hlc_20190206_v3` dataset.
+  - Document this explicitly as a feature-parity and numeric-fidelity result on the shared alias, not as a claim of bitwise recovery of the private historical asset set.
+- Consequences:
+  - `compact_hlc_erkin` and `full_hlc_erkin` are executable and numerically matched in this repository using the same public-data compatibility root for both Python and Julia.
+  - The WFIRST configuration matrix can mark `hlc_erkin` as covered for this repository's shared public-data baseline.
+  - Future availability of the original private `hlc_20190206_v3` tree would justify a separate historical-parity check, but it is not required for the current public, reproducible validation surface.

@@ -18,6 +18,11 @@ OLD_LAM_OCCS = [
     "5.75e-07", "5.78194444444e-07", "5.81388888889e-07", "5.821875e-07", "5.84583333333e-07", "5.87777777778e-07",
     "5.89375e-07", "5.90972222222e-07", "5.94166666667e-07", "5.965625e-07", "5.97361111111e-07", "6.00555555556e-07", "6.0375e-07",
 ]
+ERKIN_LAM_OCCS = [
+    "5.4625e-07", "5.4944e-07", "5.5264e-07", "5.5583e-07", "5.5903e-07", "5.6222e-07", "5.6542e-07",
+    "5.6861e-07", "5.7181e-07", "5.75e-07", "5.7819e-07", "5.8139e-07", "5.8458e-07", "5.8778e-07",
+    "5.9097e-07", "5.9417e-07", "5.9736e-07", "6.0056e-07", "6.0375e-07",
+]
 
 ERROR_MAP_ALIASES = {
     "wfirst_phaseb_PRIMARY_phase_error_V1.0.fits": "roman_phasec_PRIMARY_synthetic_phase_error_V1.0.fits",
@@ -72,6 +77,7 @@ def compat_root() -> Path:
 def compat_root_complete(root: Path) -> bool:
     required = [
         root / "hlc_20190210" / "run461_pupil_rotated.fits",
+        root / "hlc_20190206_v3" / "dsn17d_run2_pup310_fpm2048_pupil.fits",
         root / "spc_20190130" / "pupil_SPC-20190130_rotated.fits",
         root / "spc_20181220" / "pupil_SPC-20181220_1k_rotated.fits",
         root / "pol" / "new_toma_amp.fits",
@@ -134,28 +140,33 @@ def build_compat_root(force: bool = False) -> Path:
         if not available_wavelengths:
             raise RuntimeError("No HLC FPM transmission files found in Roman preflight archive")
 
-        direct_map = {
-            f"{hlc}/pupil_rotated.fits": out / "hlc_20190210" / "run461_pupil_rotated.fits",
-            f"{hlc}/lyot.fits": out / "hlc_20190210" / "run461_lyot.fits",
-            f"{hlc}/hlc_dm1.fits": out / "hlc_20190210" / "run461_dm1wfe.fits",
-            f"{hlc}/hlc_dm2.fits": out / "hlc_20190210" / "run461_dm2wfe.fits",
-            f"{hlc}/dm2mask.fits": out / "hlc_20190210" / "run461_dm2mask.fits",
-            f"{spc_spec}/pupil_SPC-20200617_1000_rotated.fits": out / "spc_20190130" / "pupil_SPC-20190130_rotated.fits",
-            f"{spc_spec}/SPM_SPC-20200617_1000_rounded9.fits": out / "spc_20190130" / "SPM_SPC-20190130.fits",
-            f"{spc_spec}/SPM_SPC-20200617_1000_rounded9_rotated.fits": out / "spc_20190130" / "SPM_SPC-20190130_rotated.fits",
-            f"{spc_spec}/fpm_0.05lamD.fits": out / "spc_20190130" / "fpm_0.05lamdivD.fits",
-            f"{spc_spec}/LS_SPC-20200617_1000.fits": out / "spc_20190130" / "LS_SPC-20190130.fits",
-            f"{spc_spec}/LS_SPC-20200617_500.fits": out / "spc_20190130" / "lyotstop_0.5mag.fits",
-            f"{spc_wide}/pupil_SPC-20200610_1000_rotated.fits": out / "spc_20181220" / "pupil_SPC-20181220_1k_rotated.fits",
-            f"{spc_wide}/SPM_SPC-20200610_1000_rounded9_gray.fits": out / "spc_20181220" / "SPM_SPC-20181220_1000_rounded9_gray.fits",
-            f"{spc_wide}/SPM_SPC-20200610_1000_rounded9_gray_rotated.fits": out / "spc_20181220" / "SPM_SPC-20181220_1000_rounded9_gray_rotated.fits",
-            f"{spc_wide}/FPM_SPC-20200610_0.1_lamc_div_D.fits": out / "spc_20181220" / "fpm_0.05lamdivD.fits",
-            f"{spc_wide}/LS_SPC-20200610_1000.fits": out / "spc_20181220" / "LS_SPC-20181220_1k.fits",
-            f"{spc_wide}/LS_SPC-20200610_500.fits": out / "spc_20181220" / "LS_half_symm_CGI180718_Str3.20pct_38D91_N500_pixel.fits",
-            f"{pol}/new_toma_amp.fits": out / "pol" / "new_toma_amp.fits",
-            f"{pol}/new_toma_pha.fits": out / "pol" / "new_toma_pha.fits",
-        }
-        for src, dst in direct_map.items():
+        direct_copies = [
+            (f"{hlc}/pupil_rotated.fits", out / "hlc_20190210" / "run461_pupil_rotated.fits"),
+            (f"{hlc}/lyot.fits", out / "hlc_20190210" / "run461_lyot.fits"),
+            (f"{hlc}/hlc_dm1.fits", out / "hlc_20190210" / "run461_dm1wfe.fits"),
+            (f"{hlc}/hlc_dm2.fits", out / "hlc_20190210" / "run461_dm2wfe.fits"),
+            (f"{hlc}/dm2mask.fits", out / "hlc_20190210" / "run461_dm2mask.fits"),
+            (f"{hlc}/pupil.fits", out / "hlc_20190206_v3" / "dsn17d_run2_pup310_fpm2048_pupil.fits"),
+            (f"{hlc}/lyot.fits", out / "hlc_20190206_v3" / "dsn17d_run2_pup310_fpm2048_lyot.fits"),
+            (f"{hlc}/hlc_dm1.fits", out / "hlc_20190206_v3" / "dsn17d_run2_pup310_fpm2048_dm1wfe.fits"),
+            (f"{hlc}/hlc_dm2.fits", out / "hlc_20190206_v3" / "dsn17d_run2_pup310_fpm2048_dm2wfe.fits"),
+            (f"{hlc}/dm2mask.fits", out / "hlc_20190206_v3" / "dsn17d_run2_pup310_fpm2048_dm2mask.fits"),
+            (f"{spc_spec}/pupil_SPC-20200617_1000_rotated.fits", out / "spc_20190130" / "pupil_SPC-20190130_rotated.fits"),
+            (f"{spc_spec}/SPM_SPC-20200617_1000_rounded9.fits", out / "spc_20190130" / "SPM_SPC-20190130.fits"),
+            (f"{spc_spec}/SPM_SPC-20200617_1000_rounded9_rotated.fits", out / "spc_20190130" / "SPM_SPC-20190130_rotated.fits"),
+            (f"{spc_spec}/fpm_0.05lamD.fits", out / "spc_20190130" / "fpm_0.05lamdivD.fits"),
+            (f"{spc_spec}/LS_SPC-20200617_1000.fits", out / "spc_20190130" / "LS_SPC-20190130.fits"),
+            (f"{spc_spec}/LS_SPC-20200617_500.fits", out / "spc_20190130" / "lyotstop_0.5mag.fits"),
+            (f"{spc_wide}/pupil_SPC-20200610_1000_rotated.fits", out / "spc_20181220" / "pupil_SPC-20181220_1k_rotated.fits"),
+            (f"{spc_wide}/SPM_SPC-20200610_1000_rounded9_gray.fits", out / "spc_20181220" / "SPM_SPC-20181220_1000_rounded9_gray.fits"),
+            (f"{spc_wide}/SPM_SPC-20200610_1000_rounded9_gray_rotated.fits", out / "spc_20181220" / "SPM_SPC-20181220_1000_rounded9_gray_rotated.fits"),
+            (f"{spc_wide}/FPM_SPC-20200610_0.1_lamc_div_D.fits", out / "spc_20181220" / "fpm_0.05lamdivD.fits"),
+            (f"{spc_wide}/LS_SPC-20200610_1000.fits", out / "spc_20181220" / "LS_SPC-20181220_1k.fits"),
+            (f"{spc_wide}/LS_SPC-20200610_500.fits", out / "spc_20181220" / "LS_half_symm_CGI180718_Str3.20pct_38D91_N500_pixel.fits"),
+            (f"{pol}/new_toma_amp.fits", out / "pol" / "new_toma_amp.fits"),
+            (f"{pol}/new_toma_pha.fits", out / "pol" / "new_toma_pha.fits"),
+        ]
+        for src, dst in direct_copies:
             extract_bytes(zf, src, dst)
 
         for lam_label in OLD_LAM_OCCS:
@@ -171,6 +182,22 @@ def build_compat_root(force: bool = False) -> Path:
                 ("imag_rotated.fits", imag_bytes),
             ):
                 dst = out / "hlc_20190210" / f"run461_occ_lam{lam_label}theta6.69polp_{suffix}"
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                dst.write_bytes(payload)
+
+        for lam_label in ERKIN_LAM_OCCS:
+            requested_lam_m = float(lam_label)
+            nearest_lam_m = min(available_wavelengths, key=lambda candidate: abs(candidate - requested_lam_m))
+            stem = f"hlc_fpm_trans_{nearest_lam_m * 1.0e6:0.8f}um"
+            real_bytes = zf.read(f"{hlc}/{stem}_real.fits")
+            imag_bytes = zf.read(f"{hlc}/{stem}_imag.fits")
+            for suffix, payload in (
+                ("real.fits", real_bytes),
+                ("imag.fits", imag_bytes),
+                ("real_rotated.fits", real_bytes),
+                ("imag_rotated.fits", imag_bytes),
+            ):
+                dst = out / "hlc_20190206_v3" / f"dsn17d_run2_pup310_fpm2048_occ_lam{lam_label}theta6.69pols_{suffix}"
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 dst.write_bytes(payload)
 

@@ -147,6 +147,29 @@ def case_definitions(wfirst_phaseb, wfirst_phaseb_compact):
             },
             "description": "Full HLC model with optical surface phase errors over 10% band",
         },
+        "compact_hlc_erkin": {
+            "func": wfirst_phaseb_compact,
+            "output_dim": 128,
+            "wavelengths_m": hlc_lams_m,
+            "passvalue": {
+                "cor_type": "hlc_erkin",
+                "use_hlc_dm_patterns": 1,
+                "final_sampling_lam0": 0.1,
+            },
+            "description": "Compact HLC Erkin compatibility model over 10% band",
+        },
+        "full_hlc_erkin": {
+            "func": wfirst_phaseb,
+            "output_dim": 128,
+            "wavelengths_m": hlc_lams_m,
+            "passvalue": {
+                "cor_type": "hlc_erkin",
+                "use_hlc_dm_patterns": 1,
+                "final_sampling_lam0": 0.1,
+                "use_errors": 0,
+            },
+            "description": "Full HLC Erkin compatibility model over 10% band",
+        },
         "compact_spc_spec_long": {
             "func": wfirst_phaseb_compact,
             "output_dim": 128,

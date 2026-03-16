@@ -40,6 +40,8 @@ using Proper.WFIRSTPhaseBProper
         "compact_hlc",
         "full_hlc",
         "full_hlc_errors",
+        "compact_hlc_erkin",
+        "full_hlc_erkin",
         "compact_spc_spec_short",
         "full_spc_spec_short",
         "compact_spc_ifs_short",
@@ -66,6 +68,8 @@ using Proper.WFIRSTPhaseBProper
     @test cases["compact_spc_spec_short"].passvalue["cor_type"] == "spc-spec_short"
     @test cases["full_spc_spec_short"].passvalue["cor_type"] == "spc-spec_short"
     @test cases["full_hlc_errors"].passvalue["use_errors"] == 1
+    @test cases["compact_hlc_erkin"].passvalue["cor_type"] == "hlc_erkin"
+    @test cases["full_hlc_erkin"].passvalue["cor_type"] == "hlc_erkin"
     @test cases["compact_spc_ifs_short"].passvalue["cor_type"] == "spc-ifs_short"
     @test cases["full_spc_ifs_short"].passvalue["cor_type"] == "spc-ifs_short"
     @test cases["compact_spc_spec_long"].passvalue["cor_type"] == "spc-spec_long"

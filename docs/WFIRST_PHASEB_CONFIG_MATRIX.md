@@ -4,7 +4,7 @@ Representative configuration-matrix coverage for the Julia reference port and th
 
 | Area | Axis | Permutations | Evidence | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Coronagraph family | `cor_type` | `hlc`, `spc-spec_short`, `spc-spec_long`, `spc-ifs_short`, `spc-ifs_long`, `spc-wide`, `none` | `scripts/verify_wfirst_phaseb_matrix.sh` | Covered | `hlc_erkin` still needs dedicated parity cases and compatible public data. |
+| Coronagraph family | `cor_type` | `hlc`, `hlc_erkin`, `spc-spec_short`, `spc-spec_long`, `spc-ifs_short`, `spc-ifs_long`, `spc-wide`, `none` | `scripts/verify_wfirst_phaseb_matrix.sh` | Covered | `hlc_erkin` is validated on a documented public-data compatibility alias derived from `hlc_20190210b`, not the unavailable original private `hlc_20190206_v3` tree. |
 | Model size | prescription path | `compact`, `full` | `scripts/verify_wfirst_phaseb_matrix.sh` | Covered | Matrix includes both compact and full runs for HLC and SPC. |
 | Source offset | source tilt | zero, nonzero lambda-D | `compact_hlc_source_offset`, `full_hlc_source_offset` | Covered | HLC source-offset parity now matches at machine precision on both compact and full rows. |
 | Source offset conversion | mas to `lambda/D` | zero, nonzero mas | `test/test_wfirst_phaseb_reference.jl` | Covered | Helper-level coverage; not yet a separate Python-vs-Julia parity row. |
@@ -16,7 +16,7 @@ Representative configuration-matrix coverage for the Julia reference port and th
 | Error maps | `use_errors` | `0`, `1` | `full_hlc_errors`, `full_spc_spec_long_errors` | Covered | Error-enabled parity now runs on the shared public-data compatibility root, with Julia applying WFIRST error maps in the same Python-order convention as the executable baseline. |
 | DMs | `use_dm1`, `use_dm2`, explicit maps | off, on with supplied maps | `compact_hlc_dm_pair`, `full_hlc_dm_pair` | Covered | Explicit HLC DM-map parity rows now match with relative L2 around `4.13e-3`; this is treated as comparable fidelity rather than exact internal equivalence. |
 | SPC family variants | SPC branch | `spc-spec_short`, `spc-spec_long`, `spc-ifs_short`, `spc-ifs_long`, `spc-wide` | `scripts/verify_wfirst_phaseb_matrix.sh` | Covered | Current public-data matrix validates both spec and IFS aliases. |
-| HLC variant | `hlc_erkin` | default, alt HLC branch | none yet | Gap | Config selection is implemented but not yet exercised in parity harness. |
+| HLC variant | `hlc_erkin` | default, alt HLC branch | `compact_hlc_erkin`, `full_hlc_erkin` | Covered | Validated on the shared public-data compatibility root synthesized from `hlc_20190210b` into the legacy `hlc_20190206_v3` layout expected by the Python baseline. |
 
 ## Implementation Note
 
