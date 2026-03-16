@@ -1,3 +1,5 @@
+using FFTW
+
 @testset "Phase 1 foundation" begin
     ctx_default = RunContext()
 
@@ -22,4 +24,7 @@
     @test s_c == wf.sampling_m
 
     @test prop_shift_center(reshape(1:16, 4, 4)) == [11 15 3 7; 12 16 4 8; 9 13 1 5; 10 14 2 6]
+    odd = reshape(1:25, 5, 5)
+    @test prop_shift_center(odd) == FFTW.fftshift(odd)
+    @test prop_shift_center(odd; inverse=true) == FFTW.ifftshift(odd)
 end

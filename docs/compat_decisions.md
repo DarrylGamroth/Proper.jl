@@ -375,3 +375,20 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Consequences:
   - SPC comparison runs remain executable and reproducible in this repository.
   - These SPC harnesses validate Julia-vs-Python parity on the shared public-data compatibility root, not historical bitwise equivalence to the unavailable original SPC datasets.
+
+## D-0038: MATLAB As Column-Major Semantic Reference
+- Date: 2026-03-16
+- Status: Accepted
+- Context:
+  - Python 3.3.4 remains the executable parity baseline, but several recent WFIRST parity defects were caused by array-order and centering assumptions rather than optical-model logic.
+  - Julia and MATLAB are both column-major, while the executable Python baseline is row-major/NumPy-oriented.
+  - The repository contains both the core MATLAB PROPER reference in `../proper_v3.3.1_matlab` and the WFIRST MATLAB reference tree alongside the Python WFIRST model.
+- Decision:
+  - Keep Python 3.3.4 as the only executable baseline for automated parity and golden-data generation.
+  - When debugging centering, transpose, cropping, indexing, or other array-order-sensitive behavior, explicitly consult the MATLAB implementations as the semantic reference for column-major correctness:
+    - core PROPER: `../proper_v3.3.1_matlab`
+    - WFIRST model: `../proper-models/wfirst_cgi/models_phaseb/matlab`
+  - Use MATLAB selectively as a tie-breaker for semantics, not as a second runtime parity target.
+- Consequences:
+  - Future array-order-sensitive bugs should be evaluated against both the Python executable baseline and the MATLAB column-major reference before changing core semantics.
+  - Python-order accommodations should remain local to compatibility layers or model-specific loaders unless a core PROPER routine is shown to be semantically wrong.

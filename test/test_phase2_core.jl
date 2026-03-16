@@ -48,6 +48,13 @@ end
     Proper.half_shift_copy!(shifted, c)
     @test shifted == prop_shift_center(c)
 
+    odd = reshape(ComplexF64.(1:25), 5, 5)
+    odd_shifted = similar(odd)
+    Proper.shift_copy!(odd_shifted, odd, fld(size(odd, 1), 2), fld(size(odd, 2), 2))
+    @test odd_shifted == prop_shift_center(odd)
+    Proper.shift_copy!(odd_shifted, odd, cld(size(odd, 1), 2), cld(size(odd, 2), 2))
+    @test odd_shifted == prop_shift_center(odd; inverse=true)
+
     rev = similar(c)
     Proper.reverse_shift1!(rev, c)
     @test rev == circshift(reverse(reverse(c; dims=1); dims=2), (1, 1))
@@ -60,6 +67,27 @@ end
     invf = copy(c)
     Proper.centered_fft!(invf, cache, +1)
     @test invf ≈ circshift(ifft(circshift(c, (-2, -2))) .* length(c), (2, 2))
+end
+
+@testset "Odd-grid shift application semantics" begin
+    map = reshape(collect(1.0:25.0), 5, 5)
+
+    wf_mul = prop_begin(1.0, 500e-9, 5)
+    fill!(wf_mul.field, 1 + 0im)
+    prop_multiply(wf_mul, map)
+    @test wf_mul.field == ComplexF64.(FFTW.ifftshift(map))
+
+    wf_div = prop_begin(1.0, 500e-9, 5)
+    fill!(wf_div.field, 1 + 0im)
+    prop_divide(wf_div, map)
+    @test wf_div.field ≈ ComplexF64.(inv.(FFTW.ifftshift(map)))
+
+    phase_map = zeros(5, 5)
+    phase_map[3, 3] = 1e-9
+    wf_phase = prop_begin(1.0, 500e-9, 5)
+    fill!(wf_phase.field, 1 + 0im)
+    prop_add_phase(wf_phase, phase_map)
+    @test wf_phase.field ≈ cis.((2pi / wf_phase.wavelength_m) .* FFTW.ifftshift(phase_map))
 end
 
 @testset "Phase 2 run entrypoints" begin
@@ -217,7 +245,7 @@ end
         dmap_manual = prop_dm(wf_manual, dm, 2.5, 2.5, 1.0e-3; NO_APPLY=true)
 
         @test dmap_apply ≈ dmap_manual
-        prop_add_phase(wf_manual, 2 .* dmap_manual)
+        prop_add_phase(wf_manual, 2 .* transpose(dmap_manual))
         @test wf_apply.field ≈ wf_manual.field
     end
 

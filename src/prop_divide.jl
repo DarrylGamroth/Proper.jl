@@ -11,10 +11,10 @@ function prop_divide(wf::WaveFront, d::AbstractMatrix)
         else
             ensure_fft_scratch!(wf.workspace.fft, size(d, 1), size(d, 2))
         end
-        prop_shift_center!(scratch, d)
+        prop_shift_center!(scratch, d; inverse=true)
         wf.field ./= scratch
     else
-        wf.field ./= backend_adapt(wf.field, prop_shift_center(d))
+        wf.field ./= backend_adapt(wf.field, prop_shift_center(d; inverse=true))
     end
     return wf
 end

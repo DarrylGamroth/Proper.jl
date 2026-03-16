@@ -60,10 +60,10 @@ function _prop_errormap!(wf::WaveFront, filename::AbstractString, xshift::Real, 
         end
         if dmap isa StridedMatrix{<:AbstractFloat}
             scratch = ensure_fft_real_scratch!(wf.workspace.fft, size(dmap, 1), size(dmap, 2))
-            prop_shift_center!(scratch, dmap)
+            prop_shift_center!(scratch, dmap; inverse=true)
             dmap = copy(scratch)
         else
-            dmap = prop_shift_center(dmap)
+            dmap = prop_shift_center(dmap; inverse=true)
         end
     end
 

@@ -194,7 +194,9 @@ function prop_dm(
     @views dmap[ymin:ymax, xmin:xmax] .= grid
 
     if !switch_set(:NO_APPLY; kwargs...)
-        prop_add_phase(wf, 2 .* dmap)
+        # Match accepted D-0036 semantics: the projected DM map must be
+        # transposed before centered-map application onto the wavefront grid.
+        prop_add_phase(wf, 2 .* transpose(dmap))
     end
 
     return dmap

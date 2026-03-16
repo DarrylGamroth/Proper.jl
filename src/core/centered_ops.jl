@@ -37,18 +37,32 @@ function copy_centered!(out::AbstractMatrix{T}, input_image::AbstractMatrix) whe
 end
 
 function half_shift_copy!(out::AbstractMatrix{T}, input::AbstractMatrix) where {T}
+    return shift_copy!(out, input, size(input, 1) ÷ 2, size(input, 2) ÷ 2)
+end
+
+function shift_copy!(out::AbstractMatrix{T}, input::AbstractMatrix, sy::Integer, sx::Integer) where {T}
     ny, nx = size(input)
     size(out) == (ny, nx) || throw(ArgumentError("shift output size must match input size"))
-    sy = ny ÷ 2
-    sx = nx ÷ 2
-    top_h = ny - sy
-    left_w = nx - sx
+    0 <= sy <= ny || throw(ArgumentError("row shift must be within array bounds"))
+    0 <= sx <= nx || throw(ArgumentError("column shift must be within array bounds"))
+    top_h = sy
+    left_w = sx
+    row_split = ny - sy
+    col_split = nx - sx
 
     @views begin
-        out[1:top_h, 1:left_w] .= T.(input[(sy + 1):ny, (sx + 1):nx])
-        sx == 0 || (out[1:top_h, (left_w + 1):nx] .= T.(input[(sy + 1):ny, 1:sx]))
-        sy == 0 || (out[(top_h + 1):ny, 1:left_w] .= T.(input[1:sy, (sx + 1):nx]))
-        (sy == 0 || sx == 0) || (out[(top_h + 1):ny, (left_w + 1):nx] .= T.(input[1:sy, 1:sx]))
+        if sy > 0 && sx > 0
+            out[1:top_h, 1:left_w] .= T.(input[(row_split + 1):ny, (col_split + 1):nx])
+        end
+        if sy > 0 && sx < nx
+            out[1:top_h, (left_w + 1):nx] .= T.(input[(row_split + 1):ny, 1:col_split])
+        end
+        if sy < ny && sx > 0
+            out[(top_h + 1):ny, 1:left_w] .= T.(input[1:row_split, (col_split + 1):nx])
+        end
+        if sy < ny && sx < nx
+            out[(top_h + 1):ny, (left_w + 1):nx] .= T.(input[1:row_split, 1:col_split])
+        end
     end
     return out
 end

@@ -27,9 +27,9 @@ function prop_readmap(
     out = prop_resamplemap(wf, dmap, pixsize, xc, yc, xshift, yshift)
     if out isa StridedMatrix{<:AbstractFloat}
         scratch = ensure_fft_real_scratch!(wf.workspace.fft, size(out, 1), size(out, 2))
-        prop_shift_center!(scratch, out)
+        prop_shift_center!(scratch, out; inverse=true)
         copyto!(out, scratch)
         return out
     end
-    return prop_shift_center(out)
+    return prop_shift_center(out; inverse=true)
 end
