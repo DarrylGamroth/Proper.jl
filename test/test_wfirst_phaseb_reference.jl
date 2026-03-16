@@ -39,12 +39,14 @@ using Proper.WFIRSTPhaseBProper
     @test Set(keys(cases)) == Set([
         "compact_hlc",
         "full_hlc",
+        "full_hlc_errors",
         "compact_spc_spec_short",
         "full_spc_spec_short",
         "compact_spc_ifs_short",
         "full_spc_ifs_short",
         "compact_spc_spec_long",
         "full_spc_spec_long",
+        "full_spc_spec_long_errors",
         "compact_spc_ifs_long",
         "full_spc_ifs_long",
         "compact_spc_wide",
@@ -63,9 +65,11 @@ using Proper.WFIRSTPhaseBProper
     @test cases["full_hlc"].func === wfirst_phaseb
     @test cases["compact_spc_spec_short"].passvalue["cor_type"] == "spc-spec_short"
     @test cases["full_spc_spec_short"].passvalue["cor_type"] == "spc-spec_short"
+    @test cases["full_hlc_errors"].passvalue["use_errors"] == 1
     @test cases["compact_spc_ifs_short"].passvalue["cor_type"] == "spc-ifs_short"
     @test cases["full_spc_ifs_short"].passvalue["cor_type"] == "spc-ifs_short"
     @test cases["compact_spc_spec_long"].passvalue["cor_type"] == "spc-spec_long"
+    @test cases["full_spc_spec_long_errors"].passvalue["use_errors"] == 1
     @test cases["compact_spc_ifs_long"].passvalue["cor_type"] == "spc-ifs_long"
     @test cases["full_spc_ifs_long"].passvalue["cor_type"] == "spc-ifs_long"
     @test cases["full_spc_wide"].passvalue["cor_type"] == "spc-wide"

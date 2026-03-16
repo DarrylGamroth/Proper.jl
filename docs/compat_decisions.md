@@ -427,3 +427,19 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   - Existing callers that relied on the previous implicit cubic default must request `METH="cubic"` or `CUBIC=true` explicitly.
   - Python executable parity is no longer the deciding baseline for the default `prop_rotate` path; MATLAB semantics are.
   - The cubic branch is now a coherent column-major translation of the upstream PROPER cubic kernel, but it is still not separately validated against executable MATLAB `interp2(..., 'cubic')`.
+
+## D-0041: WFIRST Error-Map Public-Data Compatibility Uses Local Python-Order Loading
+- Date: 2026-03-16
+- Status: Accepted
+- Context:
+  - The executable Python WFIRST Phase B baseline applies optical error maps from legacy `wfirst_phaseb_*` FITS filenames under `data_phaseb/maps/`.
+  - The public Roman preflight archive used in this repository contains redistributable error maps, but under newer `roman_phasec_*` names.
+  - The first direct Julia `use_errors=1` port using that shared public-data root diverged materially while the no-error rows were already matching, which isolated the issue to error-map data interpretation rather than general branch logic.
+- Decision:
+  - Extend the local compatibility-data builder to alias the newer public Roman error-map FITS files into the legacy `wfirst_phaseb_*` names expected by the Python baseline.
+  - Keep the array-order accommodation local to the WFIRST reference model: its error-map application path reads those FITS maps in Python order before resampling/applying them.
+  - Do not change core `prop_errormap` semantics based on this WFIRST-specific parity issue alone.
+- Consequences:
+  - Representative `use_errors=1` HLC and SPC rows now match the executable Python baseline on the shared public-data compatibility root at the same numerical-fidelity scale as the rest of the WFIRST matrix.
+  - The repository remains explicit that this is parity against the executable Python baseline on shared public data, not historical bitwise equivalence to the unavailable original private error-map tree.
+  - Any future core `prop_errormap` semantic change still requires core PROPER evidence and should not be inferred from WFIRST alone.

@@ -1,7 +1,28 @@
+@inline function _phaseb_readmap_python_order(wf, filename::AbstractString)
+    dmap_raw, header = prop_fits_read(filename; header=true)
+    dmap = ndims(dmap_raw) <= 1 ? dmap_raw : permutedims(dmap_raw, Tuple(ndims(dmap_raw):-1:1))
+    pixsize = if haskey(header, "RADPIX")
+        prop_get_beamradius(wf) / float(header["RADPIX"])
+    elseif haskey(header, "PIXSIZE")
+        float(header["PIXSIZE"])
+    else
+        throw(ArgumentError("READMAP: No pixel scale available in header for $(filename)"))
+    end
+    xc = size(dmap, 1) ÷ 2
+    yc = size(dmap, 2) ÷ 2
+    return Proper.prop_shift_center(prop_resamplemap(wf, dmap, pixsize, xc, yc, 0.0, 0.0))
+end
+
+@inline function _phaseb_apply_error!(wf, use_errors::Integer, map_root::AbstractString, filename::AbstractString)
+    use_errors == 0 && return wf
+    dmap = _phaseb_readmap_python_order(wf, joinpath(map_root, filename))
+    wf.field .*= cis.(2π / wf.wavelength_m .* dmap)
+    return wf
+end
+
 function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     cor_type = String(passget(passvalue, :cor_type, "hlc"))
     use_errors = Int(passget(passvalue, :use_errors, 1))
-    use_errors == 0 || throw(ArgumentError("wfirst_phaseb CPU comparison path currently supports only use_errors=0"))
     polaxis = Int(passget(passvalue, :polaxis, 0))
     zindex = Int.(collect(passget(passvalue, :zindex, [0, 0])))
     zval_m = Float64.(collect(passget(passvalue, :zval_m, [0.0, 0.0])))
@@ -30,6 +51,7 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     output_dim = Int(passget(passvalue, :output_dim, output_dim0))
     λm = Float64(lambda_m)
     data_root = String(passget(passvalue, :data_dir, phaseb_default_data_root()))
+    map_root = joinpath(data_root, "maps")
 
     diam = 2.3633372
     fl_pri = 2.83459423440 * 1.0013
@@ -121,30 +143,43 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     if !isempty(zindex) && zindex[1] != 0
         Proper.prop_zernikes(wf, zindex, zval_m)
     end
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_PRIMARY_phase_error_V1.0.fits")
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_GROUND_TO_ORBIT_4.2X_phase_error_V1.0.fits")
 
     prop_propagate(wf, d_pri_sec, "secondary")
     prop_lens(wf, fl_sec)
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_SECONDARY_phase_error_V1.0.fits")
 
     prop_propagate(wf, d_sec_fold1, "FOLD_1")
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_FOLD1_phase_error_V1.0.fits")
     prop_propagate(wf, d_fold1_m3, "M3")
     prop_lens(wf, fl_m3)
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_M3_phase_error_V1.0.fits")
     prop_propagate(wf, d_m3_m4, "M4")
     prop_lens(wf, fl_m4)
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_M4_phase_error_V1.0.fits")
     prop_propagate(wf, d_m4_m5, "M5")
     prop_lens(wf, fl_m5)
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_M5_phase_error_V1.0.fits")
     prop_propagate(wf, d_m5_fold2, "FOLD_2")
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_FOLD2_phase_error_V1.0.fits")
     prop_propagate(wf, d_fold2_fsm, "FSM")
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_FSM_phase_error_V1.0.fits")
     prop_propagate(wf, d_fsm_oap1, "OAP1")
     prop_lens(wf, fl_oap1)
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_OAP1_phase_error_V1.0.fits")
     prop_propagate(wf, d_oap1_focm, "FOCM")
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_FOCM_phase_error_V1.0.fits")
     prop_propagate(wf, d_focm_oap2, "OAP2")
     prop_lens(wf, fl_oap2)
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_OAP2_phase_error_V1.0.fits")
 
     prop_propagate(wf, d_oap2_dm1, "DM1")
     if use_dm1 != 0
         dm1_m === nothing && throw(ArgumentError("wfirst_phaseb requires dm1_m when use_dm1 != 0"))
         prop_dm(wf, dm1_m, dm1_xc_act, dm1_yc_act, dm_sampling_m; XTILT=dm1_xtilt_deg, YTILT=dm1_ytilt_deg, ZTILT=dm1_ztilt_deg)
     end
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_DM1_phase_error_V1.0.fits")
     if use_hlc_dm_patterns != 0
         cfg.branch == :hlc || throw(ArgumentError("use_hlc_dm_patterns is only valid for HLC configurations"))
         prop_add_phase(wf, data.shared.dm1wfe_1024)
@@ -154,6 +189,7 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
         dm2_m === nothing && throw(ArgumentError("wfirst_phaseb requires dm2_m when use_dm2 != 0"))
         prop_dm(wf, dm2_m, dm2_xc_act, dm2_yc_act, dm_sampling_m; XTILT=dm2_xtilt_deg, YTILT=dm2_ytilt_deg, ZTILT=dm2_ztilt_deg)
     end
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_DM2_phase_error_V1.0.fits")
     if use_hlc_dm_patterns != 0
         cfg.branch == :hlc || throw(ArgumentError("use_hlc_dm_patterns is only valid for HLC configurations"))
         prop_add_phase(wf, data.shared.dm2wfe_1024)
@@ -164,14 +200,18 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
 
     prop_propagate(wf, d_dm2_oap3, "OAP3")
     prop_lens(wf, fl_oap3)
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_OAP3_phase_error_V1.0.fits")
     prop_propagate(wf, d_oap3_fold3, "FOLD_3")
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_FOLD3_phase_error_V1.0.fits")
     prop_propagate(wf, d_fold3_oap4, "OAP4")
     prop_lens(wf, fl_oap4)
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_OAP4_phase_error_V1.0.fits")
     prop_propagate(wf, d_oap4_pupilmask, "PUPIL_MASK")
     if cfg.branch == :spc && use_pupil_mask != 0
         pupil_mask = trim(Float64.(_phaseb_python_fits(cfg.pupil_mask_file)), n)
         prop_multiply(wf, pupil_mask)
     end
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_PUPILMASK_phase_error_V1.0.fits")
 
     diam_pupil = 2 * prop_get_beamradius(wf)
     field_default = phaseb_field(ws, n_default)
@@ -184,6 +224,7 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
 
     prop_propagate(wf, d_pupilmask_oap5, "OAP5")
     prop_lens(wf, fl_oap5)
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_OAP5_phase_error_V1.0.fits")
     prop_propagate(wf, d_oap5_fpm, "FPM"; TO_PLANE=true)
     if use_fpm == 1
         if cfg.branch == :hlc
@@ -206,6 +247,7 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
 
     prop_propagate(wf, d_fpm_oap6, "OAP6")
     prop_lens(wf, fl_oap6)
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_OAP6_phase_error_V1.0.fits")
     prop_propagate(wf, d_oap6_lyotstop, "LYOT_STOP")
 
     diam_lyot = 2 * prop_get_beamradius(wf)
@@ -223,6 +265,7 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
 
     prop_propagate(wf, d_lyotstop_oap7, "OAP7")
     prop_lens(wf, fl_oap7)
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_OAP7_phase_error_V1.0.fits")
     prop_propagate(wf, d_oap7_fieldstop, "FIELD_STOP")
     if use_field_stop != 0 && cfg.branch == :hlc
         sampling_lamD = pupil_diam_pix / n
@@ -232,10 +275,14 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
 
     prop_propagate(wf, d_fieldstop_oap8, "OAP8")
     prop_lens(wf, fl_oap8)
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_OAP8_phase_error_V1.0.fits")
     prop_propagate(wf, d_oap8_filter, "filter")
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_FILTER_phase_error_V1.0.fits")
     prop_propagate(wf, d_filter_lens, "LENS")
     prop_lens(wf, fl_lens)
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_LENS_phase_error_V1.0.fits")
     prop_propagate(wf, d_lens_fold4, "FOLD_4")
+    _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_FOLD4_phase_error_V1.1.fits")
     prop_propagate(wf, d_fold4_image, "IMAGE")
 
     sampling_m = prop_get_sampling(wf)

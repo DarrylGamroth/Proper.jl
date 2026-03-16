@@ -19,6 +19,39 @@ OLD_LAM_OCCS = [
     "5.89375e-07", "5.90972222222e-07", "5.94166666667e-07", "5.965625e-07", "5.97361111111e-07", "6.00555555556e-07", "6.0375e-07",
 ]
 
+ERROR_MAP_ALIASES = {
+    "wfirst_phaseb_PRIMARY_phase_error_V1.0.fits": "roman_phasec_PRIMARY_synthetic_phase_error_V1.0.fits",
+    "wfirst_phaseb_GROUND_TO_ORBIT_4.2X_phase_error_V1.0.fits": "roman_phasec_LOWORDER_phase_error_V2.0.fits",
+    "wfirst_phaseb_SECONDARY_phase_error_V1.0.fits": "roman_phasec_SECONDARY_synthetic_phase_error_V1.0.fits",
+    "wfirst_phaseb_FOLD1_phase_error_V1.0.fits": "roman_phasec_POMAFOLD_measured_phase_error_V2.0.fits",
+    "wfirst_phaseb_M3_phase_error_V1.0.fits": "roman_phasec_M3_measured_phase_error_V2.0.fits",
+    "wfirst_phaseb_M4_phase_error_V1.0.fits": "roman_phasec_M4_measured_phase_error_V2.0.fits",
+    "wfirst_phaseb_M5_phase_error_V1.0.fits": "roman_phasec_M5_measured_phase_error_V2.0.fits",
+    "wfirst_phaseb_FOLD2_phase_error_V1.0.fits": "roman_phasec_TTFOLD_measured_phase_error_V1.1.fits",
+    "wfirst_phaseb_FSM_phase_error_V1.0.fits": "roman_phasec_FSM_FLIGHT_coated_measured_phase_error_V3.0.fits",
+    "wfirst_phaseb_OAP1_phase_error_V1.0.fits": "roman_phasec_OAP1_phase_error_V3.0.fits",
+    "wfirst_phaseb_FOCM_phase_error_V1.0.fits": "roman_phasec_FCM_EDU_measured_coated_phase_error_V2.0.fits",
+    "wfirst_phaseb_OAP2_phase_error_V1.0.fits": "roman_phasec_OAP2_phase_error_V3.0.fits",
+    "wfirst_phaseb_DM1_phase_error_V1.0.fits": "roman_phasec_DM1_phase_error_V1.0.fits",
+    "wfirst_phaseb_DM2_phase_error_V1.0.fits": "roman_phasec_DM2_phase_error_V1.0.fits",
+    "wfirst_phaseb_OAP3_phase_error_V1.0.fits": "roman_phasec_OAP3_phase_error_V3.0.fits",
+    "wfirst_phaseb_FOLD3_phase_error_V1.0.fits": "roman_phasec_FOLD3_FLIGHT_measured_coated_phase_error_V2.0.fits",
+    "wfirst_phaseb_OAP4_phase_error_V1.0.fits": "roman_phasec_OAP4_phase_error_V3.0.fits",
+    "wfirst_phaseb_PUPILMASK_phase_error_V1.0.fits": "roman_phasec_PUPILMASK_phase_error_V1.0.fits",
+    "wfirst_phaseb_OAP5_phase_error_V1.0.fits": "roman_phasec_OAP5_phase_error_V3.0.fits",
+    "wfirst_phaseb_OAP6_phase_error_V1.0.fits": "roman_phasec_OAP6_phase_error_V3.0.fits",
+    "wfirst_phaseb_OAP7_phase_error_V1.0.fits": "roman_phasec_OAP7_phase_error_V4.0.fits",
+    "wfirst_phaseb_OAP8_phase_error_V1.0.fits": "roman_phasec_OAP8_phase_error_V3.0.fits",
+    "wfirst_phaseb_FILTER_phase_error_V1.0.fits": "roman_phasec_FILTER_phase_error_V1.0.fits",
+    "wfirst_phaseb_LENS_phase_error_V1.0.fits": "roman_phasec_LENS_phase_error_V1.0.fits",
+    "wfirst_phaseb_PUPILLENS_phase_error_V1.0.fits": "roman_phasec_PUPIL_IMAGE_LENS1_measured_phase_error_V3.0.fits",
+    "wfirst_phaseb_DEFOCUSLENS1_phase_error_V1.0.fits": "roman_phasec_DEFOCUSLENS1_measured_phase_error_V3.0.fits",
+    "wfirst_phaseb_DEFOCUSLENS2_phase_error_V1.0.fits": "roman_phasec_DEFOCUSLENS2_measured_phase_error_V3.0.fits",
+    "wfirst_phaseb_DEFOCUSLENS3_phase_error_V1.0.fits": "roman_phasec_DEFOCUSLENS3_measured_phase_error_V3.0.fits",
+    "wfirst_phaseb_DEFOCUSLENS4_phase_error_V1.0.fits": "roman_phasec_DEFOCUSLENS4_measured_phase_error_V3.0.fits",
+    "wfirst_phaseb_FOLD4_phase_error_V1.1.fits": "roman_phasec_FOLD4_phase_error_V1.0.fits",
+}
+
 
 def project_root() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -34,6 +67,17 @@ def archive_path() -> Path:
 
 def compat_root() -> Path:
     return cache_root() / OUTPUT_DIRNAME
+
+
+def compat_root_complete(root: Path) -> bool:
+    required = [
+        root / "hlc_20190210" / "run461_pupil_rotated.fits",
+        root / "spc_20190130" / "pupil_SPC-20190130_rotated.fits",
+        root / "spc_20181220" / "pupil_SPC-20181220_1k_rotated.fits",
+        root / "pol" / "new_toma_amp.fits",
+        root / "maps" / "wfirst_phaseb_PRIMARY_phase_error_V1.0.fits",
+    ]
+    return all(path.is_file() for path in required)
 
 
 def resolve_download_url() -> str:
@@ -66,7 +110,7 @@ def extract_bytes(zf: ZipFile, src: str, dst: Path) -> None:
 
 def build_compat_root(force: bool = False) -> Path:
     out = compat_root()
-    if out.exists() and not force:
+    if out.exists() and not force and compat_root_complete(out):
         return out
     if out.exists():
         shutil.rmtree(out)
@@ -76,6 +120,7 @@ def build_compat_root(force: bool = False) -> Path:
         base = "roman_preflight_proper_public_v2.0.2_python/roman_preflight_proper/preflight_data"
         hlc = f"{base}/hlc_20190210b"
         pol = f"{base}/pol"
+        maps = f"{base}/maps"
         spc_spec = f"{base}/spc_20200617_spec"
         spc_wide = f"{base}/spc_20200610_wfov"
 
@@ -128,6 +173,9 @@ def build_compat_root(force: bool = False) -> Path:
                 dst = out / "hlc_20190210" / f"run461_occ_lam{lam_label}theta6.69polp_{suffix}"
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 dst.write_bytes(payload)
+
+        for legacy_name, public_name in ERROR_MAP_ALIASES.items():
+            extract_bytes(zf, f"{maps}/{public_name}", out / "maps" / legacy_name)
 
     return out
 

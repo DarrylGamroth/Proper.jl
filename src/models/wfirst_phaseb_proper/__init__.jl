@@ -7,7 +7,7 @@ import ..Proper: PreparedModel, PreparedAssetPool, prepare_asset_pool, prepare_m
     prop_begin, prop_circular_aperture, prop_define_entrance, prop_end!, prop_fits_read,
     prop_get_beamradius, prop_get_fratio, prop_get_sampling, prop_get_wavelength, prop_lens,
     prop_dm,
-    prop_magnify!, prop_multiply, prop_propagate, prop_run, active_run_context
+    prop_magnify!, prop_multiply, prop_propagate, prop_resamplemap, prop_run, active_run_context
 
 const map_dir = "/maps/"
 const polfile = "/pol/new_toma"

@@ -401,6 +401,19 @@ function phaseb_case_definitions()
             ),
             description="Full HLC model with default DM patterns over 10% band",
         ),
+        "full_hlc_errors" => (
+            func=wfirst_phaseb,
+            output_dim=128,
+            wavelengths_um=hlc_wavelengths_um,
+            wavelengths_m=hlc_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "hlc",
+                "use_hlc_dm_patterns" => 1,
+                "final_sampling_lam0" => 0.1,
+                "use_errors" => 1,
+            ),
+            description="Full HLC model with optical surface phase errors over 10% band",
+        ),
         "compact_spc_spec_long" => (
             func=wfirst_phaseb_compact,
             output_dim=128,
@@ -445,6 +458,18 @@ function phaseb_case_definitions()
                 "use_errors" => 0,
             ),
             description="Full SPC spec-long model over 15% band without error maps",
+        ),
+        "full_spc_spec_long_errors" => (
+            func=wfirst_phaseb,
+            output_dim=128,
+            wavelengths_um=spec_wavelengths_um,
+            wavelengths_m=spec_wavelengths_m,
+            passvalue=Dict(
+                "cor_type" => "spc-spec_long",
+                "final_sampling_lam0" => 0.1,
+                "use_errors" => 1,
+            ),
+            description="Full SPC spec-long model over 15% band with error maps",
         ),
         "compact_spc_ifs_long" => (
             func=wfirst_phaseb_compact,
