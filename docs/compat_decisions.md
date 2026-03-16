@@ -421,9 +421,9 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     - default centers remain `fix(nx/2)+1`, `fix(ny/2)+1`
     - `MISSING` / `EXTR` controls the extrapolated fill value
     - out-of-bounds samples are not edge-clamped on the linear rotate path
-  - The explicit cubic rotate path remains available, but is not yet treated as a fully validated `interp2(..., 'cubic')` replacement.
+  - The explicit cubic rotate path remains available and uses the upstream PROPER cubic-convolution kernel with an explicit conversion from MATLAB/Julia 1-based rotate coordinates to the kernel's 0-based coordinate space.
 - Consequences:
   - `prop_rotate(a, 0)` is again an identity transform for ordinary matrices under the default settings.
   - Existing callers that relied on the previous implicit cubic default must request `METH="cubic"` or `CUBIC=true` explicitly.
   - Python executable parity is no longer the deciding baseline for the default `prop_rotate` path; MATLAB semantics are.
-  - A future audit is still required if we want the explicit cubic rotate branch to match MATLAB `interp2(..., 'cubic')` behavior rather than the existing PROPER cubic-convolution kernel.
+  - The cubic branch is now a coherent column-major translation of the upstream PROPER cubic kernel, but it is still not separately validated against executable MATLAB `interp2(..., 'cubic')`.

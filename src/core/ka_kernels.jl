@@ -529,7 +529,7 @@ end
         xr = c * x - s * y + cx
         yr = s * x + c * y + cy
         if 1 <= xr <= nx && 1 <= yr <= ny
-            out[i, j] = _ka_cubic_sample(old_image, yr, xr)
+            out[i, j] = _ka_cubic_sample(old_image, xr - 1, yr - 1)
         else
             out[i, j] = missing
         end

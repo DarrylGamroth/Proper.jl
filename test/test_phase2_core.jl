@@ -28,6 +28,8 @@ using FFTW
     @test prop_rotate(a, 0.0; METH="linear") == a
     @test prop_rotate(a, 0.0; XSHIFT=1.0) == [0.0 1.0 5.0 9.0; 0.0 2.0 6.0 10.0; 0.0 3.0 7.0 11.0; 0.0 4.0 8.0 12.0]
     @test prop_rotate(a, 0.0; XSHIFT=1.0, MISSING=-1.0) == [-1.0 1.0 5.0 9.0; -1.0 2.0 6.0 10.0; -1.0 3.0 7.0 11.0; -1.0 4.0 8.0 12.0]
+    a5 = reshape(collect(1.0:25.0), 5, 5)
+    @test prop_rotate(a5, 0.0; METH="cubic") == [13.0 13.0 13.0 14.0 14.0; 13.0 13.0 13.0 14.0 14.0; 13.0 13.0 13.0 14.0 14.0; 18.0 18.0 18.0 19.0 19.0; 18.0 18.0 18.0 19.0 19.0]
 
     wf4 = prop_begin(1.0, 500e-9, 32)
     @test (@inferred prop_select_propagator(wf4, 0.1)) isa Float64

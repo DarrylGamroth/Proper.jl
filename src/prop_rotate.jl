@@ -68,7 +68,9 @@ end
             xr = c * x - s * y + opts.cx
             yr = s * x + c * y + opts.cy
             if 1 <= xr <= nx && 1 <= yr <= ny
-                out[i, j] = prop_cubic_conv(sty, old_image, yr, xr)
+                # `libcconv` follows the upstream 0-based cubic-convolution kernel,
+                # so rotate coordinates must be shifted out of Julia/MATLAB 1-based space.
+                out[i, j] = prop_cubic_conv(sty, old_image, xr - 1, yr - 1)
             else
                 out[i, j] = opts.missing
             end
