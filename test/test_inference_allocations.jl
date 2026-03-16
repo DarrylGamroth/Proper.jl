@@ -49,9 +49,14 @@ using Random
         @test size(rh) == size(dmap)
         @test haskey(hdr, "SIMPLE")
 
-        rm = prop_readmap(wf, f; SAMPLING=wf.sampling_m)
-        @test size(rm) == size(wf.field)
-    end
+    rm = prop_readmap(wf, f; SAMPLING=wf.sampling_m)
+    @test size(rm) == size(wf.field)
+end
+
+    @test collect(Proper.coordinate_axis(5, 2.0)) == [-4.0, -2.0, 0.0, 2.0, 4.0]
+    @test collect(Proper.spatial_frequency_axis(4, 0.5)) == [-1.0, -0.5, 0.0, 0.5]
+    @test (@allocated Proper.coordinate_axis(128, 1.0)) == 0
+    @test (@allocated Proper.spatial_frequency_axis(128, 1.0)) == 0
 
     dummy(λm, n; kwargs...) = prop_begin(1.0, λm, n)
     stack, samplings = prop_run_multi(dummy, 0.55, 16; PASSVALUE=[1, 2, 3])

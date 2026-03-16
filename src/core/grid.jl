@@ -1,6 +1,5 @@
 @inline function coordinate_axis(n::Integer, dx::T) where {T<:AbstractFloat}
-    c = n ÷ 2
-    return (collect(0:(n - 1)) .- c) .* dx
+    return range(-(n ÷ 2) * dx, step=dx, length=n)
 end
 
 function radius_map(ny::Integer, nx::Integer, dx::T) where {T<:AbstractFloat}
@@ -17,8 +16,8 @@ function radius_map(ny::Integer, nx::Integer, dx::T) where {T<:AbstractFloat}
 end
 
 function spatial_frequency_axis(n::Integer, dx::T) where {T<:AbstractFloat}
-    c = n ÷ 2
-    return (collect(0:(n - 1)) .- c) ./ (n * dx)
+    step = inv(T(n) * dx)
+    return range(-(n ÷ 2) * step, step=step, length=n)
 end
 
 function fft_order_rho2_map(ny::Integer, nx::Integer, dx::T) where {T<:AbstractFloat}
