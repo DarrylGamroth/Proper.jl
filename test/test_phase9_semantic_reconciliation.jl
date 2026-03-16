@@ -100,6 +100,47 @@ function _cubic_conv_ref(a::AbstractMatrix, y::Real, x::Real)
     return acc
 end
 
+function _matlab_8th_order_mask_ref(wf::WaveFront, hwhm::Real; circular=false, elliptical=nothing, y_axis=false, meters=false, min_transmission=0.0, max_transmission=1.0)
+    fratio = prop_get_fratio(wf)
+    wavelength = prop_get_wavelength(wf)
+    sampling = prop_get_sampling(wf)
+    h = meters ? hwhm / (fratio * wavelength) : hwhm
+    e = 1.788 / h
+    ll = 3.0
+    mm = 1.0
+    plml = (ll - mm) / ll
+    ny, nx = size(wf.field)
+    dxld = sampling / (fratio * wavelength)
+    vpx = (collect(1:nx) .- (fld(nx, 2) + 1)) .* dxld
+    vpy = (collect(1:ny) .- (fld(ny, 2) + 1)) .* dxld
+    mask = zeros(Float64, ny, nx)
+    if !circular && elliptical === nothing
+        line = y_axis ? vpy : vpx
+        vals = plml .- prop_sinc.(line .* pi .* e ./ ll).^ll .+ (mm / ll) .* prop_sinc.(line .* pi .* e ./ mm).^mm
+        if y_axis
+            mask .= vals
+        else
+            mask .= vals'
+        end
+    elseif circular
+        for j in 1:nx, i in 1:ny
+            r = hypot(vpx[j], vpy[i])
+            mask[i, j] = plml - prop_sinc(pi * r * e / ll)^ll + (mm / ll) * prop_sinc(pi * r * e / mm)^mm
+        end
+    else
+        ratio = float(elliptical)
+        for j in 1:nx, i in 1:ny
+            r = hypot(vpx[j], vpy[i] / ratio)
+            mask[i, j] = plml - prop_sinc(pi * r * e / ll)^ll + (mm / ll) * prop_sinc(pi * r * e / mm)^mm
+        end
+    end
+    mask .^= 2
+    mask .-= minimum(mask)
+    mask ./= maximum(mask)
+    mask .= mask .* (max_transmission - min_transmission) .+ min_transmission
+    return sqrt.(mask)
+end
+
 @testset "Phase 9 semantic reconciliation hotspots" begin
     @testset "prop_resamplemap uses independent yshift" begin
         wf = prop_begin(1.0, 500e-9, 16)
@@ -216,6 +257,18 @@ end
             prop_errormap(wf_got, f; SAMPLING=wf_got.sampling_m, ROTATEMAP=17.0, WAVEFRONT=true)
             @test isapprox(wf_got.field, wf_ref.field; atol=1e-12, rtol=1e-12)
         end
+    end
+
+    @testset "prop_8th_order_mask odd-grid axes match MATLAB formula" begin
+        wf = prop_begin(1.0, 500e-9, 5)
+        mask = prop_8th_order_mask(wf, 3.0; circular=true)
+        ref = _matlab_8th_order_mask_ref(wf, 3.0; circular=true)
+        @test isapprox(mask, ref; atol=1e-12, rtol=1e-12)
+
+        wf2 = prop_begin(1.0, 500e-9, 5)
+        mask2 = prop_8th_order_mask(wf2, 3.0; y_axis=true)
+        ref2 = _matlab_8th_order_mask_ref(wf2, 3.0; y_axis=true)
+        @test isapprox(mask2, ref2; atol=1e-12, rtol=1e-12)
     end
 
     @testset "prop_end extract semantics are integer-safe" begin

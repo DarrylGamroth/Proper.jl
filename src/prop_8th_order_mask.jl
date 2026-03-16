@@ -11,6 +11,11 @@ struct EllipticalMaskShape <: EighthOrderMaskShape end
     return plml - prop_sinc(pi * r * e / ll)^ll + (mm / ll) * prop_sinc(pi * r * e / mm)^mm
 end
 
+@inline function _mask_axis(n::Integer, c::T) where {T<:AbstractFloat}
+    center = fld(n, 2) + 1
+    return (collect(1:n) .- center) .* c
+end
+
 function _fill_8th_mask!(::LinearMaskShape, mask::AbstractMatrix{T}, x::AbstractVector{T}, y::AbstractVector{T}, e::T, ll::T, mm::T, plml::T, y_axis::Bool) where {T<:AbstractFloat}
     if y_axis
         line = similar(y)
@@ -88,8 +93,8 @@ function prop_8th_order_mask(
     plml = (ll - mm) / ll
     c = sampling / (fratio * wavelength)
 
-    x = (collect(0:(nx - 1)) .- nx / 2) .* c
-    y = (collect(0:(ny - 1)) .- ny / 2) .* c
+    x = _mask_axis(nx, c)
+    y = _mask_axis(ny, c)
 
     mask = similar(wf.field, RT, ny, nx)
     shape = _mask_shape_style(circular, elliptical)

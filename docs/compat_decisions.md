@@ -493,3 +493,16 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Consequences:
   - Core error-map application is again aligned with upstream PROPER semantics.
   - The project can keep the MATLAB-aligned default `prop_rotate` behavior while still preserving upstream `prop_errormap` behavior through an explicit cubic call.
+
+## D-0045: `prop_8th_order_mask` Uses MATLAB Center Coordinates
+- Date: 2026-03-16
+- Status: Accepted
+- Context:
+  - MATLAB defines the 8th-order mask coordinate axes with `([1:n] - (fix(n/2)+1)) * dxld`.
+  - The Julia implementation had used `(0:n-1) - n/2`, which matches the even-grid case but drifts on odd grids.
+  - This routine is column-major core optics code, so MATLAB is the right semantic reference here.
+- Decision:
+  - Generate `prop_8th_order_mask` axes using the MATLAB center convention `fix(n/2)+1` for both linear and radial variants.
+- Consequences:
+  - Odd-grid 8th-order masks now match MATLAB semantics.
+  - Existing even-grid results remain unchanged.

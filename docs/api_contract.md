@@ -37,12 +37,20 @@ Stable entry points:
 - `prop_propagate`
 - `prop_lens`
 - `prop_dm`
+- `prop_rotate`
+- `prop_magnify`
+- `prop_resamplemap`
+- `prop_pixellate`
+- `prop_8th_order_mask`
 - `prop_errormap`
 - `prop_psd_errormap`
 
 Notes:
 - Keep PROPER-style names for user familiarity.
 - Internals may be refactored freely if behavior contract is preserved.
+- Public semantics follow accepted compatibility decisions directly; important current examples:
+  - `prop_rotate` defaults to MATLAB-style linear interpolation. Callers that want cubic must request `METH="cubic"` or `CUBIC=true`.
+  - `prop_pixellate` public API matches upstream PROPER PSF-integration semantics: `prop_pixellate(image, sampling_in, sampling_out, n_out=0)`.
 - Reusable runtime state may be supplied explicitly:
   - `prop_run(...; context=ctx)`
   - `prop_run(prepare_prescription(...))`

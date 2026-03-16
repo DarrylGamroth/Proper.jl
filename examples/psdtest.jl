@@ -17,11 +17,14 @@ function psdtest(wavelength::Real, gridsize::Integer, passvalue=Dict("usepsdmap"
         c = 7.8
         prop_psd_errormap(wfo, a, b, c)
     else
+        # This is a wavefront error map in nanometers, so apply it explicitly as a
+        # wavefront map after converting nm -> m.
         prop_errormap(wfo, "errormap.fits"; SAMPLING=0.0004, MULTIPLY=1e-9, WAVEFRONT=true)
     end
 
     prop_lens(wfo, lens_fl, "telescope lens")
     prop_propagate(wfo, prop_get_distancetofocus(wfo), "intermediate focus")
+    # HWHM is in lambda/D units unless `METERS=true` is supplied.
     prop_8th_order_mask(wfo, 4; circular=true)
 
     prop_propagate(wfo, lens_fl, "pupil imaging lens")

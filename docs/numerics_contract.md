@@ -32,18 +32,20 @@ Freeze numerical conventions used by propagation, transforms, and coordinate sys
 
 ## 3. Centering Convention
 - `prop_shift_center` semantics:
-  - 2D circular shift by `floor(size/2)` on both axes (Python parity)
+  - forward shift uses `floor(size/2)` on each axis
+  - inverse shift uses `ceil(size/2)` on each axis
 - Even/odd behavior:
-  - self-inverse guarantee applies for even dimensions (primary PROPER path)
-  - odd-dimension behavior is defined but non-primary
+  - self-inverse guarantee applies for even dimensions
+  - odd-dimension behavior is explicit and regression-tested
 - Direction/inverse semantics:
   - explicit inverse variant may be provided for corrected/internal use
 
 ## 4. Coordinate And Pixel Center Convention
 - Pixel-center definition:
-  - coordinate zero at index corresponding to `n ÷ 2 + 1` in Julia (for even `n`)
+  - coordinate zero is defined per-routine according to accepted upstream semantics
 - Beam center index rule:
-  - follows Python expressions based on `(arange(n) - n//2)` equivalence
+  - interpolation/resampling routines that follow MATLAB use `fix(n/2)+1` semantics
+  - routines that intentionally preserve upstream Python/C executable behavior document that choice in `docs/compat_decisions.md`
 - Coordinate orientation:
   - internal array math follows PROPER/Python indexing conventions
   - display orientation choices are handled in plotting layer

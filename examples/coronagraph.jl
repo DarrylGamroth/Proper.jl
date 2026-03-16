@@ -20,6 +20,7 @@ function coronagraph(wfo::WaveFront, f_lens::Real, occulter_type::AbstractString
     elseif occulter_type == "SOLID"
         prop_circular_obscuration(wfo, occrad_m)
     elseif occulter_type == "8TH_ORDER"
+        # `prop_8th_order_mask` interprets `occrad` in lambda/D units here.
         prop_8th_order_mask(wfo, occrad; circular=true)
     else
         throw(ArgumentError("Unknown occulter_type=$occulter_type"))
