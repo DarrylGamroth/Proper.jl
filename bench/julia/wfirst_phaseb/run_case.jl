@@ -1,4 +1,3 @@
-using FITSIO
 using JSON3
 using Proper
 using Statistics
@@ -27,14 +26,8 @@ end
 
 function write_case_outputs(prefix::AbstractString, stack)
     for i in axes(stack, 1)
-        FITS(prefix * "_$(i)_real.fits", "w") do f
-            # FITSIO writes Julia matrices in Julia index order; permuting here
-            # makes the on-disk planes align with Python/astropy expectations.
-            write(f, permutedims(Float64.(real(@view stack[i, :, :]))))
-        end
-        FITS(prefix * "_$(i)_imag.fits", "w") do f
-            write(f, permutedims(Float64.(imag(@view stack[i, :, :]))))
-        end
+        prop_fits_write(prefix * "_$(i)_real.fits", Float64.(real(@view stack[i, :, :])))
+        prop_fits_write(prefix * "_$(i)_imag.fits", Float64.(imag(@view stack[i, :, :])))
     end
 end
 

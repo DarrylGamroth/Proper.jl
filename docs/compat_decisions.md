@@ -556,3 +556,33 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Regression coverage:
   - `test/test_phase9_semantic_reconciliation.jl` checks the default odd-grid `prop_readmap` result against the explicit executable-baseline coordinate formula and confirms it is not the same as a plain `ifftshift` roundtrip.
   - `test/test_phase2_core.jl` checks exact FITS read/write data roundtrips on non-square odd-sized maps.
+
+## D-0049: Core FITS IO Uses External Image Orientation
+- Date: 2026-03-16
+- Status: Accepted
+- Context:
+  - The prior `prop_fits_read` / `prop_fits_write` behavior preserved Julia/FITSIO storage order rather than external image orientation.
+  - As a result, a Julia-written `3x5` image was read by Astropy as shape `(5, 3)`, and a Python-written `(5, 3)` image arrived in Julia as `3x5`.
+  - WFIRST and reporting code had accumulated local `permutedims(...)` workarounds purely to compensate for that core defect.
+- Decision:
+  - `prop_fits_read` and `prop_fits_write` reverse dimension order for arrays with `ndims > 1` so that Julia array shape matches external FITS readers and writers.
+  - Remove local WFIRST/reporting workarounds that were only compensating for the old core behavior.
+- Consequences:
+  - Julia, Astropy, and MATLAB/IDL-style FITS users now see the same 2-D image orientation.
+  - Existing Julia-only FITS roundtrips remain stable because the read and write paths changed together.
+  - Model-local Python-order FITS adapters should only remain where they encode real model semantics, not FITSIO storage quirks.
+
+## D-0050: `prop_magnify(...; QUICK=true)` Supports Non-Square Output Sizing
+- Date: 2026-03-16
+- Status: Accepted
+- Context:
+  - MATLAB `prop_magnify(..., 'quick')` explicitly supports non-square inputs and, when `size_out` is omitted, computes output height and width independently.
+  - Julia had kept a square-only public result even on the `QUICK=true` path, which is a semantic drift from the MATLAB reference.
+  - The default damped-sinc path still depends on `prop_szoom`, which remains square-only.
+- Decision:
+  - When `QUICK=true` and `size_out` is omitted, `prop_magnify` computes rectangular output sizes independently from input height and width.
+  - This decision changes output sizing only. The interpolation-coordinate contract remains the accepted executable-baseline cubic-convolution contract.
+  - The default non-QUICK path remains square-only until `prop_szoom` itself is generalized.
+- Consequences:
+  - Quick cubic magnification now matches MATLAB behavior on non-square arrays.
+  - Callers that need non-square magnification today must use `QUICK=true`.

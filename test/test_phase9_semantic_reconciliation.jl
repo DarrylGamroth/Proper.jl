@@ -191,6 +191,24 @@ end
         @test got == ref
     end
 
+    @testset "prop_magnify QUICK supports non-square output sizing" begin
+        a = reshape(collect(1.0:15.0), 3, 5)
+        mag = 1.5
+        noy = floor(Int, size(a, 1) * mag)
+        nox = floor(Int, size(a, 2) * mag)
+        cy = floor(size(a, 1) / 2)
+        cx = floor(size(a, 2) / 2)
+        sy = floor(noy / 2)
+        sx = floor(nox / 2)
+        xcoords = ((0.0:(nox - 1)) .- sx) ./ mag .+ cx
+        ycoords = ((0.0:(noy - 1)) .- sy) ./ mag .+ cy
+
+        ref = Proper.prop_cubic_conv_grid!(Matrix{Float64}(undef, noy, nox), a, xcoords, ycoords)
+        got = prop_magnify(a, mag; QUICK=true)
+        @test size(got) == (noy, nox)
+        @test isapprox(got, ref; atol=1e-12, rtol=1e-12)
+    end
+
     @testset "prop_magnify default output sizing uses fix semantics" begin
         a = reshape(collect(1.0:64.0), 8, 8)
         @test size(prop_magnify(a, 1.6), 1) == 12
@@ -246,6 +264,26 @@ end
 
             @test read_got == ref
             @test read_got != FFTW.ifftshift(dmap)
+        end
+    end
+
+    @testset "prop_errormap rotate and magnify match explicit non-square-map path" begin
+        src = reshape(collect(1.0:15.0), 3, 5) .* 1e-9
+        wf_ref = prop_begin(1.0, 500e-9, 7)
+        wf_got = prop_begin(1.0, 500e-9, 7)
+        mktempdir() do d
+            f = joinpath(d, "non_square_map.fits")
+            prop_writemap(src, f; SAMPLING=wf_ref.sampling_m)
+
+            map = prop_readmap(wf_ref, f; SAMPLING=wf_ref.sampling_m)
+            map = prop_shift_center(map)
+            map = prop_rotate(map, 17.0; METH="cubic", MISSING=0.0)
+            map = prop_magnify(map, 1.0, size(map, 1))
+            map = prop_shift_center(map; inverse=true)
+            wf_ref.field .*= cis.(2pi .* map ./ wf_ref.wavelength_m)
+
+            prop_errormap(wf_got, f; SAMPLING=wf_got.sampling_m, ROTATEMAP=17.0, MAGNIFY=1.0, WAVEFRONT=true)
+            @test isapprox(wf_got.field, wf_ref.field; atol=1e-12, rtol=1e-12)
         end
     end
 

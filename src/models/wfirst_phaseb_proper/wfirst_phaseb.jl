@@ -1,6 +1,6 @@
 @inline function _phaseb_readmap_python_order(wf, filename::AbstractString)
     dmap_raw, header = prop_fits_read(filename; header=true)
-    dmap = ndims(dmap_raw) <= 1 ? dmap_raw : permutedims(dmap_raw, Tuple(ndims(dmap_raw):-1:1))
+    dmap = dmap_raw
     pixsize = if haskey(header, "RADPIX")
         prop_get_beamradius(wf) / float(header["RADPIX"])
     elseif haskey(header, "PIXSIZE")

@@ -154,9 +154,9 @@ using Proper.WFIRSTPhaseBProper
             @test isfile(joinpath(copied_examples, "wfirst_phaseb_reference.jl"))
 
             polroot = joinpath(d, "coeffs")
-            zamp = zeros(Float64, 22, 6, 2, 2)
-            zpha = zeros(Float64, 22, 6, 2, 2)
-            zamp[1, :, 1, 1] .= 2.0
+            zamp = zeros(Float64, 2, 2, 6, 22)
+            zpha = zeros(Float64, 2, 2, 6, 22)
+            zamp[1, 1, :, 1] .= 2.0
             prop_fits_write(polroot * "_amp.fits", zamp)
             prop_fits_write(polroot * "_pha.fits", zpha)
 

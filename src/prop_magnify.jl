@@ -35,22 +35,22 @@ end
     opts::MagnifyOptions,
     ws::InterpWorkspace,
 )
-    out_n = size(out, 1)
-    size(out, 2) == out_n || throw(ArgumentError("output must be square"))
+    ny_out, nx_out = size(out)
     if opts.quick
         T = eltype(ws.xcoords)
         ny, nx = size(image_in)
         cx_in = T(nx ÷ 2)
         cy_in = T(ny ÷ 2)
-        cx_out = T(out_n ÷ 2)
-        cy_out = T(out_n ÷ 2)
+        cx_out = T(nx_out ÷ 2)
+        cy_out = T(ny_out ÷ 2)
 
-        xcoords, ycoords = ensure_interp_axes!(ws, out_n, out_n)
+        xcoords, ycoords = ensure_interp_axes!(ws, nx_out, ny_out)
         invmag = inv(T(mag))
         fill_affine_axis!(fillsty, xcoords, cx_out, invmag, cx_in)
         fill_affine_axis!(fillsty, ycoords, cy_out, invmag, cy_in)
         prop_cubic_conv_grid!(out, sty, image_in, xcoords, ycoords)
     else
+        size(out, 1) == size(out, 2) || throw(ArgumentError("output must be square unless QUICK=true"))
         prop_szoom!(out, image_in, mag)
     end
 
@@ -121,11 +121,29 @@ function prop_magnify(
     kwargs...,
 )
     mag = float(mag0)
-    ny, _ = size(image_in)
-    out_n = size_out0 > 0 ? Int(size_out0) : floor(Int, ny * mag)
+    opts = MagnifyOptions(kwargs)
+    ny, nx = size(image_in)
+    if size_out0 > 0
+        out_n = Int(size_out0)
+        out_n > 0 || throw(ArgumentError("size_out must be positive"))
+        out = similar(image_in, out_n, out_n)
+        return prop_magnify!(out, image_in, mag, opts)
+    end
+
+    if opts.quick
+        noy = floor(Int, ny * mag)
+        nox = floor(Int, nx * mag)
+        noy > 0 || throw(ArgumentError("output height must be positive"))
+        nox > 0 || throw(ArgumentError("output width must be positive"))
+        out = similar(image_in, noy, nox)
+        return prop_magnify!(out, image_in, mag, opts)
+    end
+
+    ny == nx || throw(ArgumentError("prop_magnify default path currently requires square input unless QUICK=true"))
+    out_n = floor(Int, ny * mag)
     out_n > 0 || throw(ArgumentError("size_out must be positive"))
     out = similar(image_in, out_n, out_n)
-    return prop_magnify!(out, image_in, mag, MagnifyOptions(kwargs))
+    return prop_magnify!(out, image_in, mag, opts)
 end
 
 function prop_magnify(
@@ -136,9 +154,27 @@ function prop_magnify(
     kwargs...,
 )
     mag = float(mag0)
-    ny, _ = size(image_in)
-    out_n = size_out0 > 0 ? Int(size_out0) : floor(Int, ny * mag)
+    opts = MagnifyOptions(kwargs)
+    ny, nx = size(image_in)
+    if size_out0 > 0
+        out_n = Int(size_out0)
+        out_n > 0 || throw(ArgumentError("size_out must be positive"))
+        out = similar(image_in, out_n, out_n)
+        return prop_magnify!(out, image_in, mag, opts, ctx)
+    end
+
+    if opts.quick
+        noy = floor(Int, ny * mag)
+        nox = floor(Int, nx * mag)
+        noy > 0 || throw(ArgumentError("output height must be positive"))
+        nox > 0 || throw(ArgumentError("output width must be positive"))
+        out = similar(image_in, noy, nox)
+        return prop_magnify!(out, image_in, mag, opts, ctx)
+    end
+
+    ny == nx || throw(ArgumentError("prop_magnify default path currently requires square input unless QUICK=true"))
+    out_n = floor(Int, ny * mag)
     out_n > 0 || throw(ArgumentError("size_out must be positive"))
     out = similar(image_in, out_n, out_n)
-    return prop_magnify!(out, image_in, mag, MagnifyOptions(kwargs), ctx)
+    return prop_magnify!(out, image_in, mag, opts, ctx)
 end

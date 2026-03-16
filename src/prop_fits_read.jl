@@ -13,14 +13,18 @@ end
 
 @inline function _prop_fits_read_data(fname::AbstractString)::AbstractArray
     FITS(fname, "r") do f
-        return read(f[1])::AbstractArray
+        data = read(f[1])::AbstractArray
+        nd = ndims(data)
+        return nd <= 1 ? data : permutedims(data, Tuple(nd:-1:1))
     end
 end
 
 @inline function _prop_fits_read_data_header(fname::AbstractString)::Tuple{AbstractArray,FITSHeader}
     FITS(fname, "r") do f
         hdu = f[1]
-        img = read(hdu)::AbstractArray
+        img_raw = read(hdu)::AbstractArray
+        nd = ndims(img_raw)
+        img = nd <= 1 ? img_raw : permutedims(img_raw, Tuple(nd:-1:1))
         return img, _fits_header_dict(hdu)
     end
 end
