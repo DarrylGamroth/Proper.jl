@@ -6,6 +6,7 @@ struct RotateOptions{T<:AbstractFloat}
     cy::T
     sx::T
     sy::T
+    missing::T
 end
 
 @inline function _rotate_method(kwargs::Base.Iterators.Pairs)::RotateMethod
@@ -16,7 +17,7 @@ end
     if kw_lookup_present(kwargs, :CUBIC)
         return ROTATE_CUBIC
     end
-    return ROTATE_CUBIC
+    return ROTATE_LINEAR
 end
 
 @inline function RotateOptions(old_image::AbstractMatrix, kwargs::Base.Iterators.Pairs)
@@ -27,7 +28,8 @@ end
     cyv = T(kw_lookup_float(kwargs, :YC, ny ÷ 2 + 1))
     sxv = T(kw_lookup_float(kwargs, :XSHIFT, 0.0))
     syv = T(kw_lookup_float(kwargs, :YSHIFT, 0.0))
-    return RotateOptions{T}(method, cxv, cyv, sxv, syv)
+    missingv = T(kw_lookup_float(kwargs, :MISSING, kw_lookup_float(kwargs, :EXTR, 0.0)))
+    return RotateOptions{T}(method, cxv, cyv, sxv, syv, missingv)
 end
 
 @inline function _prop_rotate_linear!(
@@ -44,7 +46,7 @@ end
             y = i - opts.cy - opts.sy
             xr = c * x - s * y + opts.cx
             yr = s * x + c * y + opts.cy
-            out[i, j] = bilinear_sample(old_image, yr, xr)
+            out[i, j] = bilinear_sample_extrap(old_image, yr, xr, opts.missing)
         end
     end
     return out
@@ -65,7 +67,11 @@ end
             y = i - opts.cy - opts.sy
             xr = c * x - s * y + opts.cx
             yr = s * x + c * y + opts.cy
-            out[i, j] = prop_cubic_conv(sty, old_image, yr, xr)
+            if 1 <= xr <= nx && 1 <= yr <= ny
+                out[i, j] = prop_cubic_conv(sty, old_image, yr, xr)
+            else
+                out[i, j] = opts.missing
+            end
         end
     end
     return out
@@ -126,7 +132,7 @@ struct RotateHostExecStyle <: RotateExecStyle end
     sty::InterpStyle,
 )
     _ = sty
-    return ka_rotate_linear!(out, old_image, c, s, opts.cx, opts.cy, opts.sx, opts.sy)
+    return ka_rotate_linear!(out, old_image, c, s, opts.cx, opts.cy, opts.sx, opts.sy, opts.missing)
 end
 
 @inline function _prop_rotate_ka!(
@@ -138,7 +144,7 @@ end
     opts::RotateOptions,
     ::CubicInterpStyle,
 )
-    return ka_rotate_cubic!(out, old_image, c, s, opts.cx, opts.cy, opts.sx, opts.sy)
+    return ka_rotate_cubic!(out, old_image, c, s, opts.cx, opts.cy, opts.sx, opts.sy, opts.missing)
 end
 
 @inline function _prop_rotate_loop!(
@@ -254,7 +260,7 @@ end
     return prop_rotate!(out, old_image, theta, opts)
 end
 
-"""Rotate image by theta degrees around center (cubic by default)."""
+"""Rotate image by theta degrees around center (linear by default)."""
 function prop_rotate(
     old_image::AbstractMatrix,
     theta::Real;

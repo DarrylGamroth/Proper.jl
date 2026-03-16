@@ -26,3 +26,11 @@ end
     v1 = (1 - tx) * v01 + tx * v11
     return (1 - ty) * v0 + ty * v1
 end
+
+@inline function bilinear_sample_extrap(a::AbstractMatrix{T}, y::Real, x::Real, missing) where {T}
+    ny, nx = size(a)
+    if x < 1 || x > nx || y < 1 || y > ny
+        return convert(promote_type(T, typeof(missing)), missing)
+    end
+    return bilinear_sample(a, y, x)
+end

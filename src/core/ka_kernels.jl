@@ -79,6 +79,14 @@ end
     return (one(ty) - ty) * v0 + ty * v1
 end
 
+@inline function _ka_bilinear_sample_extrap(a::AbstractMatrix{T}, y::Real, x::Real, missing) where {T}
+    ny, nx = size(a)
+    if x < 1 || x > nx || y < 1 || y > ny
+        return convert(promote_type(T, typeof(missing)), missing)
+    end
+    return _ka_bilinear_sample(a, y, x)
+end
+
 @inline function _ka_cubic_sample(a::AbstractMatrix{T}, y::Real, x::Real) where {T}
     ny, nx = size(a)
     F = float(promote_type(typeof(x), typeof(y), real(T)))
@@ -481,6 +489,7 @@ end
     cy,
     sx,
     sy,
+    missing,
     ny::Int,
     nx::Int,
 )
@@ -493,7 +502,7 @@ end
         y = i - cy - sy
         xr = c * x - s * y + cx
         yr = s * x + c * y + cy
-        out[i, j] = _ka_bilinear_sample(old_image, yr, xr)
+        out[i, j] = _ka_bilinear_sample_extrap(old_image, yr, xr, missing)
     end
 end
 
@@ -506,6 +515,7 @@ end
     cy,
     sx,
     sy,
+    missing,
     ny::Int,
     nx::Int,
 )
@@ -518,7 +528,11 @@ end
         y = i - cy - sy
         xr = c * x - s * y + cx
         yr = s * x + c * y + cy
-        out[i, j] = _ka_cubic_sample(old_image, yr, xr)
+        if 1 <= xr <= nx && 1 <= yr <= ny
+            out[i, j] = _ka_cubic_sample(old_image, yr, xr)
+        else
+            out[i, j] = missing
+        end
     end
 end
 
@@ -1007,11 +1021,16 @@ end
     cy,
     sx,
     sy,
+    missing,
 )
     ny, nx = size(old_image)
     backend = AK.get_backend(out)
-    _ka_rotate_linear_kernel!(backend, (16, 16))(out, old_image, c, s, cx, cy, sx, sy, ny, nx; ndrange=(ny, nx))
+    _ka_rotate_linear_kernel!(backend, (16, 16))(out, old_image, c, s, cx, cy, sx, sy, missing, ny, nx; ndrange=(ny, nx))
     return out
+end
+
+@inline function ka_rotate_linear!(out::AbstractMatrix, old_image::AbstractMatrix, c, s, cx, cy, sx, sy)
+    return ka_rotate_linear!(out, old_image, c, s, cx, cy, sx, sy, zero(float(real(eltype(old_image)))))
 end
 
 @inline function ka_rotate_cubic!(
@@ -1023,11 +1042,16 @@ end
     cy,
     sx,
     sy,
+    missing,
 )
     ny, nx = size(old_image)
     backend = AK.get_backend(out)
-    _ka_rotate_cubic_kernel!(backend, (16, 16))(out, old_image, c, s, cx, cy, sx, sy, ny, nx; ndrange=(ny, nx))
+    _ka_rotate_cubic_kernel!(backend, (16, 16))(out, old_image, c, s, cx, cy, sx, sy, missing, ny, nx; ndrange=(ny, nx))
     return out
+end
+
+@inline function ka_rotate_cubic!(out::AbstractMatrix, old_image::AbstractMatrix, c, s, cx, cy, sx, sy)
+    return ka_rotate_cubic!(out, old_image, c, s, cx, cy, sx, sy, zero(float(real(eltype(old_image)))))
 end
 
 @inline function ka_rectangle_mask!(

@@ -395,7 +395,7 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 
 ## D-0039: `prop_rotate` Follows Python Cubic-Interpolation Coordinates
 - Date: 2026-03-16
-- Status: Accepted
+- Status: Superseded by D-0040
 - Context:
   - MATLAB `prop_rotate` delegates to `interp2` with the default one-based image-coordinate convention and centers at `fix(nx/2)+1`, `fix(ny/2)+1`.
   - The executable Python 3.3.4 baseline uses `prop_cubic_conv`, which in turn uses the upstream `cubic_conv_c.c` zero-based coordinate convention. That makes the cubic `prop_rotate` path semantically different from MATLAB on small synthetic arrays even at `theta = 0`.
@@ -407,3 +407,23 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Consequences:
   - `prop_rotate` regression tests should encode the Python baseline behavior, not MATLAB `interp2` identity expectations on tiny arrays.
   - `prop_resamplemap` remains a separate MATLAB-aligned path and should not be conflated with `prop_rotate` coordinate semantics.
+
+## D-0040: `prop_rotate` Follows MATLAB Semantics
+- Date: 2026-03-16
+- Status: Accepted
+- Context:
+  - Julia, MATLAB, and IDL are column-major, while the executable Python baseline is row-major.
+  - The previous `prop_rotate` implementation mixed MATLAB-style centers with Python-style cubic-convolution sampling, which was internally inconsistent and did not cleanly match either upstream.
+  - For array-order-sensitive core semantics, the project now prefers the MATLAB/IDL interpretation unless there is a stronger accepted compatibility reason not to.
+- Decision:
+  - `prop_rotate` follows the MATLAB `prop_rotate.m` interface and linear-path semantics:
+    - default interpolation method is `linear`
+    - default centers remain `fix(nx/2)+1`, `fix(ny/2)+1`
+    - `MISSING` / `EXTR` controls the extrapolated fill value
+    - out-of-bounds samples are not edge-clamped on the linear rotate path
+  - The explicit cubic rotate path remains available, but is not yet treated as a fully validated `interp2(..., 'cubic')` replacement.
+- Consequences:
+  - `prop_rotate(a, 0)` is again an identity transform for ordinary matrices under the default settings.
+  - Existing callers that relied on the previous implicit cubic default must request `METH="cubic"` or `CUBIC=true` explicitly.
+  - Python executable parity is no longer the deciding baseline for the default `prop_rotate` path; MATLAB semantics are.
+  - A future audit is still required if we want the explicit cubic rotate branch to match MATLAB `interp2(..., 'cubic')` behavior rather than the existing PROPER cubic-convolution kernel.

@@ -24,6 +24,10 @@ using FFTW
     a = reshape(collect(1.0:16.0), 4, 4)
     @test size(prop_magnify(a, 2.0)) == (8, 8)
     @test size(prop_rotate(a, 15.0)) == size(a)
+    @test prop_rotate(a, 0.0) == a
+    @test prop_rotate(a, 0.0; METH="linear") == a
+    @test prop_rotate(a, 0.0; XSHIFT=1.0) == [0.0 1.0 5.0 9.0; 0.0 2.0 6.0 10.0; 0.0 3.0 7.0 11.0; 0.0 4.0 8.0 12.0]
+    @test prop_rotate(a, 0.0; XSHIFT=1.0, MISSING=-1.0) == [-1.0 1.0 5.0 9.0; -1.0 2.0 6.0 10.0; -1.0 3.0 7.0 11.0; -1.0 4.0 8.0 12.0]
 
     wf4 = prop_begin(1.0, 500e-9, 32)
     @test (@inferred prop_select_propagator(wf4, 0.1)) isa Float64
