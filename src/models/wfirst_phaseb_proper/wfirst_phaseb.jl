@@ -213,11 +213,10 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_PUPILMASK_phase_error_V1.0.fits")
 
     diam_pupil = 2 * prop_get_beamradius(wf)
-    field_default = phaseb_field(ws, n_default)
-    prop_end!(field_default, wf; noabs=true)
+    field_default = wf.field
     n = n_to_fpm
     wf = prop_begin(diam_pupil, λm, n; beam_diam_fraction=pupil_diam_pix / n)
-    phaseb_center_to_fft_order!(wf.field, field_default)
+    phaseb_fft_order_resize!(wf.field, field_default)
     field_to_fpm = phaseb_field(ws, n)
 
     prop_propagate(wf, d_pupilmask_oap5, "OAP5")
@@ -246,10 +245,10 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     prop_propagate(wf, d_oap6_lyotstop, "LYOT_STOP")
 
     diam_lyot = 2 * prop_get_beamradius(wf)
-    prop_end!(field_to_fpm, wf; noabs=true)
+    field_to_lyot = wf.field
     n = n_from_lyotstop
     wf = prop_begin(diam_lyot, λm, n; beam_diam_fraction=pupil_diam_pix / n)
-    phaseb_center_to_fft_order!(wf.field, field_to_fpm)
+    phaseb_fft_order_resize!(wf.field, field_to_lyot)
     field_from_lyot = phaseb_field(ws, n)
 
     if use_lyot_stop != 0 && cfg.lyot_stop_file !== nothing

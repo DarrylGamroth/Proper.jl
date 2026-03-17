@@ -66,6 +66,15 @@ end
     Proper.copy_centered_to_fft_order!(direct_fft_order_crop, crop_in)
     @test direct_fft_order_crop == fft_order_crop
 
+    direct_fft_resize = Matrix{ComplexF64}(undef, 6, 6)
+    centered_resize = Matrix{ComplexF64}(undef, 6, 6)
+    fft_resize = Matrix{ComplexF64}(undef, 6, 6)
+    input_fft = reshape(ComplexF64.(1:16), 4, 4)
+    Proper.copy_centered!(centered_resize, prop_shift_center(input_fft))
+    Proper.copy_centered_to_fft_order!(fft_resize, centered_resize)
+    Proper.copy_fft_order_resized!(direct_fft_resize, input_fft)
+    @test direct_fft_resize == fft_resize
+
     c = reshape(ComplexF64.(1:16), 4, 4)
     shifted = similar(c)
     Proper.half_shift_copy!(shifted, c)

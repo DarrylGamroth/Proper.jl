@@ -86,6 +86,7 @@ end
 
 @inline phaseb_center_copy!(out::AbstractMatrix{T}, input_image::AbstractMatrix) where {T} = Proper.copy_centered!(out, input_image)
 @inline phaseb_center_to_fft_order!(out::AbstractMatrix{T}, input_image::AbstractMatrix) where {T} = Proper.copy_centered_to_fft_order!(out, input_image)
+@inline phaseb_fft_order_resize!(out::AbstractMatrix{T}, input_image::AbstractMatrix) where {T} = Proper.copy_fft_order_resized!(out, input_image)
 @inline function phaseb_center_crop(input_image::AbstractMatrix, output_dim::Integer)
     ny, nx = size(input_image)
     output_dim <= min(ny, nx) || throw(ArgumentError("center crop output_dim must not exceed input size"))
