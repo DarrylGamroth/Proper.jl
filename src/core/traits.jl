@@ -1,6 +1,7 @@
 abstract type BackendStyle end
 struct CPUBackend <: BackendStyle end
 struct CUDABackend <: BackendStyle end
+struct AMDGPUBackend <: BackendStyle end
 struct UnknownBackend <: BackendStyle end
 
 backend_style(::Type{<:AbstractArray}) = CPUBackend()
@@ -15,6 +16,7 @@ array_layout_style(::Type{<:StridedArray}) = StridedLayout()
 abstract type FFTStyle end
 struct FFTWStyle <: FFTStyle end
 struct CUFFTStyle <: FFTStyle end
+struct ROCFFTStyle <: FFTStyle end
 struct GenericFFTStyle <: FFTStyle end
 
 fft_style(::Type{<:AbstractArray}) = FFTWStyle()
@@ -134,6 +136,7 @@ struct AxisFillKAExecStyle <: AxisFillExecStyle end
 
 @inline axis_fill_exec_style(::CPUBackend) = AxisFillLoopExecStyle()
 @inline axis_fill_exec_style(::CUDABackend) = AxisFillKAExecStyle()
+@inline axis_fill_exec_style(::AMDGPUBackend) = AxisFillKAExecStyle()
 @inline axis_fill_exec_style(::BackendStyle) = AxisFillLoopExecStyle()
 
 @inline same_backend_style(::B, ::B) where {B<:BackendStyle} = true

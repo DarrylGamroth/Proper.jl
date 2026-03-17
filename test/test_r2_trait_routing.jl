@@ -262,4 +262,76 @@ using Test
             @test true
         end
     end
+
+    @testset "Optional AMDGPU smoke (no scalar indexing)" begin
+        amdgpu_ready = false
+        try
+            @eval using AMDGPU
+            amdgpu_ready = AMDGPU.functional() && AMDGPU.functional(:rocfft)
+        catch
+            amdgpu_ready = false
+        end
+
+        if amdgpu_ready
+            AMDGPU.allowscalar(false)
+            @test Base.get_extension(Proper, :ProperAMDGPUExt) !== nothing
+
+            a = AMDGPU.rand(Float32, 16, 16)
+            ctx = RunContext(typeof(a))
+            @test ctx.backend isa Proper.AMDGPUBackend
+            @test ctx.fft isa Proper.ROCFFTStyle
+            @test ctx.interp isa Proper.CubicInterpStyle
+            @test Proper.ka_cubic_grid_enabled(typeof(a), 16, 16)
+            @test Proper.ka_rotate_enabled(typeof(a), 16, 16)
+            @test Proper.ka_geometry_enabled(typeof(a), 16, 16)
+            @test Proper.ka_sampling_enabled(typeof(a), 16, 16)
+
+            m = prop_magnify(a, 1.1, 16, ctx; QUICK=true)
+            r = prop_rotate(a, 5.0, ctx)
+            s = prop_szoom(a, 1.1, 16)
+            p = Proper._prop_pixellate_factor(a, 2)
+            wf_resample = Proper.WaveFront(AMDGPU.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
+            ropts = Proper.ResampleMapOptions(wf_resample, wf_resample.sampling_m, 8f0, 8f0)
+            res = similar(a)
+            Proper.prop_resamplemap!(res, wf_resample, a, ropts, ctx)
+            @test size(m) == (16, 16)
+            @test size(r) == (16, 16)
+            @test size(s) == (16, 16)
+            @test size(p) == (8, 8)
+            @test size(res) == (16, 16)
+            @test Proper.interp_workspace(ctx).xcoords isa AMDGPU.ROCArray
+            @test Proper.interp_workspace(ctx).ycoords isa AMDGPU.ROCArray
+
+            wf = Proper.WaveFront(AMDGPU.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
+            prop_qphase(wf, 0.25f0, ctx)
+            wf.reference_surface = Proper.PLANAR
+            prop_ptp(wf, 0.01f0, ctx)
+            fws = Proper.fft_workspace(ctx)
+            @test fws.scratch isa AMDGPU.ROCArray
+            @test fws.forward_plan !== nothing
+            @test fws.backward_plan !== nothing
+            pfft = fws.forward_plan
+            pbfft = fws.backward_plan
+            wf.reference_surface = Proper.PLANAR
+            prop_ptp(wf, 0.01f0, ctx)
+            @test fws.forward_plan === pfft
+            @test fws.backward_plan === pbfft
+            wf_ref = Proper.WaveFront(fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
+            prop_qphase(wf_ref, 0.25f0)
+            wf_ref.reference_surface = Proper.PLANAR
+            prop_ptp(wf_ref, 0.01f0)
+            @test isapprox(Array(wf.field), wf_ref.field; atol=3f-4, rtol=1f-3)
+            prop_circular_aperture(wf, 2.5f-4)
+            @test wf.workspace.mask.mask isa AMDGPU.ROCArray
+            prop_circular_aperture(wf_ref, 2.5f-4)
+            out, sampling = prop_end(wf)
+            out_ref, sampling_ref = prop_end(wf_ref)
+            @test size(out) == (16, 16)
+            @test sampling == wf.sampling_m
+            @test sampling == sampling_ref
+            @test Array(out) isa Matrix{Float32}
+        else
+            @test true
+        end
+    end
 end

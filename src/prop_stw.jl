@@ -45,6 +45,27 @@ end
 end
 
 @inline function _prop_stw_fft_step!(
+    ::ROCFFTStyle,
+    wf::WaveFront,
+    d::Real,
+    n::Int,
+    ctx::RunContext,
+    ws::FFTWorkspace,
+)
+    ny, nx = size(wf.field)
+    f = prepare_fft_field!(ws, wf.field, ny, nx)
+    pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
+    if d >= 0
+        pfft * f
+    else
+        pbfft * f
+    end
+    f ./= n
+    wf.field = f
+    return wf
+end
+
+@inline function _prop_stw_fft_step!(
     ::FFTStyle,
     wf::WaveFront,
     d::Real,

@@ -11,10 +11,12 @@ planning/audit records from the port effort.
 - [Runnable API examples](API_EXAMPLES.md)
 
 ## Benchmarking
-- Run `./scripts/benchmark_cpu_gpu.sh` for the Julia CPU/CUDA comparison lane
+- Run `./scripts/benchmark_cpu_gpu.sh` for the Julia CPU/GPU comparison lane
 - The resulting summary is written to `bench/reports/julia_cpu_gpu_summary.md`
-- If `CUDA.jl` or a supported device is unavailable, the summary records CUDA
-  as skipped rather than failing the whole benchmark lane
+- The driver uses any available Julia GPU backends (`CUDA.jl` and/or
+  `AMDGPU.jl`)
+- If a GPU backend or supported device is unavailable, the summary records that
+  backend as skipped rather than failing the whole benchmark lane
 
 ## Core Contracts
 - [Numerics contract](numerics_contract.md)

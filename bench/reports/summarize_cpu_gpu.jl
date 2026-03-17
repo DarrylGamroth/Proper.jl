@@ -161,6 +161,8 @@ cuda_jl_fp32 = loadjson(joinpath(root, "julia_cuda_steady_state_fp32.json"))
 cuda_kernels = loadjson(joinpath(root, "cuda_supported_kernels.json"))
 cuda_precision = loadjson(joinpath(root, "cuda_precision_split.json"))
 cuda_isolated = loadjson(joinpath(root, "cuda_isolated_wavefront_kernels.json"))
+amdgpu_jl = loadjson(joinpath(root, "julia_amdgpu_steady_state.json"))
+amdgpu_kernels = loadjson(joinpath(root, "amdgpu_supported_kernels.json"))
 
 summary_md_path = joinpath(root, "julia_cpu_gpu_summary.md")
 generated_paths = String[]
@@ -178,6 +180,8 @@ steady_notes = String[]
 jl_med = maybe_float(getpath(jl, "stats", "median_ns"))
 cuda_available = maybe_bool(getpath(cuda_jl, "meta", "available"))
 cuda_med = cuda_available ? maybe_float(getpath(cuda_jl, "stats", "median_ns")) : nothing
+amdgpu_available = maybe_bool(getpath(amdgpu_jl, "meta", "available"))
+amdgpu_med = amdgpu_available ? maybe_float(getpath(amdgpu_jl, "stats", "median_ns")) : nothing
 
 if jl !== nothing
     push!(steady_rows, [
@@ -195,6 +199,14 @@ if cuda_available
         jl_med === nothing ? "-" : fmt_ratio(jl_med / cuda_med),
     ])
 end
+if amdgpu_available
+    push!(steady_rows, [
+        "Julia AMDGPU",
+        fmt_ns(amdgpu_med),
+        fmt_int(getpath(amdgpu_jl, "stats", "samples")),
+        jl_med === nothing ? "-" : fmt_ratio(jl_med / amdgpu_med),
+    ])
+end
 push!(steady_notes, "Steady-state rows use BenchmarkTools and exclude Julia cold-start / TTFx by construction.")
 if cuda_available
     push!(steady_notes, "CUDA device: $(getpath(cuda_jl, "meta", "device"))")
@@ -204,13 +216,20 @@ elseif cuda_jl !== nothing
     push!(steady_notes, "CUDA status: skipped")
     push!(steady_notes, "Reason: $reason")
 end
+if amdgpu_available
+    push!(steady_notes, "AMDGPU device: $(getpath(amdgpu_jl, "meta", "device"))")
+elseif amdgpu_jl !== nothing
+    reason = replace(String(getpath(amdgpu_jl, "reason")), '\n' => ' ')
+    push!(steady_notes, "AMDGPU status: skipped")
+    push!(steady_notes, "Reason: $reason")
+end
 append_ascii_section!(term, "Julia Steady-State CPU vs GPU", steady_headers, steady_rows; aligns=[:l, :r, :r, :r], notes=steady_notes)
 append_markdown_section!(md, "Julia Steady-State CPU vs GPU", steady_headers, steady_rows; notes=steady_notes)
 push!(generated_paths, write_csv(joinpath(root, "julia_cpu_gpu_steady_state.csv"), steady_headers, steady_rows))
 
 cpu_kernel_data = getpath(cpu_supported, "kernels")
 cuda_kernel_data = cuda_available ? getpath(cuda_kernels, "kernels") : nothing
-if cpu_kernel_data !== nothing
+if cpu_kernel_data !== nothing && cuda_kernels !== nothing
     kernel_headers = ["Kernel", "CPU", "CUDA", "CPU/CUDA", "CPU allocs", "CUDA allocs", "CPU bytes", "CUDA bytes"]
     kernel_rows = Vector{Vector{String}}()
     preferred = [
@@ -247,6 +266,46 @@ if cpu_kernel_data !== nothing
     append_ascii_section!(term, "Julia Supported Kernels: CPU vs GPU", kernel_headers, kernel_rows; aligns=[:l, :r, :r, :r, :r, :r, :r, :r])
     append_markdown_section!(md, "Julia Supported Kernels: CPU vs GPU", kernel_headers, kernel_rows)
     push!(generated_paths, write_csv(joinpath(root, "julia_cpu_gpu_supported_kernels.csv"), kernel_headers, kernel_rows))
+end
+
+amdgpu_kernel_data = amdgpu_available ? getpath(amdgpu_kernels, "kernels") : nothing
+if cpu_kernel_data !== nothing && amdgpu_kernels !== nothing
+    kernel_headers = ["Kernel", "CPU", "AMDGPU", "CPU/AMDGPU", "CPU allocs", "AMDGPU allocs", "CPU bytes", "AMDGPU bytes"]
+    kernel_rows = Vector{Vector{String}}()
+    preferred = [
+        "prop_qphase",
+        "prop_ptp",
+        "prop_wts",
+        "prop_stw",
+        "prop_circular_aperture",
+        "prop_end_mutating",
+        "prop_rotate_mutating",
+        "prop_magnify_quick_mutating",
+        "prop_szoom_mutating",
+        "prop_pixellate_mutating",
+        "prop_resamplemap_mutating",
+        "prop_rectangle_mutating",
+        "prop_rounded_rectangle_mutating",
+    ]
+    for name in ordered_names(preferred, cpu_kernel_data, amdgpu_kernel_data)
+        cpu_stats = getkey(cpu_kernel_data, name)
+        gpu_stats = getkey(amdgpu_kernel_data, name)
+        cpu_ns = maybe_float(getpath(cpu_stats, "median_ns"))
+        gpu_ns = maybe_float(getpath(gpu_stats, "median_ns"))
+        push!(kernel_rows, [
+            name,
+            fmt_ns(cpu_ns),
+            fmt_ns(gpu_ns),
+            cpu_ns === nothing || gpu_ns === nothing ? "-" : fmt_ratio(cpu_ns / gpu_ns),
+            fmt_int(getpath(cpu_stats, "median_allocs")),
+            fmt_int(getpath(gpu_stats, "median_allocs")),
+            fmt_bytes(getpath(cpu_stats, "median_bytes")),
+            fmt_bytes(getpath(gpu_stats, "median_bytes")),
+        ])
+    end
+    append_ascii_section!(term, "Julia Supported Kernels: CPU vs AMDGPU", kernel_headers, kernel_rows; aligns=[:l, :r, :r, :r, :r, :r, :r, :r])
+    append_markdown_section!(md, "Julia Supported Kernels: CPU vs AMDGPU", kernel_headers, kernel_rows)
+    push!(generated_paths, write_csv(joinpath(root, "julia_cpu_amdgpu_supported_kernels.csv"), kernel_headers, kernel_rows))
 end
 
 cuda_precision_available = maybe_bool(getpath(cuda_precision, "meta", "available"))

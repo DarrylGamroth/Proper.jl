@@ -16,6 +16,7 @@ Define stable trait-dispatched interfaces for array backends and computational k
 - [x] Trait interfaces frozen
 - [x] Implementations registered for current CPU baseline and context-routed interpolation/propagation paths
 - [x] CUDA package extension registers `CuArray` backend, FFT, and KA kernel traits without making `CUDA.jl` a hard dependency
+- [x] AMDGPU package extension registers `ROCArray` backend, rocFFT, and KA kernel traits without making `AMDGPU.jl` a hard dependency
 
 ## 1. Trait Model
 Proposed trait families:
@@ -73,6 +74,10 @@ Semantics:
   - FFT: `CUDA.CUFFT`
   - Interp/resample: `KernelAbstractions.jl` / `AcceleratedKernels.jl` kernels where implemented
   - Registration: package extension `ProperCUDAExt`
+- GPU `ROCArray`:
+  - FFT: `AMDGPU.rocFFT`
+  - Interp/resample: `KernelAbstractions.jl` / `AcceleratedKernels.jl` kernels where implemented
+  - Registration: package extension `ProperAMDGPUExt`
 - Future backends:
   - oneAPI/ROCm backends may be added without API break if they satisfy trait contracts
 

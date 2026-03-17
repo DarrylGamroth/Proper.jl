@@ -17,13 +17,16 @@ Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [weakdeps]
+AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 
 [extensions]
+ProperAMDGPUExt = "AMDGPU"
 ProperCUDAExt = "CUDA"
 
 [compat]
 AcceleratedKernels = "0.4.3"
+AMDGPU = "2.3"
 KernelAbstractions = "0.9.40"
 Plots = "1.41.6"
 julia = "1.10"

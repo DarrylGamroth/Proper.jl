@@ -24,7 +24,8 @@ end
 end
 
 @inline function _prop_qphase_strided!(wf::WaveFront, c::Real, ws::QPhaseWorkspace, scale::Real=1)
-    c == 0 && return isone(scale) ? wf : (rmul!(wf.field, float(scale)); wf)
+    T = float(real(eltype(wf.field)))
+    c == 0 && return isone(scale) ? wf : (rmul!(wf.field, T(scale)); wf)
     ny, nx = size(wf.field)
     dx = wf.sampling_m
     k = pi / (wf.wavelength_m * float(c))
@@ -32,7 +33,7 @@ end
 
     _fill_fft_order_axis_phase!(xphase, nx, dx, k)
     _fill_fft_order_axis_phase!(yphase, ny, dx, k)
-    _apply_separable_phase!(wf.field, xphase, yphase, float(scale))
+    _apply_separable_phase!(wf.field, xphase, yphase, T(scale))
 
     return wf
 end
@@ -76,6 +77,7 @@ struct QPhaseBroadcastExecStyle <: QPhaseExecStyle end
 
 @inline qphase_exec_style(::StridedLayout, ::CPUBackend) = QPhaseLoopExecStyle()
 @inline qphase_exec_style(::ArrayLayoutStyle, ::CUDABackend) = QPhaseKAExecStyle()
+@inline qphase_exec_style(::ArrayLayoutStyle, ::AMDGPUBackend) = QPhaseKAExecStyle()
 @inline qphase_exec_style(::ArrayLayoutStyle, ::BackendStyle) = QPhaseBroadcastExecStyle()
 
 @inline _prop_qphase!(::QPhaseLoopExecStyle, wf::WaveFront, c::Real, ctx::RunContext) = _prop_qphase_strided!(wf, c, qphase_workspace(ctx))

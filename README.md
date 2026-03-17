@@ -29,7 +29,7 @@ prepared execution layer for repeated runs.
   TTFx (`D-0029`)
 
 ### Julia CPU vs GPU Benchmarks
-Run the dedicated Julia CPU/CUDA comparison lane with:
+Run the dedicated Julia CPU/GPU comparison lane with:
 
 ```bash
 ./scripts/benchmark_cpu_gpu.sh
@@ -40,9 +40,10 @@ This generates:
 - `bench/reports/julia_cpu_gpu_steady_state.csv`
 - `bench/reports/julia_cpu_gpu_supported_kernels.csv`
 
-The script uses the Julia steady-state CPU and CUDA benchmark lanes only. It
-does not depend on the Python parity environment. If `CUDA.jl` or a supported
-device is unavailable, it writes a skipped CUDA summary instead of failing.
+The script uses the Julia steady-state CPU lane plus any available GPU lanes
+(`CUDA.jl` and/or `AMDGPU.jl`). It does not depend on the Python parity
+environment. If a GPU backend or supported device is unavailable, it records
+that backend as skipped instead of failing the whole run.
 
 ## Requirements
 - Julia 1.10 or newer
