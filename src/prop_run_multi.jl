@@ -8,10 +8,26 @@ using Base.Threads
 
 Execute multiple prescription instances in parallel and preserve input order.
 
-If `PASSVALUE` is a vector, each entry is run independently. Prepared batch and
-model forms reuse per-slot run contexts so repeated multi-run workloads avoid
-rebuilding core workspace state. The returned PSFs are stacked along the third
-dimension and accompanied by a vector of samplings.
+Outputs:
+- `stack`: three-dimensional stack of PSFs or fields, ordered to match the
+  input jobs
+- `samplings`: vector of output samplings in meters per pixel
+
+Required inputs:
+- `routine_name`: function object or global name of the prescription
+- `lambda0_microns`: scalar or prepared wavelength; repeated runs are driven by
+  `PASSVALUE`
+- `gridsize`: computational grid size shared by all runs
+
+Optional inputs:
+- `PASSVALUE`: scalar or vector of values to forward to the prescription; when
+  a vector is supplied, each entry is run independently
+- additional keyword arguments are passed through to each prescription call
+
+Notes:
+- Prepared batch and model forms reuse per-slot run contexts so repeated
+  multi-run workloads avoid rebuilding core workspace state.
+- Output order is deterministic and matches the input order.
 """
 function prop_run_multi(routine_name, lambda0_microns, gridsize::Integer; PASSVALUE=nothing, kwargs...)
     prepared = prepare_prescription(routine_name, lambda0_microns, gridsize; PASSVALUE=PASSVALUE, kwargs...)

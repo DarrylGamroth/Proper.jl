@@ -242,17 +242,30 @@ end
     prop_rotate!(out, old_image, theta; kwargs...)
     prop_rotate!(out, old_image, theta, ctx; kwargs...)
 
-Rotate and optionally shift an image into a preallocated output array.
+Rotate and shift an array via interpolation into a preallocated output array.
 
-`theta` is in degrees counter-clockwise in the public PROPER API. The output
-must have the same size as `old_image`. By accepted Julia semantics the default
-interpolation is linear; request cubic interpolation with `METH="cubic"` or
-`CUBIC`.
+The result has the same dimensions as the input array. `theta` is the
+counter-clockwise rotation angle in degrees.
 
-Accepted compatibility keywords:
-- `XC`, `YC`: center of rotation in image pixels
-- `XSHIFT`, `YSHIFT`: image shift in pixels
-- `MISSING` / `EXTR`: extrapolated fill value, default `0`
+Required inputs:
+- `out`: output array, same size as `old_image`
+- `old_image`: input array to be rotated
+- `theta`: rotation angle in degrees counter-clockwise
+
+Optional inputs through `opts` or keyword arguments:
+- `XC`, `YC`: pixel coordinates of the input-array center; defaults are
+  `fix(nx/2)+1` and `fix(ny/2)+1`
+- `XSHIFT`, `YSHIFT`: shift of the output image in pixels
+- `MISSING` / `EXTR`: value assigned to extrapolated pixels, default `0`
+- `METH`: interpolation method; accepted public values are `"linear"` and
+  `"cubic"`
+- `CUBIC`: compatibility shortcut for `METH="cubic"`
+
+Notes:
+- The accepted Julia semantics follow the MATLAB-aligned decision for the
+  default path: linear interpolation unless cubic is explicitly requested.
+- The cubic path uses the upstream PROPER cubic-convolution kernel rather than
+  a general spline/interp2 implementation.
 """
 @inline function prop_rotate!(out::AbstractMatrix, old_image::AbstractMatrix, theta::Real, opts::RotateOptions, ctx::RunContext)
     return _prop_rotate!(interp_style(ctx), out, old_image, theta, opts)
@@ -284,12 +297,25 @@ end
     prop_rotate(old_image, theta; kwargs...)
     prop_rotate(old_image, theta, ctx; kwargs...)
 
-Rotate and optionally shift an image, returning a new array with the same
-dimensions as the input image.
+Rotate and shift an array via interpolation.
 
-The default path uses linear interpolation with explicit extrapolation control.
-The cubic path follows the upstream PROPER cubic-convolution kernel
-coordinates.
+Returns a new array with the same dimensions as the input image.
+
+Required inputs:
+- `old_image`: array to be rotated
+- `theta`: rotation angle in degrees counter-clockwise
+
+Optional keyword inputs:
+- `XC`, `YC`: center of rotation in image pixels
+- `XSHIFT`, `YSHIFT`: image shift in pixels
+- `MISSING` / `EXTR`: extrapolated fill value
+- `METH`: `"linear"` or `"cubic"`
+- `CUBIC`: compatibility shortcut for cubic interpolation
+
+Notes:
+- The default interpolation is linear.
+- The cubic option follows the accepted executable-baseline cubic-convolution
+  path, not a generic spline interpolation mode.
 """
 function prop_rotate(
     old_image::AbstractMatrix,

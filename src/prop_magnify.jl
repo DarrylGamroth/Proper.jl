@@ -102,12 +102,26 @@ end
     prop_magnify!(out, image_in, mag; kwargs...)
     prop_magnify!(out, image_in, mag, ctx; kwargs...)
 
-Resample an image into a preallocated output array.
+Resample an input array into a preallocated output array using damped-sinc or
+cubic interpolation.
 
-By default PROPER uses the damped-sinc resampler (`prop_szoom`). With
-`QUICK=true`, cubic interpolation is used instead. `CONSERVE` and
-`AMP_CONSERVE` preserve intensity using the upstream PROPER conventions for
-intensity-valued and amplitude-valued images.
+Outputs:
+- `out`: magnified or demagnified image
+
+Required inputs:
+- `image_in`: input array to be magnified
+- `mag`: magnification factor; for example, `0.5` shrinks the image by a
+  factor of two
+
+Optional keyword inputs:
+- `QUICK`: use cubic interpolation instead of the slower damped-sinc path
+- `CONSERVE`: conserve intensity; complex arrays are treated as electric
+  fields, real arrays as intensity
+- `AMP_CONSERVE`: treat a real-valued image as amplitude rather than intensity
+
+Notes:
+- The default path uses `prop_szoom` and supports non-square arrays.
+- `QUICK=true` uses cubic interpolation and is usually faster but less exact.
 """
 function prop_magnify!(
     out::AbstractMatrix,
@@ -134,9 +148,22 @@ end
 
 Return a magnified or demagnified copy of an image.
 
-If `size_out == 0`, the output dimensions default to `fix.(size(image_in) .* mag)`
-for positive magnifications. `QUICK=true` selects cubic interpolation;
-otherwise the default damped-sinc path is used.
+Outputs:
+- magnified output array
+
+Required inputs:
+- `image_in`: input array
+- `mag`: magnification factor
+
+Optional inputs:
+- `size_out`: output dimension when a square output is desired; if zero, the
+  output dimensions default to `fix.(size(image_in) .* mag)` for positive
+  magnifications
+- `QUICK`, `CONSERVE`, `AMP_CONSERVE`: same meanings as in `prop_magnify!`
+
+Notes:
+- The default PROPER behavior is the damped-sinc resampler.
+- When `size_out == 0`, Julia computes output height and width independently.
 """
 function prop_magnify(
     image_in::AbstractMatrix,

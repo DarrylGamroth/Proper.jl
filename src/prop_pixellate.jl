@@ -106,11 +106,26 @@ end
 
 Integrate a sampled PSF onto square detector pixels.
 
-This matches the upstream PROPER public API. The input PSF is convolved with
-the transfer function of an ideal square pixel, then resampled to detector
-pixel spacing. `sampling_in` and `sampling_out` are in meters per pixel. If
-`n_out == 0`, the output size follows the magnification implied by the sampling
-ratio.
+This routine takes a sampled point-spread function and integrates it over
+pixels of a specified size by convolving the Fourier transform of the input PSF
+with the sinc transfer function of an ideal square pixel and transforming back.
+The integrated image is then resampled to detector-pixel spacing.
+
+Outputs:
+- detector-integrated image
+
+Required inputs:
+- `img`: two-dimensional image containing the sampled PSF
+- `sampling_in`: sampling of `img` in meters per pixel
+- `sampling_out`: detector pixel size in meters per pixel
+
+Optional inputs:
+- `n_out`: number of pixels across the output image; if omitted or zero, the
+  output size follows the magnification implied by the sampling ratio
+
+Notes:
+- This matches the upstream PROPER public API rather than the older internal
+  integer-factor helper that remains private in Julia.
 """
 function prop_pixellate(
     img::AbstractMatrix,
@@ -128,8 +143,15 @@ end
 
 Integrate a sampled PSF onto detector pixels and write the result into `out`.
 
-`out` must match the size implied by the requested detector sampling and chosen
-output dimensions.
+Required inputs:
+- `out`: destination array
+- `img`: sampled PSF
+- `sampling_in`: input sampling in meters per pixel
+- `sampling_out`: detector sampling in meters per pixel
+
+Notes:
+- `out` must match the size implied by the requested detector sampling and the
+  chosen output dimensions.
 """
 function prop_pixellate!(
     out::AbstractMatrix,

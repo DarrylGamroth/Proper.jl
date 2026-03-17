@@ -48,13 +48,28 @@ end
     prop_resamplemap!(out, wf, dmap, pixscale, xc, yc, xshift=0, yshift=0)
     prop_resamplemap!(out, wf, dmap, pixscale, xc, yc, ctx, xshift=0, yshift=0)
 
-Resample an input map onto the current wavefront grid using cubic
-interpolation.
+Interpolate an input map onto a grid with the same size and sampling as the
+current wavefront array.
 
-The output size and sampling match `wf.field`. `pixscale` is the input map
-sampling in meters per pixel. `xc` and `yc` specify the map center in pixel
-coordinates. `xshift` and `yshift` are physical shifts in meters applied before
-resampling.
+This is primarily an internal helper used by map-driven `prop_*` routines.
+
+Outputs:
+- `out`: resampled map on the wavefront grid
+
+Required inputs:
+- `wf`: wavefront whose grid size and sampling define the output grid
+- `dmap`: aberration or amplitude map to be resampled
+- `pixscale`: spacing of `dmap` in meters per pixel
+- `xc`, `yc`: pixel coordinates of the input map center; `(0, 0)` is the
+  center of the first pixel in the upstream convention
+
+Optional inputs:
+- `xshift`, `yshift`: physical shift of the map in meters before resampling
+
+Notes:
+- The output dimensions always match `size(wf.field)`.
+- The interpolation path follows the accepted executable-baseline cubic
+  resampling contract used by parity tests.
 """
 function prop_resamplemap!(
     out::AbstractMatrix,
@@ -124,9 +139,22 @@ end
 
 Return a new map resampled to the current wavefront grid.
 
-This matches the executable PROPER baseline used by the parity harnesses. The
-result has the same dimensions as `wf.field` and the wavefront's current
-sampling in meters per pixel.
+Outputs:
+- resampled map with the same dimensions as `wf.field`
+
+Required inputs:
+- `wf`: wavefront defining the target grid
+- `dmap`: input map
+- `pixscale`: sampling of `dmap` in meters per pixel
+- `xc`, `yc`: input-map center in pixel coordinates
+
+Optional inputs:
+- `xshift`, `yshift`: physical map shift in meters
+
+Notes:
+- This is the allocating convenience wrapper around `prop_resamplemap!`.
+- The behavior matches the executable PROPER baseline used by the parity
+  harnesses.
 """
 function prop_resamplemap(wf::WaveFront, dmap::AbstractMatrix, pixscale::Real, xc::Real, yc::Real, xshift::Real=0.0, yshift::Real=0.0)
     ny, nx = size(wf.field)
