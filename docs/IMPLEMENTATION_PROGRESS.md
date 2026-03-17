@@ -1,7 +1,7 @@
 # Implementation Progress
 
 ## Status Snapshot
-- Date: 2026-03-13
+- Date: 2026-03-17
 - Overall: Phase 9 complete; Refactor Track complete; backend extension and CUDA optimization workstream active
 
 ## Phase Checklist
@@ -48,16 +48,15 @@
 - [x] CUDA-only benchmark driver: `scripts/benchmark_cuda.sh` now runs just the CUDA lanes plus summary/TTFx, sharing the same CUDA benchmark sequence as `scripts/benchmark_all.sh`.
 - [x] Benchmarked and rejected two CUDA-specific kernel variants on target hardware: a single-kernel full-frame `prop_end!` path and a box-specialized centered circular aperture path were both backed out after regression on the RTX 3050 Ti.
 
-## Current Workstream (Phase 1)
+## Historical Foundation Milestones
 - [x] Core policy/trait/context types created.
 - [x] One-to-one source file skeleton generated from Python modules.
 - [x] One-to-one example file skeleton generated from Python examples.
 - [x] Baseline tests added for context and file mapping.
-- [ ] Implement `prop_run`/`prop_run_multi` dispatch scaffolding.
 - [x] Implement `prop_run`/`prop_run_multi` dispatch scaffolding.
 - [x] Add benchmark harness skeleton scripts.
 
-## Current Workstream (Phase 2/3)
+## Historical Core Port Milestones
 - [x] Implemented full Phase-2 propagation kernels and Gaussian-beam state updates:
   - `prop_select_propagator`, `prop_propagate`
   - `prop_ptp`, `prop_stw`, `prop_wts`, `prop_qphase`
@@ -68,7 +67,7 @@
 - [x] Implemented FITS/map baseline wrappers: `prop_fits_read`, `prop_fits_write`, `prop_readmap`, `prop_writemap`, `prop_errormap`.
 - [x] Replaced all `_not_implemented` module stubs with callable fallback implementations.
 
-## Current Workstream (Phase 6/7)
+## Historical Parity And Examples Milestones
 - [x] Replaced all example placeholders with runnable Julia scripts (one-to-one filenames).
 - [x] Added parity harness skeleton under `test/parity/`.
 - [x] Added benchmark scripts for Python steady-state, Julia steady-state, and Julia cold-start.

@@ -372,7 +372,7 @@ end
     @test_throws ArgumentError prop_set_antialiasing(4)
 end
 
-@testset "Phase 5 placeholder API coverage" begin
+@testset "Phase 5 public helper coverage" begin
     wf = prop_begin(1.0, 500e-9, 32)
     dm = randn(32, 32) .* 1e-9
     @test prop_dm(wf, dm) === wf

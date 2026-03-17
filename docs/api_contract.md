@@ -16,7 +16,7 @@ Define the user-facing API guarantees for `Proper.jl` so ports remain familiar t
 - [x] Draft pre-filled from proposed defaults
 - [x] Decisions accepted and reflected
 - [x] Public entry-point doc coverage aligned
-- [ ] Contract-focused tests aligned
+- [x] Contract-focused tests aligned
 
 ## 1. Package And Module Names
 - Canonical module name: `Proper`
@@ -160,7 +160,14 @@ Additional stable return conventions:
 
 ## 8. Contract Tests
 - [x] Public doc coverage checks for exported `prop_*` entry points
-- [ ] API smoke tests for all stable entry points
-- [ ] Keyword compatibility tests (uppercase/lowercase)
-- [ ] Return shape/type tests
-- [ ] Baseline parity behavior tests
+- [x] API smoke tests for all stable entry points
+- [x] Keyword compatibility tests (uppercase/lowercase)
+- [x] Return shape/type tests
+- [x] Baseline parity behavior tests
+
+Notes:
+- API-shape and keyword compatibility checks live in `test/test_api_contract.jl`.
+- Python-baseline parity behavior remains covered by the dedicated parity suites
+  and closure reports:
+  - `docs/PHASE8_CLOSURE.md`
+  - `docs/PHASE9_RECONCILIATION.md`
