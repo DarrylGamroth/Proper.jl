@@ -130,8 +130,7 @@ export prop_fit_dm, prop_pixellate, prop_polygon, prop_irregular_polygon, prop_r
 export prop_pixellate!, prop_szoom!
 export prop_polygon!, prop_irregular_polygon!, prop_ellipse!, prop_rectangle!, prop_rounded_rectangle!
 export prop_dftidefs, prop_ffti, prop_fftw, prop_szoom
-export DftiErrorMessage
-export libcconv, libcconvthread, prop_cubic_conv, prop_define_entrance
+export prop_cubic_conv, prop_define_entrance
 export prop_hex_wavefront, prop_hex_zernikes, prop_8th_order_mask
 export prop_get_wavefront, prop_get_amplitude, prop_get_phase
 export prop_get_sampling, prop_get_sampling_radians, prop_get_sampling_arcsec
@@ -139,7 +138,5 @@ export prop_get_wavelength, prop_get_z, prop_get_gridsize
 export prop_get_beamradius, prop_get_distancetofocus, prop_get_fratio
 export prop_get_nyquistsampling, prop_get_refradius
 export prop_run, prop_run_multi
-export switch_set
-export WFIRSTPhaseBProper
 
 end # module Proper

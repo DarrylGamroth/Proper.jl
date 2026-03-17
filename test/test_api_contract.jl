@@ -107,3 +107,27 @@ end
     @test prop_resamplemap(wf, map, wf.sampling_m, 4.0, 4.0, 0.25, -0.5) ==
           prop_resamplemap(wf, map, wf.sampling_m, 4.0, 4.0, 0.25, -0.5)
 end
+
+@testset "API contract export surface" begin
+    @test Base.isexported(Proper, :prop_run)
+    @test Base.isexported(Proper, :prop_run_multi)
+    @test Base.isexported(Proper, :prepare_prescription)
+    @test Base.isexported(Proper, :prepare_prescription_batch)
+    @test Base.isexported(Proper, :prepare_asset_pool)
+    @test Base.isexported(Proper, :prepare_model)
+
+    @test Base.isexported(Proper, :prop_execute_multi)
+    @test Base.isexported(Proper, :prop_table)
+    @test Base.isexported(Proper, :prop_fftw)
+    @test Base.isexported(Proper, :prop_ffti)
+    @test Base.isexported(Proper, :prop_use_fftw)
+    @test Base.isexported(Proper, :prop_use_ffti)
+    @test Base.isexported(Proper, :prop_dftidefs)
+
+    @test !Base.isexported(Proper, :libcconv)
+    @test !Base.isexported(Proper, :libcconvthread)
+    @test !Base.isexported(Proper, :switch_set)
+    @test !Base.isexported(Proper, :DftiErrorMessage)
+    @test !Base.isexported(Proper, :WFIRSTPhaseBProper)
+    @test isdefined(Proper, :WFIRSTPhaseBProper)
+end

@@ -1,5 +1,9 @@
 # Proper.jl Full Implementation Audit (2026-03-04)
 
+Historical audit snapshot. This document records the March 2026 audit that fed
+the later refactor and semantic-reconciliation passes; it is not the current
+status document for the package.
+
 ## Scope
 Audit goals requested:
 - Identify opportunities to improve type selectors, multiple dispatch, and traits.

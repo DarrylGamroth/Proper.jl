@@ -190,6 +190,7 @@ Important current examples:
 - `examples/` contains ported example prescriptions and smoke examples
 - the WFIRST Phase B reference port is included as a broad correctness and
   benchmarking workload
+- the WFIRST reference module is available as `Proper.WFIRSTPhaseBProper`
 
 ## Documentation
 - [API contract](docs/api_contract.md)

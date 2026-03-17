@@ -37,7 +37,7 @@ function prop_fftw_wisdom(gridsize::Integer; nthreads::Integer=Threads.nthreads(
     end
 end
 
-# Backward-compatible method for older placeholder API that accepted a path.
+# Backward-compatible method for the older compatibility API that accepted a path.
 function prop_fftw_wisdom(path::AbstractString)
     FFTW.export_wisdom(path)
     return path

@@ -27,6 +27,10 @@ Define the user-facing API guarantees for `Proper.jl` so ports remain familiar t
 - Export policy:
   - Export public `prop_*` routines intended for end users.
   - Export core public types (`WaveFront`, config/runtime types).
+  - Keep a small compatibility-only export surface for upstream-adjacent helper
+    names that remain useful at the public boundary.
+  - Do not export low-level implementation helpers or specialized model
+    submodules from the top-level namespace.
 
 ## 2. Public Entry Points
 Stable entry points:
@@ -52,6 +56,18 @@ Stable entry points:
 - `prop_errormap`
 - `prop_psd_errormap`
 
+Compatibility-only exported helpers:
+- `prop_execute_multi`
+- `prop_table`
+- `prop_fftw`
+- `prop_ffti`
+- `prop_use_fftw`
+- `prop_use_ffti`
+- `prop_dftidefs`
+
+Namespaced-only specialized modules:
+- `Proper.WFIRSTPhaseBProper`
+
 Notes:
 - Keep PROPER-style names for user familiarity.
 - Internals may be refactored freely if behavior contract is preserved.
@@ -72,6 +88,10 @@ Notes:
   - `prop_run_multi(prepared_batch::PreparedBatch)` reuses a growable pool of those forked contexts across repeated calls.
 - For user-facing prepared execution examples and ownership guidance, see:
   - `docs/PREPARED_EXECUTION_GUIDE.md`
+- Low-level implementation helpers such as `libcconv`, `libcconvthread`,
+  `switch_set`, and `DftiErrorMessage` remain available as `Proper.<name>` for
+  internal use and focused tests, but are not part of the exported top-level
+  API surface.
 
 ## 3. Parity Baseline
 - Behavior targets the patched Python 3.3.4 executable baseline used by the parity harness.
