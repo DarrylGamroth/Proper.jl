@@ -32,6 +32,14 @@ struct PhaseBPreparedAssets
     workspace::PhaseBModelWorkspace
 end
 
+struct PhaseBSPCPreparedAssets
+    pupil::Matrix{Float64}
+    pupil_mask::Matrix{Float64}
+    lyot::Matrix{Float64}
+    fpm::Matrix{ComplexF64}
+    workspace::PhaseBModelWorkspace
+end
+
 const OLD_LAM_OCCS = [
     "5.4625e-07", "5.49444444444e-07", "5.52638888889e-07", "5.534375e-07", "5.55833333333e-07", "5.59027777778e-07",
     "5.60625e-07", "5.62222222222e-07", "5.65416666667e-07", "5.678125e-07", "5.68611111111e-07", "5.71805555556e-07",
@@ -228,6 +236,17 @@ end
     cor_type = String(passget(passvalue, :cor_type, "hlc"))
     shared = prepare_phaseb_shared_assets(cor_type, data_root, [λm])
     return PhaseBPreparedAssets(shared, _nearest_occulter(shared, λm), PhaseBModelWorkspace(output_dim))
+end
+
+function prepare_phaseb_spc_assets(cfg::NamedTuple, output_dim::Integer; compact::Bool=false)
+    pupil = phaseb_prepare_static(Float64.(_phaseb_python_fits(cfg.pupil_file)), cfg.n_default, Float64)
+    pupil_mask = cfg.pupil_mask_file === nothing ? zeros(Float64, cfg.n_default, cfg.n_default) :
+        phaseb_prepare_static(Float64.(_phaseb_python_fits(cfg.pupil_mask_file)), compact ? cfg.n_small : cfg.n_default, Float64)
+    lyot_dim = compact ? cfg.n_small : cfg.n_from_lyotstop
+    lyot = cfg.lyot_stop_file === nothing ? zeros(Float64, lyot_dim, lyot_dim) :
+        phaseb_prepare_static(Float64.(_phaseb_python_fits(cfg.lyot_stop_file)), lyot_dim, Float64)
+    fpm = ComplexF64.(_phaseb_python_fits(cfg.fpm_file))
+    return PhaseBSPCPreparedAssets(pupil, pupil_mask, lyot, fpm, PhaseBModelWorkspace(output_dim))
 end
 
 @inline function _nearest_occ_key(dict::AbstractDict{<:Real}, λm::Real)
@@ -741,18 +760,21 @@ end
 function prepare_phaseb_models(case::NamedTuple; data_root::AbstractString=phaseb_default_data_root())
     passvalue = merge(case.passvalue, Dict("data_dir" => String(data_root)))
     cor_type = String(case.passvalue["cor_type"])
+    is_compact = case.func === wfirst_phaseb_compact
     shared = nothing
     if startswith(cor_type, "hlc")
         shared = prepare_phaseb_shared_assets(cor_type, data_root, case.wavelengths_m)
     end
     models = map(enumerate(zip(case.wavelengths_um, case.wavelengths_m))) do (i, (λum, λm))
         if shared === nothing
+            cfg = _phaseb_config(cor_type, λm, data_root; compact=is_compact, use_fpm=Int(passget(case.passvalue, :use_fpm, 1)))
             return prepare_model(
                 Symbol("wfirst_" * string(i)),
                 case.func,
                 λum,
                 case.output_dim;
                 PASSVALUE=passvalue,
+                assets=prepare_asset_pool(() -> prepare_phaseb_spc_assets(cfg, case.output_dim; compact=is_compact); pool_size=1),
                 pool_size=1,
             )
         end

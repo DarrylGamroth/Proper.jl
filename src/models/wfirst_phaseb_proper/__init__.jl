@@ -36,7 +36,7 @@ export map_dir, polfile, data_dir, set_data_dir!, set_data_dir, phaseb_default_d
 export copy_here, copy_examples_here
 export trim, ffts, ffts!, mft2
 export polmap, polab
-export PhaseBHLCAssets, PhaseBHLCPreparedSharedAssets, PhaseBModelWorkspace, PhaseBPreparedAssets
+export PhaseBHLCAssets, PhaseBHLCPreparedSharedAssets, PhaseBModelWorkspace, PhaseBPreparedAssets, PhaseBSPCPreparedAssets
 export phaseb_case_definitions, load_phaseb_hlc_assets, prepare_phaseb_shared_assets
 export prepare_phaseb_models, run_phaseb_case
 export wfirst_phaseb_compact, wfirst_phaseb
