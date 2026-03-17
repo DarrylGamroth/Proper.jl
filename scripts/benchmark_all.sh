@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "$(dirname "$0")/benchmark_cuda_lib.sh"
+source "$(dirname "$0")/benchmark_amdgpu_lib.sh"
 
 run_step() {
   local label="$1"
@@ -75,5 +76,6 @@ if [[ "${BENCH_INCLUDE_WFIRST_CPU:-0}" == "1" ]]; then
   run_step "WFIRST Phase B CPU comparison" ./scripts/benchmark_wfirst_phaseb_cpu.sh
 fi
 run_cuda_benchmarks
+run_amdgpu_benchmarks
 run_step "Julia cold-start / TTFx" julia --project=. bench/julia/cold_start/run.jl
 julia --project=. bench/reports/summarize.jl
