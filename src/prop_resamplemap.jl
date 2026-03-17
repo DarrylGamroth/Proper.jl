@@ -18,7 +18,7 @@ end
     return ResampleMapOptions{T}(T(pixscale), T(xc), T(yc), T(xshift), T(yshift))
 end
 
-"""Resample map to wavefront grid with cubic interpolation and physical shifts."""
+"""Internal implementation for map resampling onto the current wavefront grid."""
 function _prop_resamplemap!(
     sty::InterpStyle,
     fillsty::AxisFillExecStyle,
@@ -43,6 +43,19 @@ function _prop_resamplemap!(
     return prop_cubic_conv_grid!(out, sty, dmap, xcoords, ycoords)
 end
 
+"""
+    prop_resamplemap!(out, wf, dmap, opts, ctx)
+    prop_resamplemap!(out, wf, dmap, pixscale, xc, yc, xshift=0, yshift=0)
+    prop_resamplemap!(out, wf, dmap, pixscale, xc, yc, ctx, xshift=0, yshift=0)
+
+Resample an input map onto the current wavefront grid using cubic
+interpolation.
+
+The output size and sampling match `wf.field`. `pixscale` is the input map
+sampling in meters per pixel. `xc` and `yc` specify the map center in pixel
+coordinates. `xshift` and `yshift` are physical shifts in meters applied before
+resampling.
+"""
 function prop_resamplemap!(
     out::AbstractMatrix,
     wf::WaveFront,
@@ -101,10 +114,20 @@ end
     ctx::RunContext,
     xshift::Real=0.0,
     yshift::Real=0.0,
-)
+    )
     return prop_resamplemap!(out, wf, dmap, ResampleMapOptions(wf, pixscale, xc, yc, xshift, yshift), ctx)
 end
 
+"""
+    prop_resamplemap(wf, dmap, pixscale, xc, yc, xshift=0, yshift=0)
+    prop_resamplemap(wf, dmap, pixscale, xc, yc, ctx, xshift=0, yshift=0)
+
+Return a new map resampled to the current wavefront grid.
+
+This matches the executable PROPER baseline used by the parity harnesses. The
+result has the same dimensions as `wf.field` and the wavefront's current
+sampling in meters per pixel.
+"""
 function prop_resamplemap(wf::WaveFront, dmap::AbstractMatrix, pixscale::Real, xc::Real, yc::Real, xshift::Real=0.0, yshift::Real=0.0)
     ny, nx = size(wf.field)
     Tout = float(promote_type(real(eltype(dmap)), typeof(wf.sampling_m), typeof(pixscale), typeof(xc), typeof(yc), typeof(xshift), typeof(yshift)))

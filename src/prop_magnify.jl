@@ -98,6 +98,17 @@ end
     )
 end
 
+"""
+    prop_magnify!(out, image_in, mag; kwargs...)
+    prop_magnify!(out, image_in, mag, ctx; kwargs...)
+
+Resample an image into a preallocated output array.
+
+By default PROPER uses the damped-sinc resampler (`prop_szoom`). With
+`QUICK=true`, cubic interpolation is used instead. `CONSERVE` and
+`AMP_CONSERVE` preserve intensity using the upstream PROPER conventions for
+intensity-valued and amplitude-valued images.
+"""
 function prop_magnify!(
     out::AbstractMatrix,
     image_in::AbstractMatrix,
@@ -117,7 +128,16 @@ function prop_magnify!(
     return prop_magnify!(out, image_in, mag0, MagnifyOptions(kwargs), ctx)
 end
 
-"""Magnify image using upstream PROPER behavior (`QUICK` cubic, default damped-sinc)."""
+"""
+    prop_magnify(image_in, mag, size_out=0; kwargs...)
+    prop_magnify(image_in, mag, size_out, ctx; kwargs...)
+
+Return a magnified or demagnified copy of an image.
+
+If `size_out == 0`, the output dimensions default to `fix.(size(image_in) .* mag)`
+for positive magnifications. `QUICK=true` selects cubic interpolation;
+otherwise the default damped-sinc path is used.
+"""
 function prop_magnify(
     image_in::AbstractMatrix,
     mag0::Real,

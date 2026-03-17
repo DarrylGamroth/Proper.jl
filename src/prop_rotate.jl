@@ -236,6 +236,24 @@ end
     return _prop_rotate_exec!(sty_exec, sty, out, old_image, theta, opts)
 end
 
+"""
+    prop_rotate!(out, old_image, theta, opts, ctx)
+    prop_rotate!(out, old_image, theta, opts)
+    prop_rotate!(out, old_image, theta; kwargs...)
+    prop_rotate!(out, old_image, theta, ctx; kwargs...)
+
+Rotate and optionally shift an image into a preallocated output array.
+
+`theta` is in degrees counter-clockwise in the public PROPER API. The output
+must have the same size as `old_image`. By accepted Julia semantics the default
+interpolation is linear; request cubic interpolation with `METH="cubic"` or
+`CUBIC`.
+
+Accepted compatibility keywords:
+- `XC`, `YC`: center of rotation in image pixels
+- `XSHIFT`, `YSHIFT`: image shift in pixels
+- `MISSING` / `EXTR`: extrapolated fill value, default `0`
+"""
 @inline function prop_rotate!(out::AbstractMatrix, old_image::AbstractMatrix, theta::Real, opts::RotateOptions, ctx::RunContext)
     return _prop_rotate!(interp_style(ctx), out, old_image, theta, opts)
 end
@@ -262,7 +280,17 @@ end
     return prop_rotate!(out, old_image, theta, opts)
 end
 
-"""Rotate image by theta degrees around center (linear by default)."""
+"""
+    prop_rotate(old_image, theta; kwargs...)
+    prop_rotate(old_image, theta, ctx; kwargs...)
+
+Rotate and optionally shift an image, returning a new array with the same
+dimensions as the input image.
+
+The default path uses linear interpolation with explicit extrapolation control.
+The cubic path follows the upstream PROPER cubic-convolution kernel
+coordinates.
+"""
 function prop_rotate(
     old_image::AbstractMatrix,
     theta::Real;

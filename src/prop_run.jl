@@ -36,7 +36,20 @@ function _prop_run_resolved(
     return _prop_run_finalize(result)
 end
 
-"""Run a prescription function by function object or global name."""
+"""
+    prop_run(routine_name, lambda0_microns, gridsize; PASSVALUE=nothing, context=nothing, kwargs...)
+    prop_run(prepared::PreparedPrescription; PASSVALUE=prepared.passvalue, context=prepared.context, kwargs...)
+    prop_run(batch::PreparedBatch; PASSVALUE=batch.prepared.passvalue, slot=1, kwargs...)
+    prop_run(model::PreparedModel; PASSVALUE=model.prepared.passvalue, slot=1, kwargs...)
+
+Execute a PROPER prescription and return `(psf, pixscale)`.
+
+`routine_name` may be a function object or a global name resolved by
+`prepare_prescription`. `PASSVALUE` is forwarded using the familiar PROPER
+prescription calling convention. Prepared forms reuse normalized arguments,
+run contexts, and optional prepared assets while preserving the public return
+contract.
+"""
 function prop_run(
     routine_name,
     lambda0_microns::Real,

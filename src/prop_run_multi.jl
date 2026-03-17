@@ -1,6 +1,18 @@
 using Base.Threads
 
-"""Run multiple prescription passes in parallel; preserves input order."""
+"""
+    prop_run_multi(routine_name, lambda0_microns, gridsize; PASSVALUE=nothing, kwargs...)
+    prop_run_multi(prepared::PreparedPrescription; PASSVALUE=prepared.passvalue, kwargs...)
+    prop_run_multi(batch::PreparedBatch; PASSVALUE=batch.prepared.passvalue, kwargs...)
+    prop_run_multi(model::PreparedModel; PASSVALUE=model.prepared.passvalue, kwargs...)
+
+Execute multiple prescription instances in parallel and preserve input order.
+
+If `PASSVALUE` is a vector, each entry is run independently. Prepared batch and
+model forms reuse per-slot run contexts so repeated multi-run workloads avoid
+rebuilding core workspace state. The returned PSFs are stacked along the third
+dimension and accompanied by a vector of samplings.
+"""
 function prop_run_multi(routine_name, lambda0_microns, gridsize::Integer; PASSVALUE=nothing, kwargs...)
     prepared = prepare_prescription(routine_name, lambda0_microns, gridsize; PASSVALUE=PASSVALUE, kwargs...)
     return prop_run_multi(prepared)

@@ -102,9 +102,15 @@ function _prop_pixellate_factor(
 end
 
 """
-Integrate a sampled PSF onto detector pixels using the upstream PROPER pixel MTF path.
+    prop_pixellate(img, sampling_in, sampling_out, n_out=0)
 
-This overload matches the MATLAB/Python `prop_pixellate(image_in, sampling_in, sampling_out, n_out=0)` API.
+Integrate a sampled PSF onto square detector pixels.
+
+This matches the upstream PROPER public API. The input PSF is convolved with
+the transfer function of an ideal square pixel, then resampled to detector
+pixel spacing. `sampling_in` and `sampling_out` are in meters per pixel. If
+`n_out == 0`, the output size follows the magnification implied by the sampling
+ratio.
 """
 function prop_pixellate(
     img::AbstractMatrix,
@@ -117,6 +123,14 @@ function prop_pixellate(
     return _prop_pixellate_resample(img, sampling_in, sampling_out, n_out)
 end
 
+"""
+    prop_pixellate!(out, img, sampling_in, sampling_out)
+
+Integrate a sampled PSF onto detector pixels and write the result into `out`.
+
+`out` must match the size implied by the requested detector sampling and chosen
+output dimensions.
+"""
 function prop_pixellate!(
     out::AbstractMatrix,
     img::AbstractMatrix,
