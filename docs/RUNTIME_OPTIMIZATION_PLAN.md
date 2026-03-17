@@ -286,8 +286,14 @@ Status: Completed
     - `to_image_oap8`: `21736564601 ns`
     - `to_image_oap7`: `16986002992 ns`
     - `to_image_filter`: `8841185810 ns`
+  - added `scripts/profile_wfirst_phaseb_hotspots.sh` and `bench/julia/wfirst_phaseb/profile_case_hotspots.jl` for serial `Profile.@profile` sampling of WFIRST benchmark cases, with an enlarged profile buffer for long SPC runs.
+  - sampled flat-profile conclusion for `full_spc_spec_long`:
+    - dominant cost is FFT execution (`FFTW.unsafe_execute!` / `mul!`)
+    - dominant shared PROPER callers above FFT are `prop_propagate`, `prop_ptp`, `prop_stw`, and `prop_wts`
+    - `prop_qphase` is present but clearly secondary to the FFT-heavy propagation kernels
+    - residual `prepare_fft_field!` / `copyto!` traffic is measurable but much smaller than the FFT cost
   - conclusion from the finer split: if a new shared-core optimization pass is taken, the first diagnosis target should be the tail sequence after the filter (`LENS -> FOLD_4 -> IMAGE`), with the field-stop leg second. Those are the dominant shared propagation/lens segments inside the WFIRST workload.
-  - conclusion: the next performance work should stay in shared propagation/lens/FFT code inside the `to_image` sequence, not in WFIRST-specific orchestration.
+  - conclusion: the next performance work should stay in shared propagation/lens/FFT code inside the `to_image` sequence, not in WFIRST-specific orchestration. Specifically, the next core target should be the FFT-heavy propagation path rather than more small staging/copy cleanups.
   - updated CPU defaults after benchmarking: mask path remains loop-default; `prop_end!` shifted copy/intensity keeps KA pilot for large arrays.
 - 2026-03-05: O8 completed.
   - added `prop_psd_errormap!(out, wf, ...)` mutating API and internal output-buffer overload.
