@@ -13,7 +13,8 @@ Define the user-facing API guarantees for `Proper.jl` so ports remain familiar t
 ## Status
 - [x] Draft pre-filled from proposed defaults
 - [x] Decisions accepted and reflected
-- [ ] Tests aligned
+- [x] Public entry-point doc coverage aligned
+- [ ] Contract-focused tests aligned
 
 ## 1. Package And Module Names
 - Canonical module name: `Proper`
@@ -31,7 +32,11 @@ Stable entry points:
 - `prop_run_multi`
 - `prepare_prescription`
 - `prepare_prescription_batch`
+- `prepare_asset_pool`
 - `prepare_model`
+- `reset_prepared_batch!`
+- `reset_prepared_assets!`
+- `reset_prepared_model!`
 - `prop_begin`
 - `prop_end`
 - `prop_propagate`
@@ -51,10 +56,12 @@ Notes:
 - Public semantics follow accepted compatibility decisions directly; important current examples:
   - `prop_rotate` defaults to MATLAB-style linear interpolation. Callers that want cubic must request `METH="cubic"` or `CUBIC=true`.
   - `prop_pixellate` public API matches upstream PROPER PSF-integration semantics: `prop_pixellate(image, sampling_in, sampling_out, n_out=0)`.
+  - `prop_magnify` defaults to the damped-sinc `prop_szoom` path; `QUICK=true` selects cubic interpolation.
 - Reusable runtime state may be supplied explicitly:
   - `prop_run(...; context=ctx)`
   - `prop_run(prepare_prescription(...))`
   - `prop_run(prepare_prescription_batch(...); slot=1)`
+  - `prop_run(prepare_model(...); slot=1)`
   - `prop_begin(...; context=ctx)` / `prop_begin(...; workspace=ws)`
   - `prop_wavefront(...; context=ctx)` / `prop_wavefront(...; workspace=ws)`
 - Prepared parallel execution forks stored runtime state per pass:
@@ -86,6 +93,18 @@ Prepared-model asset contract:
 - If the resolved asset is a `NamedTuple`, its entries are merged into kwargs directly.
 - Otherwise it is passed as `assets=...`.
 
+### 3.2 Public Execution Shapes
+- Single-run entry point:
+  - `prop_run(...) -> (psf, sampling)`
+- Multi-run entry point:
+  - `prop_run_multi(...) -> (stack, samplings)`
+- Prepared entry points preserve those same return shapes.
+- Prescriptions may return either:
+  - a `WaveFront`, which is finalized through `prop_end`, or
+  - a `(psf, sampling)` tuple directly
+- `prop_run_multi` requires matrix-like outputs so they can be stacked along the
+  third dimension.
+
 ## 4. Keyword Argument Contract
 - Keyword style support:
   - [x] uppercase compatibility keywords (`NORM`, `NOABS`, ...)
@@ -112,6 +131,16 @@ Prepared-model asset contract:
   - `stacked_psf`: `AbstractArray{<:Number,3}`
   - `sampling_vector`: `Vector{Float64}`
 
+Additional stable return conventions:
+- `prop_rotate(image, ...) -> array same size as input`
+- `prop_magnify(image, ...) -> resized array`
+- `prop_resamplemap(wf, map, ...) -> array same size as `wf.field``
+- `prop_pixellate(image, ...) -> detector-integrated image`
+- geometric mask constructors (`prop_ellipse`, `prop_rectangle`, `prop_polygon`,
+  `prop_irregular_polygon`, `prop_rounded_rectangle`) return real-valued masks
+  on the wavefront grid
+- mutating `...!` variants return the destination array
+
 ## 6. Errors And Warnings
 - Error type policy:
   - user input/keyword/config errors: `ArgumentError` / `DomainError`
@@ -126,6 +155,7 @@ Prepared-model asset contract:
 - Allowing runtime symbol/dict-based branching in hot inner loops.
 
 ## 8. Contract Tests
+- [x] Public doc coverage checks for exported `prop_*` entry points
 - [ ] API smoke tests for all stable entry points
 - [ ] Keyword compatibility tests (uppercase/lowercase)
 - [ ] Return shape/type tests
