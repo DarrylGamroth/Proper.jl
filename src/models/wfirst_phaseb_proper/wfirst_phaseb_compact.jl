@@ -78,10 +78,8 @@ function _wfirst_phaseb_compact_impl(lambda_m, output_dim0, passvalue; assets=no
     elseif cfg.branch == :spc
         fpm = data.fpm
         nfpm = size(fpm, 2)
-        field_big = phaseb_field(ws, n_big)
-        phaseb_center_copy!(field_big, field_small)
         spc_field = phaseb_field(ws, nfpm)
-        phaseb_mft2!(spc_field, field_big, data.forward_mft)
+        phaseb_mft2!(spc_field, phaseb_center_crop(field_small, n_big), data.forward_mft)
         spc_field .*= fpm
         field_back = phaseb_field(ws, size(data.inverse_mft.left, 1))
         phaseb_mft2!(field_back, spc_field, data.inverse_mft)

@@ -230,11 +230,9 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
         elseif cfg.branch == :spc
             prop_end!(field_to_fpm, wf; noabs=true)
             phaseb_ffts!(field_to_fpm, phaseb_fft_cache(ws, n), +1)
-            field_mft = phaseb_field(ws, cfg.n_mft)
-            phaseb_center_copy!(field_mft, field_to_fpm)
             fpm = data.fpm
             field_spc = phaseb_field(ws, size(fpm, 2))
-            phaseb_mft2!(field_spc, field_mft, data.forward_mft)
+            phaseb_mft2!(field_spc, phaseb_center_crop(field_to_fpm, cfg.n_mft), data.forward_mft)
             field_spc .*= fpm
             phaseb_mft2!(field_to_fpm, field_spc, data.inverse_mft)
             phaseb_ffts!(field_to_fpm, phaseb_fft_cache(ws, n), -1)
