@@ -9,6 +9,7 @@ Define the user-facing API guarantees for `Proper.jl` so ports remain familiar t
 - `D-0005` public API compatibility surface (accepted)
 - `D-0035` remove runtime compatibility modes (accepted)
 - `D-0028` dynamic dispatch minimization (accepted)
+- prescription authoring guide: `docs/PRESCRIPTION_AUTHORING_GUIDE.md`
 - prepared execution usage guide: `docs/PREPARED_EXECUTION_GUIDE.md`
 
 ## Status

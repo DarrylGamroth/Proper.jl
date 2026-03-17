@@ -184,6 +184,7 @@ Important current examples:
 ## Documentation
 - [API contract](docs/api_contract.md)
 - [Migration guide](docs/MIGRATION_GUIDE.md)
+- [Prescription authoring guide](docs/PRESCRIPTION_AUTHORING_GUIDE.md)
 - [Prepared execution guide](docs/PREPARED_EXECUTION_GUIDE.md)
 - [Runnable API examples](docs/API_EXAMPLES.md)
 - [Numerics contract](docs/numerics_contract.md)

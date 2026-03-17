@@ -34,6 +34,9 @@ This guide summarizes compatibility expectations for users migrating prescriptio
 2. Confirm parity against the Python baseline.
 3. Introduce prepared execution only when repeated runs need workspace or asset reuse.
 
+For a fuller prescription-porting workflow, see
+`docs/PRESCRIPTION_AUTHORING_GUIDE.md`.
+
 ### Prepared Execution
 - `prepare_prescription(...)` caches normalized execution state for a single prescription.
 - `prepare_prescription_batch(...)` adds reusable per-slot contexts for repeated or parallel runs.
