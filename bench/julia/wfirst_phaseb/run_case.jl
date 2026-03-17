@@ -12,16 +12,17 @@ end
 
 has_flag(flag::String) = any(==(flag), ARGS)
 
-function time_samples_ns(workload, samples::Integer)
+function measure_samples(workload, samples::Integer)
     samples > 0 || throw(ArgumentError("samples must be positive"))
     times = Vector{Int64}(undef, samples)
+    bytes = Vector{Int64}(undef, samples)
     GC.gc()
     for i in 1:samples
-        t0 = time_ns()
-        workload()
-        times[i] = time_ns() - t0
+        sample = @timed workload()
+        times[i] = Int(round(sample.time * 1e9))
+        bytes[i] = sample.bytes
     end
-    return times
+    return times, bytes
 end
 
 function write_case_outputs(prefix::AbstractString, stack)
@@ -58,7 +59,7 @@ function main()
     workload() = run_phaseb_case(models; threaded=threaded)
     stack, samplings = workload()
     timed = !parity_only && samples > 0
-    trial_times = timed ? time_samples_ns(workload, samples) : Int64[]
+    trial_times, trial_bytes = timed ? measure_samples(workload, samples) : (Int64[], Int64[])
 
     outdir = joinpath(@__DIR__, "..", "..", "reports")
     mkpath(outdir)
@@ -85,6 +86,10 @@ function main()
             "mean_ns" => timed ? Int(round(sum(trial_times) / length(trial_times))) : nothing,
             "min_ns" => timed ? minimum(trial_times) : nothing,
             "max_ns" => timed ? maximum(trial_times) : nothing,
+            "median_alloc_bytes" => timed ? Int(round(median(trial_bytes))) : nothing,
+            "mean_alloc_bytes" => timed ? Int(round(sum(trial_bytes) / length(trial_bytes))) : nothing,
+            "min_alloc_bytes" => timed ? minimum(trial_bytes) : nothing,
+            "max_alloc_bytes" => timed ? maximum(trial_bytes) : nothing,
             "samples" => length(trial_times),
         ),
         "output" => summarize_output(stack, samplings),

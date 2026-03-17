@@ -191,6 +191,7 @@ cuda_kernels = loadjson(joinpath(root, "cuda_supported_kernels.json"))
 cuda_precision = loadjson(joinpath(root, "cuda_precision_split.json"))
 cuda_isolated = loadjson(joinpath(root, "cuda_isolated_wavefront_kernels.json"))
 wfirst_phaseb_cpu = loadjson(joinpath(root, "wfirst_phaseb_cpu_comparison.json"))
+wfirst_phaseb_cpu_profile = loadjson(joinpath(root, "wfirst_phaseb_cpu_profile.json"))
 wfirst_phaseb_reports = [
     loadjson(path) for path in sort(filter(path -> startswith(basename(path), "python_wfirst_phaseb_") && endswith(path, ".json"), readdir(root; join=true)))
 ]
@@ -551,6 +552,31 @@ if wfirst_phaseb_cpu !== nothing
     append_ascii_section!(term, "WFIRST Phase B CPU Comparison", cmp_headers, cmp_rows; aligns=[:l, :r, :r, :r, :r, :r, :r, :r], notes=cmp_notes)
     append_markdown_section!(md, "WFIRST Phase B CPU Comparison", cmp_headers, cmp_rows; notes=cmp_notes)
     push!(generated_paths, write_csv(joinpath(root, "wfirst_phaseb_cpu_comparison.csv"), cmp_headers, cmp_rows))
+end
+
+if wfirst_phaseb_cpu_profile !== nothing
+    prof_headers = ["Case", "Median", "Min", "Max", "Median alloc", "Min alloc", "Max alloc", "Samples", "Threads"]
+    prof_rows = Vector{Vector{String}}()
+    for row in getpath(wfirst_phaseb_cpu_profile, "cases")
+        push!(prof_rows, [
+            String(getkey(row, "case")),
+            fmt_ns(getkey(row, "median_ns")),
+            fmt_ns(getkey(row, "min_ns")),
+            fmt_ns(getkey(row, "max_ns")),
+            fmt_bytes(getkey(row, "median_alloc_bytes")),
+            fmt_bytes(getkey(row, "min_alloc_bytes")),
+            fmt_bytes(getkey(row, "max_alloc_bytes")),
+            getkey(row, "samples") === nothing ? "-" : string(Int(getkey(row, "samples"))),
+            getkey(row, "threads") === nothing ? "-" : string(Int(getkey(row, "threads"))),
+        ])
+    end
+    prof_notes = [
+        "Repeated in-process Julia CPU timings for selected WFIRST Phase B cases.",
+        "Allocation columns report total bytes allocated per timed sample.",
+    ]
+    append_ascii_section!(term, "WFIRST Phase B CPU Profile", prof_headers, prof_rows; aligns=[:l, :r, :r, :r, :r, :r, :r, :r, :r], notes=prof_notes)
+    append_markdown_section!(md, "WFIRST Phase B CPU Profile", prof_headers, prof_rows; notes=prof_notes)
+    push!(generated_paths, write_csv(joinpath(root, "wfirst_phaseb_cpu_profile.csv"), prof_headers, prof_rows))
 end
 
 open(summary_md_path, "w") do io
