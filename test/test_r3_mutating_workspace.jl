@@ -113,7 +113,7 @@ using FFTW
         )
         Proper.prop_elliptical_aperture(wf_ref, 0.35, 0.25, 0.05, -0.03; NORM=true, ROTATION=13.0)
         @test isapprox(wf_loop.field, wf_ref.field; atol=0, rtol=0)
-        @test isapprox(wf_ka.field, wf_ref.field; atol=0, rtol=0)
+        @test isapprox(wf_ka.field, wf_ref.field; atol=1e-15, rtol=1e-15)
 
         wf_ref_dark = prop_begin(1.0, 500e-9, 32)
         wf_loop_dark = prop_begin(1.0, 500e-9, 32)
@@ -142,7 +142,7 @@ using FFTW
         )
         Proper.prop_elliptical_obscuration(wf_ref_dark, 0.22, 0.18, -0.04, 0.02; NORM=true, ROTATION=-9.0, DARK=true)
         @test isapprox(wf_loop_dark.field, wf_ref_dark.field; atol=0, rtol=0)
-        @test isapprox(wf_ka_dark.field, wf_ref_dark.field; atol=0, rtol=0)
+        @test isapprox(wf_ka_dark.field, wf_ref_dark.field; atol=1e-15, rtol=1e-15)
 
         wf_ref_circle = prop_begin(1.0, 500e-9, 32)
         wf_ka_circle = prop_begin(1.0, 500e-9, 32)

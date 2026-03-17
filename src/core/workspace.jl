@@ -289,15 +289,40 @@ end
     return ws
 end
 
+mutable struct SamplingWorkspace{T<:AbstractFloat,MX<:AbstractMatrix{T},MY<:AbstractMatrix{T}}
+    tablex::MX
+    tabley::MY
+end
+
+SamplingWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} = SamplingWorkspace(Matrix, T)
+
+function SamplingWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:AbstractFloat}
+    tablex = workspace_matrix(A, T, 0, 0)
+    tabley = workspace_matrix(A, T, 0, 0)
+    return SamplingWorkspace{T,typeof(tablex),typeof(tabley)}(tablex, tabley)
+end
+
+@inline function ensure_sampling_tables!(ws::SamplingWorkspace{T}, nx::Integer, ny::Integer, k::Integer) where {T}
+    ws.tablex = _ensure_workspace_matrix(ws.tablex, nx, k)
+    ws.tabley = _ensure_workspace_matrix(ws.tabley, ny, k)
+    return ws.tablex, ws.tabley
+end
+
+@inline function reset_workspace!(ws::SamplingWorkspace)
+    return ws
+end
+
 mutable struct ProperWorkspace{
     T<:AbstractFloat,
     IW<:InterpWorkspace{T},
     MW<:MaskWorkspace{T},
     FW<:FFTWorkspace{T},
+    SW<:SamplingWorkspace{T},
 }
     interp::IW
     mask::MW
     fft::FW
+    sampling::SW
 end
 
 ProperWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} = ProperWorkspace(Matrix, T)
@@ -306,13 +331,15 @@ function ProperWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T
     interp = InterpWorkspace(A, T)
     mask = MaskWorkspace(A, T)
     fft = FFTWorkspace(A, T)
-    return ProperWorkspace{T,typeof(interp),typeof(mask),typeof(fft)}(interp, mask, fft)
+    sampling = SamplingWorkspace(A, T)
+    return ProperWorkspace{T,typeof(interp),typeof(mask),typeof(fft),typeof(sampling)}(interp, mask, fft, sampling)
 end
 
 @inline function reset_workspace!(ws::ProperWorkspace)
     reset_workspace!(ws.interp)
     reset_workspace!(ws.mask)
     reset_workspace!(ws.fft)
+    reset_workspace!(ws.sampling)
     return ws
 end
 

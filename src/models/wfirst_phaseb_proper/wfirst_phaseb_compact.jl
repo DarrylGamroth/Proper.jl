@@ -96,8 +96,7 @@ function _wfirst_phaseb_compact_impl(lambda_m, output_dim0, passvalue; assets=no
     end
     field_small .*= n_small
     phaseb_ffts!(field_small, fft_small, -1)
-    phaseb_reverse_shift1!(fft_small.shifted, field_small)
-    copyto!(field_small, fft_small.shifted)
+    field_small = phaseb_reverse_shift1!(fft_small.shifted, field_small)
 
     if final_sampling_lam0 != 0
         mag = (pupil_diam_pix / n_small) / final_sampling_lam0 * (λm / λ0)

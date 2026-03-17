@@ -81,8 +81,7 @@ function reverse_shift1!(out::AbstractMatrix{Complex{T}}, input::AbstractMatrix{
 end
 
 function centered_fft!(field::Matrix{Complex{T}}, cache::CenteredFFTCache{T}, direction::Integer) where {T<:AbstractFloat}
-    half_shift_copy!(cache.shifted, field)
-    copyto!(cache.scratch, cache.shifted)
+    half_shift_copy!(cache.scratch, field)
     if direction == -1
         cache.forward_plan * cache.scratch
         cache.scratch .*= inv(length(cache.scratch))

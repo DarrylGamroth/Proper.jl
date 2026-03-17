@@ -126,9 +126,9 @@ function _prop_szoom!(
     out::AbstractMatrix,
     image_in::AbstractMatrix,
     mag::T,
+    sws::SamplingWorkspace{T},
 ) where {T<:AbstractFloat}
-    tabley = Matrix{T}(undef, size(out, 1), SZOOM_K)
-    tablex = size(out, 1) == size(out, 2) ? tabley : Matrix{T}(undef, size(out, 2), SZOOM_K)
+    tablex, tabley = ensure_sampling_tables!(sws, size(out, 2), size(out, 1), SZOOM_K)
     _fill_szoom_table_loop!(tabley, mag)
     tablex === tabley || _fill_szoom_table_loop!(tablex, mag)
     return _apply_szoom_loop!(out, image_in, tablex, tabley, mag)
@@ -139,9 +139,9 @@ function _prop_szoom!(
     out::AbstractMatrix,
     image_in::AbstractMatrix,
     mag::T,
+    sws::SamplingWorkspace{T},
 ) where {T<:AbstractFloat}
-    tabley = similar(out, T, size(out, 1), SZOOM_K)
-    tablex = size(out, 1) == size(out, 2) ? tabley : similar(out, T, size(out, 2), SZOOM_K)
+    tablex, tabley = ensure_sampling_tables!(sws, size(out, 2), size(out, 1), SZOOM_K)
     ka_szoom_table!(tabley, mag, size(out, 1), SZOOM_K, SZOOM_DK)
     tablex === tabley || ka_szoom_table!(tablex, mag, size(out, 2), SZOOM_K, SZOOM_DK)
     return ka_szoom_apply!(out, image_in, tablex, tabley, mag)
@@ -151,8 +151,9 @@ function _prop_szoom!(
     out::AbstractMatrix,
     image_in::AbstractMatrix,
     mag::T,
+    sws::SamplingWorkspace{T},
 ) where {T<:AbstractFloat}
-    return _prop_szoom!(sampling_exec_style(typeof(out), size(out, 1), size(out, 2)), out, image_in, mag)
+    return _prop_szoom!(sampling_exec_style(typeof(out), size(out, 1), size(out, 2)), out, image_in, mag, sws)
 end
 
 function prop_szoom!(
@@ -163,7 +164,19 @@ function prop_szoom!(
     T = _szoom_magtype(image_in, mag0)
     mag = T(mag0)
     mag > zero(T) || throw(ArgumentError("magnification must be positive"))
-    return _prop_szoom!(out, image_in, mag)
+    return _prop_szoom!(out, image_in, mag, SamplingWorkspace(typeof(out), T))
+end
+
+function prop_szoom!(
+    out::AbstractMatrix,
+    image_in::AbstractMatrix,
+    mag0::Real,
+    ctx::RunContext,
+)
+    T = _szoom_magtype(image_in, mag0)
+    mag = T(mag0)
+    mag > zero(T) || throw(ArgumentError("magnification must be positive"))
+    return _prop_szoom!(out, image_in, mag, sampling_workspace(ctx))
 end
 
 """Damped-sinc (Lanczos-like) zoom used by upstream PROPER `prop_magnify` default path."""
@@ -178,5 +191,19 @@ function prop_szoom(image_in::AbstractMatrix, mag0::Real, nout::Integer=0; kwarg
 
     Tout = _szoom_output_eltype(image_in, T)
     out = similar(image_in, Tout, noy, nox)
-    return _prop_szoom!(out, image_in, mag)
+    return _prop_szoom!(out, image_in, mag, SamplingWorkspace(typeof(out), T))
+end
+
+function prop_szoom(image_in::AbstractMatrix, mag0::Real, ctx::RunContext, nout::Integer=0; kwargs...)
+    T = _szoom_magtype(image_in, mag0)
+    mag = T(mag0)
+    mag > zero(T) || throw(ArgumentError("magnification must be positive"))
+
+    noy, nox = _szoom_output_sizes(image_in, mag, nout, kwargs)
+    noy > 0 || throw(ArgumentError("output height must be positive"))
+    nox > 0 || throw(ArgumentError("output width must be positive"))
+
+    Tout = _szoom_output_eltype(image_in, T)
+    out = similar(image_in, Tout, noy, nox)
+    return _prop_szoom!(out, image_in, mag, sampling_workspace(ctx))
 end

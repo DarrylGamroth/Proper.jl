@@ -101,6 +101,7 @@ end
 @inline interp_workspace(ctx::RunContext) = ctx.workspace.interp
 @inline mask_workspace(ctx::RunContext) = ctx.workspace.mask
 @inline fft_workspace(ctx::RunContext) = ctx.workspace.fft
+@inline sampling_workspace(ctx::RunContext) = ctx.workspace.sampling
 
 @inline function fresh_context(ctx::RunContext; rng=fork_rng(ctx.rng, 1))
     ws = fresh_workspace(ctx.workspace)

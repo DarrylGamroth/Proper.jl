@@ -34,6 +34,7 @@ end
     mag::Real,
     opts::MagnifyOptions,
     ws::InterpWorkspace,
+    sws::SamplingWorkspace,
 )
     ny_out, nx_out = size(out)
     if opts.quick
@@ -50,7 +51,8 @@ end
         fill_affine_axis!(fillsty, ycoords, cy_out, invmag, cy_in)
         prop_cubic_conv_grid!(out, sty, image_in, xcoords, ycoords)
     else
-        prop_szoom!(out, image_in, mag)
+        T = typeof(float(real(zero(eltype(image_in)))))
+        _prop_szoom!(out, image_in, T(mag), sws)
     end
 
     return _apply_magnify_conserve!(out, image_in, mag, opts)
@@ -71,6 +73,7 @@ end
         float(mag0),
         opts,
         interp_workspace(ctx),
+        sampling_workspace(ctx),
     )
 end
 
@@ -82,6 +85,7 @@ end
 )
     Tin = typeof(real(zero(eltype(image_in))))
     T = float(promote_type(typeof(mag0), Tin))
+    sws = SamplingWorkspace(typeof(out), T)
     return _prop_magnify!(
         out,
         interp_style(typeof(image_in)),
@@ -90,6 +94,7 @@ end
         float(mag0),
         opts,
         InterpWorkspace(typeof(out), T),
+        sws,
     )
 end
 
