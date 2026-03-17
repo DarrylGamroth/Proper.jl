@@ -18,9 +18,8 @@ function _prop_ptp_fft!(
     dx,
     kphase,
 )
-    f = ensure_fft_scratch!(ws, ny, nx)
+    f = prepare_fft_field!(ws, wf.field, ny, nx)
     pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
-    copyto!(f, wf.field)
     LinearAlgebra.mul!(f, pfft, f)
     f ./= n
 
@@ -31,7 +30,7 @@ function _prop_ptp_fft!(
 
     LinearAlgebra.mul!(f, pbfft, f)
     f ./= n
-    copyto!(wf.field, f)
+    wf.field = f
     return wf
 end
 
@@ -46,15 +45,14 @@ function _prop_ptp_fft!(
     dx,
     kphase,
 )
-    f = ensure_fft_scratch!(ws, size(wf.field, 1), size(wf.field, 2))
+    f = prepare_fft_field!(ws, wf.field, ny, nx)
     pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
-    copyto!(f, wf.field)
     LinearAlgebra.mul!(f, pfft, f)
     f ./= n
     ka_apply_frequency_phase!(f, kphase, dx)
     LinearAlgebra.mul!(f, pbfft, f)
     f ./= n
-    copyto!(wf.field, f)
+    wf.field = f
     return wf
 end
 

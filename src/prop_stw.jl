@@ -8,9 +8,8 @@
     ws::FFTWorkspace{T},
 ) where {T<:AbstractFloat}
     ny, nx = size(wf.field)
-    f = ensure_fft_scratch!(ws, ny, nx)
+    f = prepare_fft_field!(ws, wf.field, ny, nx)
     pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
-    copyto!(f, wf.field)
 
     if d >= zero(T)
         LinearAlgebra.mul!(f, pfft, f)
@@ -20,7 +19,7 @@
 
     # Match legacy normalization: both branches scale by 1/n.
     f ./= n
-    copyto!(wf.field, f)
+    wf.field = f
     return wf
 end
 
@@ -33,16 +32,15 @@ end
     ws::FFTWorkspace,
 )
     ny, nx = size(wf.field)
-    f = ensure_fft_scratch!(ws, ny, nx)
+    f = prepare_fft_field!(ws, wf.field, ny, nx)
     pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
-    copyto!(f, wf.field)
     if d >= 0
         LinearAlgebra.mul!(f, pfft, f)
     else
         LinearAlgebra.mul!(f, pbfft, f)
     end
     f ./= n
-    copyto!(wf.field, f)
+    wf.field = f
     return wf
 end
 

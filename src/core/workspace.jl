@@ -171,6 +171,14 @@ end
     return ws.scratch
 end
 
+@inline function prepare_fft_field!(ws::FFTWorkspace, field::AbstractMatrix, ny::Integer, nx::Integer)
+    scratch = ensure_fft_scratch!(ws, ny, nx)
+    if scratch !== field
+        copyto!(scratch, field)
+    end
+    return scratch
+end
+
 @inline function ensure_fft_real_scratch!(ws::FFTWorkspace{T}, ny::Integer, nx::Integer) where {T}
     if !(ws.real_scratch_valid && size(ws.real_scratch) == (ny, nx))
         ws.real_scratch = _ensure_workspace_matrix(ws.real_scratch, ny, nx)
