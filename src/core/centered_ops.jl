@@ -40,6 +40,52 @@ function half_shift_copy!(out::AbstractMatrix{T}, input::AbstractMatrix) where {
     return shift_copy!(out, input, size(input, 1) ÷ 2, size(input, 2) ÷ 2)
 end
 
+function copy_centered_to_fft_order!(out::AbstractMatrix{T}, input_image::AbstractMatrix) where {T}
+    ny_out, nx_out = size(out)
+    ny_in, nx_in = size(input_image)
+    oy1 = ny_out ÷ 2 - ny_in ÷ 2 + 1
+    ox1 = nx_out ÷ 2 - nx_in ÷ 2 + 1
+    oy2 = oy1 + ny_in - 1
+    ox2 = ox1 + nx_in - 1
+
+    sy1 = 1
+    sx1 = 1
+    sy2 = ny_in
+    sx2 = nx_in
+
+    if oy1 < 1
+        sy1 += 1 - oy1
+        oy1 = 1
+    end
+    if ox1 < 1
+        sx1 += 1 - ox1
+        ox1 = 1
+    end
+    if oy2 > ny_out
+        sy2 -= oy2 - ny_out
+        oy2 = ny_out
+    end
+    if ox2 > nx_out
+        sx2 -= ox2 - nx_out
+        ox2 = nx_out
+    end
+
+    row_split = ny_out - (ny_out ÷ 2)
+    col_split = nx_out - (nx_out ÷ 2)
+    @inbounds for j in 1:nx_out
+        pj = j <= (nx_out ÷ 2) ? (col_split + j) : (j - (nx_out ÷ 2))
+        for i in 1:ny_out
+            pi = i <= (ny_out ÷ 2) ? (row_split + i) : (i - (ny_out ÷ 2))
+            if oy1 <= pi <= oy2 && ox1 <= pj <= ox2
+                out[i, j] = T(input_image[sy1 + (pi - oy1), sx1 + (pj - ox1)])
+            else
+                out[i, j] = zero(T)
+            end
+        end
+    end
+    return out
+end
+
 function shift_copy!(out::AbstractMatrix{T}, input::AbstractMatrix, sy::Integer, sx::Integer) where {T}
     ny, nx = size(input)
     size(out) == (ny, nx) || throw(ArgumentError("shift output size must match input size"))

@@ -49,6 +49,23 @@ end
     ref_pad[2:6, 2:6] .= a
     @test out_pad == ref_pad
 
+    fft_order_pad = Matrix{Float64}(undef, 7, 7)
+    stage_pad = Matrix{Float64}(undef, 7, 7)
+    Proper.copy_centered!(stage_pad, a)
+    Proper.half_shift_copy!(fft_order_pad, stage_pad)
+    direct_fft_order_pad = Matrix{Float64}(undef, 7, 7)
+    Proper.copy_centered_to_fft_order!(direct_fft_order_pad, a)
+    @test direct_fft_order_pad == fft_order_pad
+
+    crop_in = reshape(collect(1.0:49.0), 7, 7)
+    fft_order_crop = Matrix{Float64}(undef, 5, 5)
+    stage_crop = Matrix{Float64}(undef, 5, 5)
+    Proper.copy_centered!(stage_crop, crop_in)
+    Proper.half_shift_copy!(fft_order_crop, stage_crop)
+    direct_fft_order_crop = Matrix{Float64}(undef, 5, 5)
+    Proper.copy_centered_to_fft_order!(direct_fft_order_crop, crop_in)
+    @test direct_fft_order_crop == fft_order_crop
+
     c = reshape(ComplexF64.(1:16), 4, 4)
     shifted = similar(c)
     Proper.half_shift_copy!(shifted, c)

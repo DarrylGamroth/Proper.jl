@@ -75,6 +75,7 @@ end
 end
 
 @inline phaseb_center_copy!(out::AbstractMatrix{T}, input_image::AbstractMatrix) where {T} = Proper.copy_centered!(out, input_image)
+@inline phaseb_center_to_fft_order!(out::AbstractMatrix{T}, input_image::AbstractMatrix) where {T} = Proper.copy_centered_to_fft_order!(out, input_image)
 
 @inline function phaseb_prepare_static(input_image::AbstractMatrix, output_dim::Integer, ::Type{T}) where {T}
     out = Matrix{T}(undef, output_dim, output_dim)
