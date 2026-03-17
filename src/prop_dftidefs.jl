@@ -1,4 +1,3 @@
-"""Return MKL DFTI-compatible constant dictionary for compatibility shims."""
 const _DFTIDEFS = Dict{Symbol,Int}(
     :DFTI_FORWARD_DOMAIN => 0,
     :DFTI_DIMENSION => 1,
@@ -18,6 +17,15 @@ const _DFTIDEFS = Dict{Symbol,Int}(
     :DFTI_INCONSISTENT_CONFIGURATION => 3,
 )
 
+"""
+    prop_dftidefs()
+
+Return an MKL DFTI-compatible constant dictionary for compatibility shims.
+
+# Returns
+- A fresh `Dict{Symbol,Int}` containing the subset of DFTI constants used by
+  PROPER compatibility code.
+"""
 prop_dftidefs() = copy(_DFTIDEFS)
 
 function DftiErrorMessage(code::Integer)

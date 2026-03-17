@@ -1,8 +1,21 @@
-"""Generate FFTW wisdom file(s) for a given grid size and thread count."""
 function _wisdom_path(gridsize::Integer, nthreads::Integer)
     return joinpath(homedir(), ".proper_$(Int(gridsize))pix$(Int(nthreads))threads_wisdomfile")
 end
 
+"""
+    prop_fftw_wisdom(gridsize; nthreads=Threads.nthreads())
+    prop_fftw_wisdom(path)
+
+Generate or export FFTW wisdom for PROPER FFT workloads.
+
+# Arguments
+- `gridsize`: FFT grid size used to create measured wisdom
+- `nthreads`: thread count to bake into the generated wisdom
+- `path`: explicit output path for the currently loaded FFTW wisdom
+
+# Returns
+- The path written to disk.
+"""
 function prop_fftw_wisdom(gridsize::Integer; nthreads::Integer=Threads.nthreads())
     n = Int(gridsize)
     t = max(1, Int(nthreads))

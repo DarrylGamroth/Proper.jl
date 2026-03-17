@@ -154,6 +154,20 @@ function _prop_irregular_polygon(
     return _prop_irregular_polygon(image, wf, xverts, yverts, opts)
 end
 
+"""
+    prop_irregular_polygon!(image, wf, xverts, yverts; kwargs...)
+
+Write an antialiased convex or concave polygon mask into `image`.
+
+# Arguments
+- `image`: destination mask array
+- `wf`: wavefront defining the grid and sampling
+- `xverts`, `yverts`: polygon vertices
+
+# Keywords
+- `DARK`: return the complementary dark mask
+- `NORM`: interpret vertices in normalized beam-radius units
+"""
 function prop_irregular_polygon!(
     image::AbstractMatrix,
     wf::WaveFront,

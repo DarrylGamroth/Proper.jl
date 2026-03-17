@@ -1,4 +1,3 @@
-"""Apply an 8th-order occulter mask and return the generated amplitude mask."""
 abstract type EighthOrderMaskShape end
 struct LinearMaskShape <: EighthOrderMaskShape end
 struct CircularMaskShape <: EighthOrderMaskShape end
@@ -59,6 +58,27 @@ function _fill_8th_mask!(::EllipticalMaskShape, mask::AbstractMatrix{T}, x::Abst
     return mask
 end
 
+"""
+    prop_8th_order_mask(wf, hwhm; kwargs...)
+
+Apply an 8th-order occulter mask to `wf` and return the generated amplitude
+mask.
+
+# Arguments
+- `wf`: wavefront to modify in place
+- `hwhm`: half-width at half-maximum of the mask profile
+
+# Keywords
+- `min_transmission`, `max_transmission`: transmission range after
+  normalization
+- `meters`: interpret `hwhm` in meters instead of `lambda/D`
+- `circular`: use the circular variant of the mask
+- `elliptical`: axis ratio for the elliptical variant
+- `y_axis`: apply the linear mask profile along the `y` axis instead of `x`
+
+# Returns
+- The generated amplitude mask before it is multiplied into the wavefront.
+"""
 function prop_8th_order_mask(
     wf::WaveFront,
     hwhm::Real;

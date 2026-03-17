@@ -156,6 +156,21 @@ function _prop_szoom!(
     return _prop_szoom!(sampling_exec_style(typeof(out), size(out, 1), size(out, 2)), out, image_in, mag, sws)
 end
 
+"""
+    prop_szoom!(out, image_in, mag)
+    prop_szoom!(out, image_in, mag, ctx)
+
+Apply the upstream PROPER damped-sinc zoom to `image_in` and write the result
+to `out`.
+
+# Arguments
+- `out`: destination array
+- `image_in`: input image
+- `mag`: magnification factor
+
+# Notes
+- This is the mutating kernel used by the default `prop_magnify` path.
+"""
 function prop_szoom!(
     out::AbstractMatrix,
     image_in::AbstractMatrix,

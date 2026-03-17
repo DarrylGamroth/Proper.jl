@@ -1,4 +1,4 @@
-"""Return rectangular mask with rounded corners."""
+"""Internal helper for rounded-rectangle mask generation."""
 function _prop_rounded_rectangle!(
     ::GeometryLoopExecStyle,
     image::AbstractMatrix,
@@ -67,6 +67,18 @@ function _prop_rounded_rectangle!(
     return _prop_rounded_rectangle!(geometry_exec_style(typeof(image), size(image, 1), size(image, 2)), image, wf, corner_radius, width, height, xc, yc)
 end
 
+"""
+    prop_rounded_rectangle!(image, wf, corner_radius, width, height, xc=0, yc=0)
+
+Write a rounded-rectangle mask into `image`.
+
+# Arguments
+- `image`: destination mask array
+- `wf`: wavefront defining the grid and sampling
+- `corner_radius`: corner radius in meters
+- `width`, `height`: rectangle dimensions in meters
+- `xc`, `yc`: mask center in meters
+"""
 function prop_rounded_rectangle!(
     image::AbstractMatrix,
     wf::WaveFront,
@@ -79,6 +91,11 @@ function prop_rounded_rectangle!(
     return _prop_rounded_rectangle!(image, wf, corner_radius, width, height, xc, yc)
 end
 
+"""
+    prop_rounded_rectangle(wf, corner_radius, width, height, xc=0, yc=0)
+
+Return a rounded-rectangle mask on the wavefront grid.
+"""
 function prop_rounded_rectangle(
     wf::WaveFront,
     corner_radius::Real,

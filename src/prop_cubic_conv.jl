@@ -1,4 +1,3 @@
-"""Cubic convolution interpolation over scalar, axis-grid, or coordinate-grid requests."""
 abstract type CubicConvTopology end
 struct GridTopology <: CubicConvTopology end
 struct PointwiseTopology <: CubicConvTopology end
@@ -107,6 +106,19 @@ end
     return out
 end
 
+"""
+    prop_cubic_conv_grid!(out, sty, a, xval, yval)
+    prop_cubic_conv_grid!(out, a, xval, yval)
+    prop_cubic_conv_grid!(out, ctx, a, xval, yval)
+
+Evaluate cubic-convolution interpolation over the tensor-product grid defined
+by `xval` and `yval` and write the result into `out`.
+
+# Arguments
+- `out`: destination array of size `(length(yval), length(xval))`
+- `a`: source image
+- `xval`, `yval`: grid axes in the cubic-convolution coordinate system
+"""
 function prop_cubic_conv_grid!(out::AbstractMatrix, sty::InterpStyle, a::AbstractMatrix, xval::AbstractVector, yval::AbstractVector)
     size(out) == (length(yval), length(xval)) || throw(ArgumentError("output size mismatch for grid interpolation"))
     oy, ox = size(out)
@@ -140,6 +152,19 @@ function _prop_cubic_conv(sty::InterpStyle, ::PointwiseTopology, a::StridedMatri
     return out
 end
 
+"""
+    prop_cubic_conv(args...)
+
+Cubic-convolution interpolation over scalar, axis-grid, or coordinate-grid
+requests.
+
+# Notes
+- This is the public wrapper around the upstream PROPER cubic-convolution
+  kernel.
+- Scalar calls sample one point, vector calls support pointwise or grid
+  interpolation, and `prop_cubic_conv_grid!` writes directly into a caller
+  buffer.
+"""
 function prop_cubic_conv(sty::InterpStyle, a::AbstractMatrix, y::Real, x::Real)
     return _prop_cubic_conv_point(array_layout_style(typeof(a)), backend_style(typeof(a)), sty, a, y, x)
 end

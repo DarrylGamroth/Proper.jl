@@ -17,6 +17,23 @@ end
     end
 end
 
+"""
+    libcconv(a, y, x)
+
+Evaluate the upstream PROPER cubic-convolution kernel at floating-point
+coordinates `(y, x)`.
+
+# Arguments
+- `a`: source image
+- `y`, `x`: sample coordinates in the kernel's accepted coordinate system
+
+# Returns
+- The interpolated sample value.
+
+# Notes
+- This is the scalar building block behind `prop_cubic_conv`.
+- The implementation matches the upstream `cubic_conv_c.c` kernel semantics.
+"""
 @inline function libcconv(a::AbstractMatrix{T}, y::Real, x::Real) where {T}
     ny, nx = size(a)
     F = float(promote_type(typeof(x), typeof(y), real(T)))

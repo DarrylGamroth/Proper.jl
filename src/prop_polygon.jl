@@ -68,6 +68,23 @@ function _prop_polygon(
     return _prop_polygon!(image, wf, nsides, radius, xc, yc, opts)
 end
 
+"""
+    prop_polygon!(image, wf, nsides, radius, xc=0, yc=0; kwargs...)
+
+Write an antialiased regular polygon mask into `image`.
+
+# Arguments
+- `image`: destination mask array
+- `wf`: wavefront defining the grid and sampling
+- `nsides`: number of polygon sides
+- `radius`: circumscribed radius
+- `xc`, `yc`: polygon center
+
+# Keywords
+- `NORM`: interpret radius and center in normalized beam-radius units
+- `DARK`: return the complementary dark mask
+- `ROTATION`: polygon rotation angle in degrees
+"""
 function prop_polygon!(
     image::AbstractMatrix,
     wf::WaveFront,

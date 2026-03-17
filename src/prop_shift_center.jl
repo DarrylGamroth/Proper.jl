@@ -20,6 +20,19 @@ function prop_shift_center!(out::AbstractMatrix{T}, a::AbstractMatrix; inverse::
     return out
 end
 
+"""
+    prop_shift_center!(out, a; inverse=false)
+
+Circularly shift `a` between origin ordering and centered ordering, writing the
+result to `out`.
+
+# Arguments
+- `out`: destination array with the same size as `a`
+- `a`: input array
+
+# Keywords
+- `inverse`: when `true`, shift from centered ordering back to origin ordering
+"""
 function prop_shift_center!(out::StridedMatrix{T}, a::StridedMatrix; inverse::Bool=false) where {T}
     size(out) == size(a) || throw(ArgumentError("output size must match input size"))
     sy = _center_shift_amount(size(a, 1), inverse)

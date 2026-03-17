@@ -157,6 +157,22 @@ function _prop_rectangle(
     return _prop_rectangle!(image, wf, xsize, ysize, xc, yc, opts)
 end
 
+"""
+    prop_rectangle!(image, wf, xsize, ysize, xc=0, yc=0; kwargs...)
+
+Write an antialiased filled rectangle mask into `image`.
+
+# Arguments
+- `image`: destination mask array
+- `wf`: wavefront defining the grid and sampling
+- `xsize`, `ysize`: rectangle size
+- `xc`, `yc`: rectangle center
+
+# Keywords
+- `NORM`: interpret size and center in normalized beam-radius units
+- `DARK`: return the complementary dark mask
+- `ROTATION`: rectangle rotation angle in degrees
+"""
 function prop_rectangle!(
     image::AbstractMatrix,
     wf::WaveFront,

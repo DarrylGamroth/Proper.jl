@@ -228,6 +228,22 @@ function _prop_ellipse(
     return _prop_ellipse!(image, wf, xradius, yradius, xc, yc, opts)
 end
 
+"""
+    prop_ellipse!(image, wf, xradius, yradius, xc=0, yc=0; kwargs...)
+
+Write an antialiased filled ellipse mask into `image`.
+
+# Arguments
+- `image`: destination mask array
+- `wf`: wavefront defining the grid and sampling
+- `xradius`, `yradius`: ellipse radii
+- `xc`, `yc`: ellipse center
+
+# Keywords
+- `NORM`: interpret radii and center in normalized beam-radius units
+- `DARK`: return the complementary dark mask
+- `ROTATION`: ellipse rotation angle in degrees
+"""
 function prop_ellipse!(
     image::AbstractMatrix,
     wf::WaveFront,
