@@ -19,10 +19,10 @@ prepared execution layer for repeated runs.
   `PreparedModel`) is available for repeated and parallel runs
 
 ## Benchmark And Parity Summary
-- Phase 8 parity closure is complete against the patched Python 3.3.4 baseline:
+- Parity closure is complete against the patched Python 3.3.4 baseline:
   see [docs/PHASE8_CLOSURE.md](docs/PHASE8_CLOSURE.md)
-- Phase 9 MATLAB/manual semantic reconciliation is complete for the identified
-  hotspot semantics: see [docs/PHASE9_RECONCILIATION.md](docs/PHASE9_RECONCILIATION.md)
+- MATLAB/manual semantic reconciliation is complete for the identified hotspot
+  semantics: see [docs/PHASE9_RECONCILIATION.md](docs/PHASE9_RECONCILIATION.md)
 - The WFIRST Phase B reference port is used as a broad correctness and
   benchmarking workload, not as a separate optimized execution path
 - Current benchmark policy separates steady-state runtime from Julia cold-start /

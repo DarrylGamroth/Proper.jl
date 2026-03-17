@@ -18,8 +18,8 @@ planning/audit records from the port effort.
 - [Compatibility decisions](compat_decisions.md)
 
 ## Reference Validation And Coverage
-- [Phase 8 closure report](PHASE8_CLOSURE.md)
-- [Phase 9 semantic reconciliation](PHASE9_RECONCILIATION.md)
+- [Parity closure report](PHASE8_CLOSURE.md)
+- [Semantic reconciliation report](PHASE9_RECONCILIATION.md)
 - [WFIRST Phase B config matrix](WFIRST_PHASEB_CONFIG_MATRIX.md)
 
 ## Contributor Workflow
