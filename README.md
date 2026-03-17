@@ -28,6 +28,22 @@ prepared execution layer for repeated runs.
 - Current benchmark policy separates steady-state runtime from Julia cold-start /
   TTFx (`D-0029`)
 
+### Julia CPU vs GPU Benchmarks
+Run the dedicated Julia CPU/CUDA comparison lane with:
+
+```bash
+./scripts/benchmark_cpu_gpu.sh
+```
+
+This generates:
+- `bench/reports/julia_cpu_gpu_summary.md`
+- `bench/reports/julia_cpu_gpu_steady_state.csv`
+- `bench/reports/julia_cpu_gpu_supported_kernels.csv`
+
+The script uses the Julia steady-state CPU and CUDA benchmark lanes only. It
+does not depend on the Python parity environment. If `CUDA.jl` or a supported
+device is unavailable, it writes a skipped CUDA summary instead of failing.
+
 ## Requirements
 - Julia 1.10 or newer
 - `FITSIO.jl` for FITS input/output
