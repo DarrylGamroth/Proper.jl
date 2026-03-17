@@ -273,27 +273,40 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
     end
 
     phaseb_stage!(stage_timer, :to_image) do
-        prop_propagate(wf, d_lyotstop_oap7, "OAP7")
-        prop_lens(wf, fl_oap7)
-        _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_OAP7_phase_error_V1.0.fits")
-        prop_propagate(wf, d_oap7_fieldstop, "FIELD_STOP")
-        if use_field_stop != 0 && cfg.branch == :hlc
-            sampling_lamD = pupil_diam_pix / n
-            stop_radius = field_stop_radius_lam0 / sampling_lamD * (λ0 / λm) * prop_get_sampling(wf)
-            prop_circular_aperture(wf, stop_radius, 0.0, 0.0)
+        phaseb_stage!(stage_timer, :to_image_oap7) do
+            prop_propagate(wf, d_lyotstop_oap7, "OAP7")
+            prop_lens(wf, fl_oap7)
+            _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_OAP7_phase_error_V1.0.fits")
         end
 
-        prop_propagate(wf, d_fieldstop_oap8, "OAP8")
-        prop_lens(wf, fl_oap8)
-        _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_OAP8_phase_error_V1.0.fits")
-        prop_propagate(wf, d_oap8_filter, "filter")
-        _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_FILTER_phase_error_V1.0.fits")
-        prop_propagate(wf, d_filter_lens, "LENS")
-        prop_lens(wf, fl_lens)
-        _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_LENS_phase_error_V1.0.fits")
-        prop_propagate(wf, d_lens_fold4, "FOLD_4")
-        _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_FOLD4_phase_error_V1.1.fits")
-        prop_propagate(wf, d_fold4_image, "IMAGE")
+        phaseb_stage!(stage_timer, :to_image_field_stop) do
+            prop_propagate(wf, d_oap7_fieldstop, "FIELD_STOP")
+            if use_field_stop != 0 && cfg.branch == :hlc
+                sampling_lamD = pupil_diam_pix / n
+                stop_radius = field_stop_radius_lam0 / sampling_lamD * (λ0 / λm) * prop_get_sampling(wf)
+                prop_circular_aperture(wf, stop_radius, 0.0, 0.0)
+            end
+        end
+
+        phaseb_stage!(stage_timer, :to_image_oap8) do
+            prop_propagate(wf, d_fieldstop_oap8, "OAP8")
+            prop_lens(wf, fl_oap8)
+            _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_OAP8_phase_error_V1.0.fits")
+        end
+
+        phaseb_stage!(stage_timer, :to_image_filter) do
+            prop_propagate(wf, d_oap8_filter, "filter")
+            _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_FILTER_phase_error_V1.0.fits")
+        end
+
+        phaseb_stage!(stage_timer, :to_image_tail) do
+            prop_propagate(wf, d_filter_lens, "LENS")
+            prop_lens(wf, fl_lens)
+            _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_LENS_phase_error_V1.0.fits")
+            prop_propagate(wf, d_lens_fold4, "FOLD_4")
+            _phaseb_apply_error!(wf, use_errors, map_root, "wfirst_phaseb_FOLD4_phase_error_V1.1.fits")
+            prop_propagate(wf, d_fold4_image, "IMAGE")
+        end
     end
 
     sampling_m = prop_get_sampling(wf)

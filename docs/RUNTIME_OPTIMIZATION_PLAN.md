@@ -258,6 +258,36 @@ Status: Completed
   - added `ShiftKernelStyle` trait with per-kernel guarded enable (`KA_MASK_MIN_ELEMS`, `KA_END_MIN_ELEMS`).
   - added KA kernel implementations for shifted mask apply and shifted `prop_end!` copy/intensity.
   - integrated trait routing in `prop_circular_aperture` mask application and `prop_end!` strided fast paths.
+- 2026-03-17: WFIRST-guided shared-core profiling snapshot recorded.
+  - WFIRST remains a parity/benchmark workload, not an optimization target. The profiling work below is only diagnostic scaffolding for shared PROPER core routines.
+  - added `scripts/profile_wfirst_phaseb_stages.sh` and `bench/julia/wfirst_phaseb/profile_stage_cases.jl` to persist serial stage timing reports under `bench/reports/wfirst_phaseb_stage_profile.json`.
+  - repeated WFIRST CPU profile snapshots worth preserving:
+    - before `447c510` (`RunContext` reuse):
+      - `compact_spc_spec_long`: median `833.84 ms`, median alloc `577.64 MiB`
+      - `full_spc_spec_long`: median `47431.81 ms`, median alloc `3361.77 MiB`
+    - after `447c510`:
+      - `compact_spc_spec_long`: median `727.88 ms`, median alloc `193.53 MiB`
+      - `full_spc_spec_long`: median `66328.47 ms`, median alloc `3073.67 MiB`
+    - after `6656a10` (FFT scratch retained as `wf.field`):
+      - `compact_spc_spec_long`: median `680.89 ms`, median alloc `193.53 MiB`
+      - `full_spc_spec_long`: median `63470.46 ms`, median alloc `3073.68 MiB`
+  - tested and rejected a temporary `FFTMeasureStyle()` experiment for WFIRST prepared contexts; it did not show a clear steady-state win and is intentionally not part of the accepted path.
+  - coarse serial stage timing for `full_spc_spec_long` over 3 wavelengths:
+    - `to_image`: `131742179754 ns`
+    - `front_end`: `10493333315 ns`
+    - `to_fpm`: `1130643500 ns`
+    - `spc_fpm`: `1039529538 ns`
+    - `to_lyot`: `1116975207 ns`
+    - `final_output`: `488889949 ns`
+  - finer serial stage timing for `full_spc_spec_long` after splitting `to_image` into shared-core-heavy legs:
+    - `to_image`: `111563893151 ns`
+    - `to_image_tail`: `34579911633 ns`
+    - `to_image_field_stop`: `29420204783 ns`
+    - `to_image_oap8`: `21736564601 ns`
+    - `to_image_oap7`: `16986002992 ns`
+    - `to_image_filter`: `8841185810 ns`
+  - conclusion from the finer split: if a new shared-core optimization pass is taken, the first diagnosis target should be the tail sequence after the filter (`LENS -> FOLD_4 -> IMAGE`), with the field-stop leg second. Those are the dominant shared propagation/lens segments inside the WFIRST workload.
+  - conclusion: the next performance work should stay in shared propagation/lens/FFT code inside the `to_image` sequence, not in WFIRST-specific orchestration.
   - updated CPU defaults after benchmarking: mask path remains loop-default; `prop_end!` shifted copy/intensity keeps KA pilot for large arrays.
 - 2026-03-05: O8 completed.
   - added `prop_psd_errormap!(out, wf, ...)` mutating API and internal output-buffer overload.
