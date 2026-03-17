@@ -39,6 +39,7 @@ This guide summarizes compatibility expectations for users migrating prescriptio
 - `prepare_prescription_batch(...)` adds reusable per-slot contexts for repeated or parallel runs.
 - `prepare_model(...)` adds optional prepared assets on top of that execution state.
 - These are performance and ownership tools, not a separate compatibility mode.
+- See `docs/PREPARED_EXECUTION_GUIDE.md` for concrete usage patterns.
 
 ## Known Semantics Adopted In Julia
 - `prop_resamplemap`: independent `xshift`/`yshift` handling (aligned with MATLAB/manual intent).

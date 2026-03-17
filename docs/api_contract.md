@@ -9,6 +9,7 @@ Define the user-facing API guarantees for `Proper.jl` so ports remain familiar t
 - `D-0005` public API compatibility surface (accepted)
 - `D-0035` remove runtime compatibility modes (accepted)
 - `D-0028` dynamic dispatch minimization (accepted)
+- prepared execution usage guide: `docs/PREPARED_EXECUTION_GUIDE.md`
 
 ## Status
 - [x] Draft pre-filled from proposed defaults
@@ -68,6 +69,8 @@ Notes:
   - `prop_run_multi(prepared::PreparedPrescription)` clones the prepared `RunContext` into independent workspaces before threaded execution.
   - This preserves backend/planning configuration without sharing mutable workspace scratch across threads.
   - `prop_run_multi(prepared_batch::PreparedBatch)` reuses a growable pool of those forked contexts across repeated calls.
+- For user-facing prepared execution examples and ownership guidance, see:
+  - `docs/PREPARED_EXECUTION_GUIDE.md`
 
 ## 3. Parity Baseline
 - Behavior targets the patched Python 3.3.4 executable baseline used by the parity harness.
