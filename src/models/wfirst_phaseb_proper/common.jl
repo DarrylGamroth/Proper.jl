@@ -42,6 +42,36 @@ struct PhaseBSPCPreparedAssets
     workspace::PhaseBModelWorkspace
 end
 
+mutable struct PhaseBStageTimer
+    totals_ns::Dict{Symbol,Int64}
+    counts::Dict{Symbol,Int}
+end
+
+PhaseBStageTimer() = PhaseBStageTimer(Dict{Symbol,Int64}(), Dict{Symbol,Int}())
+
+@inline phaseb_stage_timer(::Nothing) = nothing
+@inline phaseb_stage_timer(timer::PhaseBStageTimer) = timer
+@inline phaseb_stage_timer(passvalue) = passget(passvalue, :stage_timer, nothing)
+
+@inline phaseb_stage!(f::F, ::Nothing, ::Symbol) where {F<:Function} = f()
+function phaseb_stage!(f::F, timer::PhaseBStageTimer, name::Symbol) where {F<:Function}
+    t0 = time_ns()
+    result = f()
+    timer.totals_ns[name] = get(timer.totals_ns, name, 0) + (time_ns() - t0)
+    timer.counts[name] = get(timer.counts, name, 0) + 1
+    return result
+end
+
+function phaseb_stage_report(timer::PhaseBStageTimer)
+    names = sort!(collect(keys(timer.totals_ns)); by=String)
+    return Dict(
+        String(name) => Dict(
+            "total_ns" => timer.totals_ns[name],
+            "count" => get(timer.counts, name, 0),
+        ) for name in names
+    )
+end
+
 const OLD_LAM_OCCS = [
     "5.4625e-07", "5.49444444444e-07", "5.52638888889e-07", "5.534375e-07", "5.55833333333e-07", "5.59027777778e-07",
     "5.60625e-07", "5.62222222222e-07", "5.65416666667e-07", "5.678125e-07", "5.68611111111e-07", "5.71805555556e-07",
