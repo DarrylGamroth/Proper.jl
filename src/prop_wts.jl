@@ -78,10 +78,12 @@ function prop_wts(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
     return wf
 end
 
+"""Propagate from a waist/planar regime to a spherical-reference regime."""
 @inline function prop_wts(wf::WaveFront, dz::Real, ctx::RunContext)
     return prop_wts(wf, dz, ctx, fft_workspace(ctx))
 end
 
+"""Propagate from a waist/planar regime to a spherical-reference regime."""
 @inline function prop_wts(wf::WaveFront, dz::Real)
     return prop_wts(wf, dz, RunContext(wf))
 end

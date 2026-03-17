@@ -1,3 +1,4 @@
+"""Multiply the current wavefront by a rectangular aperture."""
 function prop_rectangular_aperture(wf::WaveFront, width::Real, height::Real, xc::Real=0.0, yc::Real=0.0; kwargs...)
     ny, nx = size(wf.field)
     m = ensure_mask_buffer!(wf.workspace.mask, ny, nx)

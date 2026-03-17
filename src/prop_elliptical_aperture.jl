@@ -1,3 +1,4 @@
+"""Multiply the current wavefront by an elliptical clear aperture."""
 function prop_elliptical_aperture(wf::WaveFront, xradius::Real, yradius::Real, xc::Real=0.0, yc::Real=0.0; kwargs...)
     opts = EllipseOptions(real(eltype(wf.field)), kwargs)
     return _apply_shifted_ellipse!(wf, xradius, yradius, xc, yc, opts, false)

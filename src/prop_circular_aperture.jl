@@ -197,6 +197,7 @@ end
     return _apply_shifted_circle!(sty, wf, radius, xc, yc, opts, invert)
 end
 
+"""Multiply the current wavefront by a circular clear aperture."""
 function prop_circular_aperture(wf::WaveFront, radius::Real, xc::Real=0.0, yc::Real=0.0; kwargs...)
     opts = CircleOptions(real(eltype(wf.field)), kwargs)
     return _apply_shifted_circle!(wf, radius, xc, yc, opts, false)
