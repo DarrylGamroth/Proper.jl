@@ -12,6 +12,7 @@ It complements:
 - `docs/MIGRATION_GUIDE.md` for cross-language compatibility expectations
 - `docs/PREPARED_EXECUTION_GUIDE.md` for repeated-run execution patterns
 - `docs/api_contract.md` for the stable public API contract
+- `docs/PORTING_CHECKLIST.md` for contributor-facing port workflow
 
 ## Recommended Starting Point
 Start with the familiar PROPER shape:

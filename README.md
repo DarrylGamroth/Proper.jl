@@ -18,6 +18,16 @@ prepared execution layer for repeated runs.
 - prepared execution (`PreparedPrescription`, `PreparedBatch`,
   `PreparedModel`) is available for repeated and parallel runs
 
+## Benchmark And Parity Summary
+- Phase 8 parity closure is complete against the patched Python 3.3.4 baseline:
+  see [docs/PHASE8_CLOSURE.md](docs/PHASE8_CLOSURE.md)
+- Phase 9 MATLAB/manual semantic reconciliation is complete for the identified
+  hotspot semantics: see [docs/PHASE9_RECONCILIATION.md](docs/PHASE9_RECONCILIATION.md)
+- The WFIRST Phase B reference port is used as a broad correctness and
+  benchmarking workload, not as a separate optimized execution path
+- Current benchmark policy separates steady-state runtime from Julia cold-start /
+  TTFx (`D-0029`)
+
 ## Requirements
 - Julia 1.10 or newer
 - `FITSIO.jl` for FITS input/output
@@ -185,6 +195,7 @@ Important current examples:
 - [API contract](docs/api_contract.md)
 - [Migration guide](docs/MIGRATION_GUIDE.md)
 - [Prescription authoring guide](docs/PRESCRIPTION_AUTHORING_GUIDE.md)
+- [Contributor porting checklist](docs/PORTING_CHECKLIST.md)
 - [Prepared execution guide](docs/PREPARED_EXECUTION_GUIDE.md)
 - [Runnable API examples](docs/API_EXAMPLES.md)
 - [Numerics contract](docs/numerics_contract.md)
