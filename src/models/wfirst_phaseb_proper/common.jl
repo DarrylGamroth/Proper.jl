@@ -786,6 +786,7 @@ function prepare_phaseb_models(case::NamedTuple; data_root::AbstractString=phase
         shared = prepare_phaseb_shared_assets(cor_type, data_root, case.wavelengths_m)
     end
     models = map(enumerate(zip(case.wavelengths_um, case.wavelengths_m))) do (i, (λum, λm))
+        ctx = Proper.RunContext()
         if shared === nothing
             cfg = _phaseb_config(cor_type, λm, data_root; compact=is_compact, use_fpm=Int(passget(case.passvalue, :use_fpm, 1)))
             return prepare_model(
@@ -793,6 +794,7 @@ function prepare_phaseb_models(case::NamedTuple; data_root::AbstractString=phase
                 case.func,
                 λum,
                 case.output_dim;
+                context=ctx,
                 PASSVALUE=passvalue,
                 assets=prepare_asset_pool(() -> prepare_phaseb_spc_assets(cfg, λm, case.output_dim; compact=is_compact); pool_size=1),
                 pool_size=1,
@@ -803,6 +805,7 @@ function prepare_phaseb_models(case::NamedTuple; data_root::AbstractString=phase
             case.func,
             λum,
             case.output_dim;
+            context=ctx,
             PASSVALUE=passvalue,
             assets=prepare_asset_pool(() -> PhaseBPreparedAssets(shared, _nearest_occulter(shared, λm), PhaseBModelWorkspace(case.output_dim)); pool_size=1),
             pool_size=1,

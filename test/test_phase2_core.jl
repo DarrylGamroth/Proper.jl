@@ -209,7 +209,7 @@ end
                 @test kwargs[:asset_model] == "asset_model"
             end
             psf = fill(Float32(pass), n, n)
-            psf[1, 1] = Float32(objectid(active.workspace) % 1024)
+            psf[1, 1] = Float32(objectid(active.workspace) % (1 << 24))
             return psf, 1.0f0
         end
 
