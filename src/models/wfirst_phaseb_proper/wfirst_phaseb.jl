@@ -233,11 +233,10 @@ function _wfirst_phaseb_impl(lambda_m, output_dim0, passvalue; assets=nothing)
             field_mft = phaseb_field(ws, cfg.n_mft)
             phaseb_center_copy!(field_mft, field_to_fpm)
             fpm = data.fpm
-            nfpm = size(fpm, 2)
-            fpm_sampling_lam = cfg.fpm_sampling * cfg.fpm_sampling_lambda_m / λm
-            field_spc = mft2(field_mft, fpm_sampling_lam, pupil_diam_pix, nfpm, -1)
+            field_spc = phaseb_field(ws, size(fpm, 2))
+            phaseb_mft2!(field_spc, field_mft, data.forward_mft)
             field_spc .*= fpm
-            field_to_fpm = mft2(field_spc, fpm_sampling_lam, pupil_diam_pix, n, +1)
+            phaseb_mft2!(field_to_fpm, field_spc, data.inverse_mft)
             phaseb_ffts!(field_to_fpm, phaseb_fft_cache(ws, n), -1)
             phaseb_half_shift!(wf.field, field_to_fpm)
         end

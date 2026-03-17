@@ -78,15 +78,15 @@ function _wfirst_phaseb_compact_impl(lambda_m, output_dim0, passvalue; assets=no
     elseif cfg.branch == :spc
         fpm = data.fpm
         nfpm = size(fpm, 2)
-        fpm_sampling_lam = cfg.fpm_sampling * cfg.fpm_sampling_lambda_m / λm
         field_big = phaseb_field(ws, n_big)
         phaseb_center_copy!(field_big, field_small)
-        spc_field = mft2(field_big, fpm_sampling_lam, pupil_diam_pix, nfpm, -1)
+        spc_field = phaseb_field(ws, nfpm)
+        phaseb_mft2!(spc_field, field_big, data.forward_mft)
         spc_field .*= fpm
-        spc_pupil_diam_pix = pupil_diam_pix / 2
-        field_big = mft2(spc_field, fpm_sampling_lam, spc_pupil_diam_pix, Int(round(spc_pupil_diam_pix)), +1)
-        pupil_diam_pix = spc_pupil_diam_pix
-        phaseb_center_copy!(field_small, field_big)
+        field_back = phaseb_field(ws, size(data.inverse_mft.left, 1))
+        phaseb_mft2!(field_back, spc_field, data.inverse_mft)
+        pupil_diam_pix /= 2
+        phaseb_center_copy!(field_small, field_back)
     end
 
     if cfg.lyot_stop_file !== nothing

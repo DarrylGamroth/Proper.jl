@@ -37,6 +37,8 @@ struct PhaseBSPCPreparedAssets
     pupil_mask::Matrix{Float64}
     lyot::Matrix{Float64}
     fpm::Matrix{ComplexF64}
+    forward_mft::PhaseBMFTPlan
+    inverse_mft::PhaseBMFTPlan
     workspace::PhaseBModelWorkspace
 end
 
@@ -238,7 +240,7 @@ end
     return PhaseBPreparedAssets(shared, _nearest_occulter(shared, λm), PhaseBModelWorkspace(output_dim))
 end
 
-function prepare_phaseb_spc_assets(cfg::NamedTuple, output_dim::Integer; compact::Bool=false)
+function prepare_phaseb_spc_assets(cfg::NamedTuple, λm::Real, output_dim::Integer; compact::Bool=false)
     pupil = phaseb_prepare_static(Float64.(_phaseb_python_fits(cfg.pupil_file)), cfg.n_default, Float64)
     pupil_mask = cfg.pupil_mask_file === nothing ? zeros(Float64, cfg.n_default, cfg.n_default) :
         phaseb_prepare_static(Float64.(_phaseb_python_fits(cfg.pupil_mask_file)), compact ? cfg.n_small : cfg.n_default, Float64)
@@ -246,7 +248,15 @@ function prepare_phaseb_spc_assets(cfg::NamedTuple, output_dim::Integer; compact
     lyot = cfg.lyot_stop_file === nothing ? zeros(Float64, lyot_dim, lyot_dim) :
         phaseb_prepare_static(Float64.(_phaseb_python_fits(cfg.lyot_stop_file)), lyot_dim, Float64)
     fpm = ComplexF64.(_phaseb_python_fits(cfg.fpm_file))
-    return PhaseBSPCPreparedAssets(pupil, pupil_mask, lyot, fpm, PhaseBModelWorkspace(output_dim))
+    nfpm = size(fpm, 2)
+    fpm_sampling_lam = cfg.fpm_sampling * cfg.fpm_sampling_lambda_m / Float64(λm)
+    pupil_diam_pix = cfg.pupil_diam_pix
+    forward_n = compact ? cfg.n_big : cfg.n_mft
+    forward_mft = prepare_phaseb_mft_plan(forward_n, fpm_sampling_lam, pupil_diam_pix, nfpm, -1)
+    inverse_out = compact ? Int(round(pupil_diam_pix / 2)) : cfg.n_to_fpm
+    inverse_diam = compact ? pupil_diam_pix / 2 : pupil_diam_pix
+    inverse_mft = prepare_phaseb_mft_plan(nfpm, fpm_sampling_lam, inverse_diam, inverse_out, +1)
+    return PhaseBSPCPreparedAssets(pupil, pupil_mask, lyot, fpm, forward_mft, inverse_mft, PhaseBModelWorkspace(output_dim))
 end
 
 @inline function _nearest_occ_key(dict::AbstractDict{<:Real}, λm::Real)
@@ -774,7 +784,7 @@ function prepare_phaseb_models(case::NamedTuple; data_root::AbstractString=phase
                 λum,
                 case.output_dim;
                 PASSVALUE=passvalue,
-                assets=prepare_asset_pool(() -> prepare_phaseb_spc_assets(cfg, case.output_dim; compact=is_compact); pool_size=1),
+                assets=prepare_asset_pool(() -> prepare_phaseb_spc_assets(cfg, λm, case.output_dim; compact=is_compact); pool_size=1),
                 pool_size=1,
             )
         end

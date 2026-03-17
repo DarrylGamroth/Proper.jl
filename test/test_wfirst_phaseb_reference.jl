@@ -22,6 +22,10 @@ using Proper.WFIRSTPhaseBProper
 
     m = mft2(c, 0.1, 2.0, 4, -1)
     @test size(m) == (4, 4)
+    plan = Proper.WFIRSTPhaseBProper.prepare_phaseb_mft_plan(4, 0.1, 2.0, 4, -1)
+    mout = Matrix{ComplexF64}(undef, 4, 4)
+    Proper.WFIRSTPhaseBProper.phaseb_mft2!(mout, c, plan)
+    @test mout ≈ m
     let field_in = c, dout = 0.1, D = 2.0, nout = 4, direction = -1
         nfield_in = size(field_in, 2)
         x = (collect(0:(nfield_in - 1)) .- (nfield_in ÷ 2))
