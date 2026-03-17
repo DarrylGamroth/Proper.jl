@@ -146,8 +146,8 @@ function prop_zernikes(
     no_apply::Bool=false,
     radius::Union{Nothing,Real}=nothing,
 )
-    nums = zernike_num isa Number ? [Int(zernike_num)] : Int.(collect(zernike_num))
-    vals = zernike_val isa Number ? [float(zernike_val)] : float.(collect(zernike_val))
+    nums = zernike_num isa Number ? [Int(zernike_num)] : Int.(zernike_num)
+    vals = zernike_val isa Number ? [float(zernike_val)] : float.(zernike_val)
     length(nums) == length(vals) || throw(ArgumentError("zernike_num and zernike_val size mismatch"))
     eps_t = float(eps)
     if eps_t != 0 && maximum(nums) > 22

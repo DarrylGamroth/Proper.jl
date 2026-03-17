@@ -13,7 +13,7 @@ end
 
 @inline function _mask_axis(n::Integer, c::T) where {T<:AbstractFloat}
     center = fld(n, 2) + 1
-    return (collect(1:n) .- center) .* c
+    return range((1 - center) * c, step=c, length=n)
 end
 
 function _fill_8th_mask!(::LinearMaskShape, mask::AbstractMatrix{T}, x::AbstractVector{T}, y::AbstractVector{T}, e::T, ll::T, mm::T, plml::T, y_axis::Bool) where {T<:AbstractFloat}

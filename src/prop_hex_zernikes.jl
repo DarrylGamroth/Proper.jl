@@ -73,8 +73,8 @@ function prop_hex_zernikes(
 )
     ang_raw = haskey(kwargs, :ROTATION) ? kwargs[:ROTATION] : rotation
 
-    zidx = Int.(collect(zindex))
-    zc_raw = collect(zcoeff)
+    zidx = zindex isa Number ? [Int(zindex)] : Int.(zindex)
+    zc_raw = zcoeff isa Number ? [zcoeff] : zcoeff
     length(zidx) == length(zc_raw) || throw(ArgumentError("zindex and zcoeff lengths must match"))
 
     T = float(promote_type(eltype(zc_raw), typeof(dx), typeof(hexrad)))
@@ -95,7 +95,7 @@ function prop_hex_zernikes(
     x1 = hex_xc_pix - rpix
     y1 = hex_yc_pix - rpix
 
-    zc = convert(Vector{T}, zc_raw)
+    zc = T.(zc_raw)
     zer = zeros(T, dpix, dpix)
     deg_to_rad = T(pi / 180)
 
