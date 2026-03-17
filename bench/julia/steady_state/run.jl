@@ -6,6 +6,22 @@ include(joinpath(@__DIR__, "..", "..", "common", "metadata.jl"))
 using .Workloads
 using .BenchMetadata
 
+const SAMPLES = 20
+
+@inline function trial_stats(t::BenchmarkTools.Trial)
+    est_med = median(t)
+    est_mean = mean(t)
+    est_min = minimum(t)
+    est_max = maximum(t)
+    return Dict(
+        "median_ns" => est_med.time,
+        "mean_ns" => est_mean.time,
+        "min_ns" => est_min.time,
+        "max_ns" => est_max.time,
+        "samples" => length(t.times),
+    )
+end
+
 function steady_state_prescription(λm, n; kwargs...)
     wf = prop_begin(2.4, λm, n; beam_diam_fraction=0.5)
     prop_circular_aperture(wf, 0.6)
@@ -21,18 +37,12 @@ workload() = prop_run(PREPARED_STEADY_STATE)
 # Warmup: exclude compilation from steady-state timings.
 workload()
 
-b = @benchmark workload()
-stats = Dict(
-    "median_ns" => median(b).time,
-    "mean_ns" => mean(b).time,
-    "min_ns" => minimum(b).time,
-    "max_ns" => maximum(b).time,
-    "samples" => length(b.times),
-)
+b = run(@benchmarkable workload() evals=1 samples=SAMPLES)
+stats = trial_stats(b)
 
 report = Dict(
     "meta" => benchmark_metadata(run_tag="steady_state"),
-    "policy" => "TTFx excluded from these timings",
+    "policy" => "steady-state CPU workload timing via BenchmarkTools with evals=1; TTFx excluded",
     "stats" => stats,
 )
 

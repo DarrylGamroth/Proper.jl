@@ -1,3 +1,4 @@
+using BenchmarkTools
 using JSON3
 using Proper
 using Statistics
@@ -14,15 +15,31 @@ has_flag(flag::String) = any(==(flag), ARGS)
 
 function measure_samples(workload, samples::Integer)
     samples > 0 || throw(ArgumentError("samples must be positive"))
-    times = Vector{Int64}(undef, samples)
-    bytes = Vector{Int64}(undef, samples)
     GC.gc()
-    for i in 1:samples
-        sample = @timed workload()
-        times[i] = Int(round(sample.time * 1e9))
-        bytes[i] = sample.bytes
-    end
-    return times, bytes
+    return run(@benchmarkable $workload() evals=1 samples=samples)
+end
+
+function trial_stats(trial::BenchmarkTools.Trial)
+    est_med = median(trial)
+    est_mean = mean(trial)
+    est_min = minimum(trial)
+    est_max = maximum(trial)
+    return Dict(
+        "timed" => true,
+        "median_ns" => est_med.time,
+        "mean_ns" => est_mean.time,
+        "min_ns" => est_min.time,
+        "max_ns" => est_max.time,
+        "median_alloc_bytes" => est_med.memory,
+        "mean_alloc_bytes" => est_mean.memory,
+        "min_alloc_bytes" => est_min.memory,
+        "max_alloc_bytes" => est_max.memory,
+        "median_allocs" => est_med.allocs,
+        "mean_allocs" => est_mean.allocs,
+        "min_allocs" => est_min.allocs,
+        "max_allocs" => est_max.allocs,
+        "samples" => length(trial.times),
+    )
 end
 
 function write_case_outputs(prefix::AbstractString, stack)
@@ -57,9 +74,26 @@ function main()
     models, _assets = prepare_phaseb_models(case; data_root=data_root)
 
     workload() = run_phaseb_case(models; threaded=threaded)
-    stack, samplings = workload()
     timed = !parity_only && samples > 0
-    trial_times, trial_bytes = timed ? measure_samples(workload, samples) : (Int64[], Int64[])
+    workload() # warmup to exclude TTFx from timing
+    trial = timed ? measure_samples(workload, samples) : nothing
+    stats = timed ? trial_stats(trial) : Dict(
+        "timed" => false,
+        "median_ns" => nothing,
+        "mean_ns" => nothing,
+        "min_ns" => nothing,
+        "max_ns" => nothing,
+        "median_alloc_bytes" => nothing,
+        "mean_alloc_bytes" => nothing,
+        "min_alloc_bytes" => nothing,
+        "max_alloc_bytes" => nothing,
+        "median_allocs" => nothing,
+        "mean_allocs" => nothing,
+        "min_allocs" => nothing,
+        "max_allocs" => nothing,
+        "samples" => 0,
+    )
+    stack, samplings = workload()
 
     outdir = joinpath(@__DIR__, "..", "..", "reports")
     mkpath(outdir)
@@ -80,21 +114,10 @@ function main()
             "data_root" => abspath(data_root),
             "threads" => Threads.nthreads(),
         ),
-        "stats" => Dict(
-            "timed" => timed,
-            "median_ns" => timed ? Int(round(median(trial_times))) : nothing,
-            "mean_ns" => timed ? Int(round(sum(trial_times) / length(trial_times))) : nothing,
-            "min_ns" => timed ? minimum(trial_times) : nothing,
-            "max_ns" => timed ? maximum(trial_times) : nothing,
-            "median_alloc_bytes" => timed ? Int(round(median(trial_bytes))) : nothing,
-            "mean_alloc_bytes" => timed ? Int(round(sum(trial_bytes) / length(trial_bytes))) : nothing,
-            "min_alloc_bytes" => timed ? minimum(trial_bytes) : nothing,
-            "max_alloc_bytes" => timed ? maximum(trial_bytes) : nothing,
-            "samples" => length(trial_times),
-        ),
+        "stats" => stats,
         "output" => summarize_output(stack, samplings),
         "policy" => timed ?
-            "Julia CPU WFIRST Phase B reference model timing; TTFx excluded; uses PreparedModel with shared cached assets where available" :
+            "Julia CPU WFIRST Phase B reference model timing; uses BenchmarkTools with evals=1 after one untimed warmup; TTFx excluded; uses PreparedModel with shared cached assets where available" :
             "Julia CPU WFIRST Phase B reference model parity-only run; no timing samples collected",
     )
 
