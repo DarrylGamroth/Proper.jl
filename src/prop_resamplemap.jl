@@ -48,25 +48,20 @@ end
     prop_resamplemap!(out, wf, dmap, pixscale, xc, yc, xshift=0, yshift=0)
     prop_resamplemap!(out, wf, dmap, pixscale, xc, yc, ctx, xshift=0, yshift=0)
 
-Interpolate an input map onto a grid with the same size and sampling as the
-current wavefront array.
+Resample `dmap` onto the current wavefront grid and write the result to `out`.
 
-This is primarily an internal helper used by map-driven `prop_*` routines.
-
-Outputs:
-- `out`: resampled map on the wavefront grid
-
-Required inputs:
+# Arguments
+- `out`: destination map with the same size as `wf.field`
 - `wf`: wavefront whose grid size and sampling define the output grid
 - `dmap`: aberration or amplitude map to be resampled
 - `pixscale`: spacing of `dmap` in meters per pixel
 - `xc`, `yc`: pixel coordinates of the input map center; `(0, 0)` is the
   center of the first pixel in the upstream convention
 
-Optional inputs:
+# Keywords
 - `xshift`, `yshift`: physical shift of the map in meters before resampling
 
-Notes:
+# Notes
 - The output dimensions always match `size(wf.field)`.
 - The interpolation path follows the accepted executable-baseline cubic
   resampling contract used by parity tests.
@@ -139,19 +134,19 @@ end
 
 Return a new map resampled to the current wavefront grid.
 
-Outputs:
-- resampled map with the same dimensions as `wf.field`
-
-Required inputs:
+# Arguments
 - `wf`: wavefront defining the target grid
 - `dmap`: input map
 - `pixscale`: sampling of `dmap` in meters per pixel
 - `xc`, `yc`: input-map center in pixel coordinates
 
-Optional inputs:
+# Keywords
 - `xshift`, `yshift`: physical map shift in meters
 
-Notes:
+# Returns
+- A new array with the same size as `wf.field`.
+
+# Notes
 - This is the allocating convenience wrapper around `prop_resamplemap!`.
 - The behavior matches the executable PROPER baseline used by the parity
   harnesses.

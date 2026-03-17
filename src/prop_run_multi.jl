@@ -8,23 +8,22 @@ using Base.Threads
 
 Execute multiple prescription instances in parallel and preserve input order.
 
-Outputs:
-- `stack`: three-dimensional stack of PSFs or fields, ordered to match the
-  input jobs
-- `samplings`: vector of output samplings in meters per pixel
-
-Required inputs:
+# Arguments
 - `routine_name`: function object or global name of the prescription
 - `lambda0_microns`: scalar or prepared wavelength; repeated runs are driven by
   `PASSVALUE`
 - `gridsize`: computational grid size shared by all runs
 
-Optional inputs:
+# Keywords
 - `PASSVALUE`: scalar or vector of values to forward to the prescription; when
   a vector is supplied, each entry is run independently
 - additional keyword arguments are passed through to each prescription call
 
-Notes:
+# Returns
+- `(stack, samplings)`, where `stack[:, :, i]` is the `i`th output and
+  `samplings[i]` is its sampling in meters per pixel.
+
+# Notes
 - Prepared batch and model forms reuse per-slot run contexts so repeated
   multi-run workloads avoid rebuilding core workspace state.
 - Output order is deterministic and matches the input order.

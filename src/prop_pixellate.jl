@@ -111,19 +111,19 @@ pixels of a specified size by convolving the Fourier transform of the input PSF
 with the sinc transfer function of an ideal square pixel and transforming back.
 The integrated image is then resampled to detector-pixel spacing.
 
-Outputs:
-- detector-integrated image
-
-Required inputs:
+# Arguments
 - `img`: two-dimensional image containing the sampled PSF
 - `sampling_in`: sampling of `img` in meters per pixel
 - `sampling_out`: detector pixel size in meters per pixel
 
-Optional inputs:
+# Keywords
 - `n_out`: number of pixels across the output image; if omitted or zero, the
   output size follows the magnification implied by the sampling ratio
 
-Notes:
+# Returns
+- A detector-integrated image at the requested output sampling.
+
+# Notes
 - This matches the upstream PROPER public API rather than the older internal
   integer-factor helper that remains private in Julia.
 """
@@ -143,13 +143,13 @@ end
 
 Integrate a sampled PSF onto detector pixels and write the result into `out`.
 
-Required inputs:
+# Arguments
 - `out`: destination array
 - `img`: sampled PSF
 - `sampling_in`: input sampling in meters per pixel
 - `sampling_out`: detector sampling in meters per pixel
 
-Notes:
+# Notes
 - `out` must match the size implied by the requested detector sampling and the
   chosen output dimensions.
 """

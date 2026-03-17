@@ -44,25 +44,24 @@ end
 
 Execute a PROPER prescription and return `(psf, pixscale)`.
 
-Outputs:
-- `psf`: image or field returned by the prescription, after `prop_end` if the
-  prescription returns a `WaveFront`
-- `pixscale`: output sampling in meters per pixel
-
-Required inputs:
+# Arguments
 - `routine_name`: function object or global name of the prescription
 - `lambda0_microns`: wavelength in microns, or the normalized wavelength
   already stored in a prepared object
 - `gridsize`: computational grid dimension; should be a power of two for the
   usual FFT-based paths
 
-Optional inputs:
+# Keywords
 - `PASSVALUE`: value forwarded to the prescription in the familiar PROPER
   calling style
 - `context`: explicit `RunContext` to reuse workspace and backend state
 - additional keyword arguments are passed through to the prescription
 
-Notes:
+# Returns
+- `(psf, pixscale)`, where `psf` is the prescription output and `pixscale` is
+  the output sampling in meters per pixel.
+
+# Notes
 - Prepared forms reuse normalized arguments, run contexts, and optional
   prepared assets while preserving the public return contract.
 - Prescriptions may return either a `WaveFront` or `(psf, sampling)`.

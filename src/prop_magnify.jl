@@ -102,24 +102,22 @@ end
     prop_magnify!(out, image_in, mag; kwargs...)
     prop_magnify!(out, image_in, mag, ctx; kwargs...)
 
-Resample an input array into a preallocated output array using damped-sinc or
-cubic interpolation.
+Resample `image_in` into `out` using either damped-sinc or cubic
+interpolation.
 
-Outputs:
-- `out`: magnified or demagnified image
-
-Required inputs:
+# Arguments
+- `out`: destination array
 - `image_in`: input array to be magnified
 - `mag`: magnification factor; for example, `0.5` shrinks the image by a
   factor of two
 
-Optional keyword inputs:
+# Keywords
 - `QUICK`: use cubic interpolation instead of the slower damped-sinc path
 - `CONSERVE`: conserve intensity; complex arrays are treated as electric
   fields, real arrays as intensity
 - `AMP_CONSERVE`: treat a real-valued image as amplitude rather than intensity
 
-Notes:
+# Notes
 - The default path uses `prop_szoom` and supports non-square arrays.
 - `QUICK=true` uses cubic interpolation and is usually faster but less exact.
 """
@@ -148,20 +146,20 @@ end
 
 Return a magnified or demagnified copy of an image.
 
-Outputs:
-- magnified output array
-
-Required inputs:
+# Arguments
 - `image_in`: input array
 - `mag`: magnification factor
 
-Optional inputs:
+# Keywords
 - `size_out`: output dimension when a square output is desired; if zero, the
   output dimensions default to `fix.(size(image_in) .* mag)` for positive
   magnifications
 - `QUICK`, `CONSERVE`, `AMP_CONSERVE`: same meanings as in `prop_magnify!`
 
-Notes:
+# Returns
+- A new magnified or demagnified array.
+
+# Notes
 - The default PROPER behavior is the damped-sinc resampler.
 - When `size_out == 0`, Julia computes output height and width independently.
 """

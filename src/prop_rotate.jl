@@ -242,17 +242,15 @@ end
     prop_rotate!(out, old_image, theta; kwargs...)
     prop_rotate!(out, old_image, theta, ctx; kwargs...)
 
-Rotate and shift an array via interpolation into a preallocated output array.
+Rotate `old_image` by `theta` degrees counter-clockwise and write the result to
+`out`.
 
-The result has the same dimensions as the input array. `theta` is the
-counter-clockwise rotation angle in degrees.
-
-Required inputs:
-- `out`: output array, same size as `old_image`
-- `old_image`: input array to be rotated
+# Arguments
+- `out`: destination array with the same size as `old_image`
+- `old_image`: input image
 - `theta`: rotation angle in degrees counter-clockwise
 
-Optional inputs through `opts` or keyword arguments:
+# Keywords
 - `XC`, `YC`: pixel coordinates of the input-array center; defaults are
   `fix(nx/2)+1` and `fix(ny/2)+1`
 - `XSHIFT`, `YSHIFT`: shift of the output image in pixels
@@ -261,7 +259,7 @@ Optional inputs through `opts` or keyword arguments:
   `"cubic"`
 - `CUBIC`: compatibility shortcut for `METH="cubic"`
 
-Notes:
+# Notes
 - The accepted Julia semantics follow the MATLAB-aligned decision for the
   default path: linear interpolation unless cubic is explicitly requested.
 - The cubic path uses the upstream PROPER cubic-convolution kernel rather than
@@ -297,22 +295,23 @@ end
     prop_rotate(old_image, theta; kwargs...)
     prop_rotate(old_image, theta, ctx; kwargs...)
 
-Rotate and shift an array via interpolation.
+Return a rotated copy of `old_image`.
 
-Returns a new array with the same dimensions as the input image.
-
-Required inputs:
-- `old_image`: array to be rotated
+# Arguments
+- `old_image`: input image
 - `theta`: rotation angle in degrees counter-clockwise
 
-Optional keyword inputs:
+# Keywords
 - `XC`, `YC`: center of rotation in image pixels
 - `XSHIFT`, `YSHIFT`: image shift in pixels
 - `MISSING` / `EXTR`: extrapolated fill value
 - `METH`: `"linear"` or `"cubic"`
 - `CUBIC`: compatibility shortcut for cubic interpolation
 
-Notes:
+# Returns
+- An array with the same size and element type as `old_image`.
+
+# Notes
 - The default interpolation is linear.
 - The cubic option follows the accepted executable-baseline cubic-convolution
   path, not a generic spline interpolation mode.
