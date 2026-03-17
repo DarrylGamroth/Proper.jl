@@ -4,31 +4,54 @@
     return p <= cut ? p : (p - n)
 end
 
-@inline function _prop_qphase_strided!(wf::WaveFront, c::Real, ws::QPhaseWorkspace)
-    c == 0 && return wf
+@inline function _apply_separable_phase!(field::AbstractMatrix{Complex{T}}, xphase::AbstractVector{Complex{T}}, yphase::AbstractVector{Complex{T}}, scale::T=one(T)) where {T<:AbstractFloat}
+    ny, nx = size(field)
+    @inbounds for j in 1:nx
+        xj = scale * xphase[j]
+        for i in 1:ny
+            field[i, j] *= xj * yphase[i]
+        end
+    end
+    return field
+end
+
+@inline function _fill_fft_order_axis_phase!(phase::AbstractVector{Complex{T}}, n::Int, spacing::T, k::T) where {T<:AbstractFloat}
+    @inbounds for p in 1:n
+        x0 = _shifted_index_0based(p - 1, n) * spacing
+        phase[p] = cis(k * x0 * x0)
+    end
+    return phase
+end
+
+@inline function _prop_qphase_strided!(wf::WaveFront, c::Real, ws::QPhaseWorkspace, scale::Real=1)
+    c == 0 && return isone(scale) ? wf : (rmul!(wf.field, float(scale)); wf)
     ny, nx = size(wf.field)
     dx = wf.sampling_m
     k = pi / (wf.wavelength_m * float(c))
     xphase, yphase = ensure_qphase_vectors!(ws, nx, ny)
 
-    @inbounds for j in 1:nx
-        x0 = _shifted_index_0based(j - 1, nx) * dx
-        xphase[j] = cis(k * x0 * x0)
-    end
-
-    @inbounds for i in 1:ny
-        y0 = _shifted_index_0based(i - 1, ny) * dx
-        yphase[i] = cis(k * y0 * y0)
-    end
-
-    @inbounds for j in 1:nx
-        xj = xphase[j]
-        for i in 1:ny
-            wf.field[i, j] *= xj * yphase[i]
-        end
-    end
+    _fill_fft_order_axis_phase!(xphase, nx, dx, k)
+    _fill_fft_order_axis_phase!(yphase, ny, dx, k)
+    _apply_separable_phase!(wf.field, xphase, yphase, float(scale))
 
     return wf
+end
+
+@inline function _apply_fft_quadratic_phase_strided!(
+    field::AbstractMatrix{Complex{T}},
+    kphase::T,
+    dx::T,
+    ws::QPhaseWorkspace{T},
+    scale::T=one(T),
+) where {T<:AbstractFloat}
+    ny, nx = size(field)
+    inv_dy = inv(T(ny) * dx)
+    inv_dx = inv(T(nx) * dx)
+    xphase, yphase = ensure_qphase_vectors!(ws, nx, ny)
+    _fill_fft_order_axis_phase!(xphase, nx, inv_dx, kphase)
+    _fill_fft_order_axis_phase!(yphase, ny, inv_dy, kphase)
+    _apply_separable_phase!(field, xphase, yphase, scale)
+    return field
 end
 
 @inline function _prop_qphase_generic!(wf::WaveFront, c::Real)

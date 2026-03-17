@@ -302,6 +302,16 @@ Status: Completed
       - `compact_hlc`: median `352.05 ms`, median alloc `49.52 MiB`
       - `compact_spc_spec_long`: median `676.82 ms`, median alloc `193.53 MiB`
     - updated hotspot sample on `compact_spc_spec_long` shows FFT execution and `prop_propagate`/`prop_ptp` still dominate, while `prop_qphase` no longer appears as a material hotspot.
+  - 2026-03-17 final focused propagation pass:
+    - `prop_ptp` planned CPU path now applies the FFT-domain quadratic phase with the same separable-factor trick, avoiding `n^2` `cis(...)` evaluations there as well.
+    - updated phase-2 kernel snapshot:
+      - `prop_qphase`: `284907.5 ns`
+      - `prop_lens`: `281225.5 ns`
+      - `prop_ptp`: `13111745.5 ns`
+    - updated compact workload spot-check:
+      - `compact_hlc`: median `342.30 ms`, median alloc `49.52 MiB`
+      - `compact_spc_spec_long`: median `632.89 ms`, median alloc `193.53 MiB`
+    - conclusion: this was the last clearly justified Julia-side propagation optimization. The remaining dominant cost is FFT execution itself, so further low-level tuning is likely to have much lower return.
   - conclusion from the finer split: if a new shared-core optimization pass is taken, the first diagnosis target should be the tail sequence after the filter (`LENS -> FOLD_4 -> IMAGE`), with the field-stop leg second. Those are the dominant shared propagation/lens segments inside the WFIRST workload.
   - conclusion: the next performance work should stay in shared propagation/lens/FFT code inside the `to_image` sequence, not in WFIRST-specific orchestration. Specifically, the next core target should be the FFT-heavy propagation path rather than more small staging/copy cleanups.
   - updated CPU defaults after benchmarking: mask path remains loop-default; `prop_end!` shifted copy/intensity keeps KA pilot for large arrays.

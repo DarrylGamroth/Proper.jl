@@ -21,12 +21,8 @@ function _prop_ptp_fft!(
     f = prepare_fft_field!(ws, wf.field, ny, nx)
     pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
     LinearAlgebra.mul!(f, pfft, f)
-    f ./= n
-
-    rho2 = ensure_rho2_map!(ws, ny, nx, dx)
-    @inbounds @simd for idx in eachindex(f, rho2)
-        f[idx] *= cis(kphase * rho2[idx])
-    end
+    T = typeof(float(dx))
+    _apply_fft_quadratic_phase_strided!(f, T(kphase), T(dx), qphase_workspace(ctx), inv(T(n)))
 
     LinearAlgebra.mul!(f, pbfft, f)
     f ./= n
