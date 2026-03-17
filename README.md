@@ -193,6 +193,7 @@ Important current examples:
 - the WFIRST reference module is available as `Proper.WFIRSTPhaseBProper`
 
 ## Documentation
+- [Documentation index](docs/README.md)
 - [API contract](docs/api_contract.md)
 - [Migration guide](docs/MIGRATION_GUIDE.md)
 - [Prescription authoring guide](docs/PRESCRIPTION_AUTHORING_GUIDE.md)

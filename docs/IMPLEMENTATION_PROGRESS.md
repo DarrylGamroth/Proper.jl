@@ -1,5 +1,9 @@
 # Implementation Progress
 
+Historical/current maintainer progress tracker. This file is useful when
+tracking backend workstreams and completed refactor slices, but it is not the
+primary user-facing entry point for the package.
+
 ## Status Snapshot
 - Date: 2026-03-17
 - Overall: Phase 9 complete; Refactor Track complete; backend extension and CUDA optimization workstream active

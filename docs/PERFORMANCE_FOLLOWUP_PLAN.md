@@ -1,5 +1,9 @@
 # Performance Follow-Up Plan
 
+Working performance note. This document records implementation follow-up ideas
+and accepted/rejected optimization paths; it is secondary to the user-facing
+API and migration docs.
+
 Date: 2026-03-13  
 Owner: Proper.jl port effort  
 Scope: resolve the remaining GPU/CPU design questions, implement the immediate runtime fixes, and define the next optimization gates

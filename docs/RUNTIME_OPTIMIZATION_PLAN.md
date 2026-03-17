@@ -1,5 +1,8 @@
 # Runtime Optimization Plan
 
+Working optimization note for steady-state runtime and allocation analysis.
+This is a maintainer-focused record rather than a user-facing guide.
+
 Date: 2026-03-05  
 Owner: Proper.jl port effort  
 Scope: steady-state runtime/allocations (TTFx explicitly excluded from comparison metrics per D-0029)

@@ -1,5 +1,9 @@
 # CUDA Optimization Plan
 
+Working backend-tuning note. This document tracks CUDA-specific optimization
+questions and hardware validation tasks; it is not part of the stable user API
+surface.
+
 Date: 2026-03-13  
 Owner: Proper.jl port effort  
 Scope: steady-state CUDA runtime for parity-preserving workloads and supported GPU kernels
