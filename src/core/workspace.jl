@@ -1,6 +1,9 @@
 @inline workspace_vector(::Type{A}, ::Type{T}, n::Integer=0) where {A<:AbstractArray,T<:AbstractFloat} =
     Vector{T}(undef, n)
 
+@inline workspace_complex_vector(::Type{A}, ::Type{T}, n::Integer=0) where {A<:AbstractArray,T<:AbstractFloat} =
+    Vector{Complex{T}}(undef, n)
+
 @inline workspace_backend_array_type(::Type{A}) where {A<:AbstractArray} = A
 
 @inline workspace_matrix(::Type{A}, ::Type{T}, ny::Integer=0, nx::Integer=0) where {A<:AbstractArray,T<:AbstractFloat} =
@@ -320,17 +323,42 @@ end
     return ws
 end
 
+mutable struct QPhaseWorkspace{T<:AbstractFloat,VX<:AbstractVector{Complex{T}},VY<:AbstractVector{Complex{T}}}
+    xphase::VX
+    yphase::VY
+end
+
+QPhaseWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} = QPhaseWorkspace(Matrix, T)
+
+function QPhaseWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:AbstractFloat}
+    xphase = workspace_complex_vector(A, T, 0)
+    yphase = workspace_complex_vector(A, T, 0)
+    return QPhaseWorkspace{T,typeof(xphase),typeof(yphase)}(xphase, yphase)
+end
+
+@inline function ensure_qphase_vectors!(ws::QPhaseWorkspace{T}, nx::Integer, ny::Integer) where {T}
+    ws.xphase = _ensure_workspace_vector(ws.xphase, nx)
+    ws.yphase = _ensure_workspace_vector(ws.yphase, ny)
+    return ws.xphase, ws.yphase
+end
+
+@inline function reset_workspace!(ws::QPhaseWorkspace)
+    return ws
+end
+
 mutable struct ProperWorkspace{
     T<:AbstractFloat,
     IW<:InterpWorkspace{T},
     MW<:MaskWorkspace{T},
     FW<:FFTWorkspace{T},
     SW<:SamplingWorkspace{T},
+    QW<:QPhaseWorkspace{T},
 }
     interp::IW
     mask::MW
     fft::FW
     sampling::SW
+    qphase::QW
 end
 
 ProperWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} = ProperWorkspace(Matrix, T)
@@ -340,7 +368,8 @@ function ProperWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T
     mask = MaskWorkspace(A, T)
     fft = FFTWorkspace(A, T)
     sampling = SamplingWorkspace(A, T)
-    return ProperWorkspace{T,typeof(interp),typeof(mask),typeof(fft),typeof(sampling)}(interp, mask, fft, sampling)
+    qphase = QPhaseWorkspace(A, T)
+    return ProperWorkspace{T,typeof(interp),typeof(mask),typeof(fft),typeof(sampling),typeof(qphase)}(interp, mask, fft, sampling, qphase)
 end
 
 @inline function reset_workspace!(ws::ProperWorkspace)
@@ -348,6 +377,7 @@ end
     reset_workspace!(ws.mask)
     reset_workspace!(ws.fft)
     reset_workspace!(ws.sampling)
+    reset_workspace!(ws.qphase)
     return ws
 end
 

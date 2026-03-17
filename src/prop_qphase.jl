@@ -4,19 +4,27 @@
     return p <= cut ? p : (p - n)
 end
 
-@inline function _prop_qphase_strided!(wf::WaveFront, c::Real)
+@inline function _prop_qphase_strided!(wf::WaveFront, c::Real, ws::QPhaseWorkspace)
     c == 0 && return wf
     ny, nx = size(wf.field)
     dx = wf.sampling_m
     k = pi / (wf.wavelength_m * float(c))
+    xphase, yphase = ensure_qphase_vectors!(ws, nx, ny)
 
     @inbounds for j in 1:nx
-        x0 = _shifted_index_0based(j - 1, nx)
-        x2 = (x0 * dx)^2
+        x0 = _shifted_index_0based(j - 1, nx) * dx
+        xphase[j] = cis(k * x0 * x0)
+    end
+
+    @inbounds for i in 1:ny
+        y0 = _shifted_index_0based(i - 1, ny) * dx
+        yphase[i] = cis(k * y0 * y0)
+    end
+
+    @inbounds for j in 1:nx
+        xj = xphase[j]
         for i in 1:ny
-            y0 = _shifted_index_0based(i - 1, ny)
-            rsqr = x2 + (y0 * dx)^2
-            wf.field[i, j] *= cis(k * rsqr)
+            wf.field[i, j] *= xj * yphase[i]
         end
     end
 
@@ -47,14 +55,14 @@ struct QPhaseBroadcastExecStyle <: QPhaseExecStyle end
 @inline qphase_exec_style(::ArrayLayoutStyle, ::CUDABackend) = QPhaseKAExecStyle()
 @inline qphase_exec_style(::ArrayLayoutStyle, ::BackendStyle) = QPhaseBroadcastExecStyle()
 
-@inline _prop_qphase!(::QPhaseLoopExecStyle, wf::WaveFront, c::Real) = _prop_qphase_strided!(wf, c)
-@inline _prop_qphase!(::QPhaseKAExecStyle, wf::WaveFront, c::Real) = _prop_qphase_ka!(wf, c)
-@inline _prop_qphase!(::QPhaseBroadcastExecStyle, wf::WaveFront, c::Real) = _prop_qphase_generic!(wf, c)
+@inline _prop_qphase!(::QPhaseLoopExecStyle, wf::WaveFront, c::Real, ctx::RunContext) = _prop_qphase_strided!(wf, c, qphase_workspace(ctx))
+@inline _prop_qphase!(::QPhaseKAExecStyle, wf::WaveFront, c::Real, ctx::RunContext) = _prop_qphase_ka!(wf, c)
+@inline _prop_qphase!(::QPhaseBroadcastExecStyle, wf::WaveFront, c::Real, ctx::RunContext) = _prop_qphase_generic!(wf, c)
 
 """Apply quadratic phase for curvature c (meters)."""
 function prop_qphase(wf::WaveFront, c::Real, ctx::RunContext)
     sty = qphase_exec_style(array_layout_style(typeof(wf.field)), ctx.backend)
-    return _prop_qphase!(sty, wf, c)
+    return _prop_qphase!(sty, wf, c, ctx)
 end
 
 """Apply quadratic phase for curvature c (meters)."""

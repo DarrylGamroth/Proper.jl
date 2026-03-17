@@ -102,6 +102,7 @@ end
 @inline mask_workspace(ctx::RunContext) = ctx.workspace.mask
 @inline fft_workspace(ctx::RunContext) = ctx.workspace.fft
 @inline sampling_workspace(ctx::RunContext) = ctx.workspace.sampling
+@inline qphase_workspace(ctx::RunContext) = ctx.workspace.qphase
 
 @inline function fresh_context(ctx::RunContext; rng=fork_rng(ctx.rng, 1))
     ws = fresh_workspace(ctx.workspace)

@@ -35,6 +35,20 @@ using FFTW
     @test (@inferred prop_select_propagator(wf4, 0.1)) isa Float64
     @test (@inferred prop_qphase(wf4, 1.2)) === wf4
     @test (@inferred prop_ptp(wf4, 0.01)) === wf4
+
+    wfq = prop_begin(1.0, 500e-9, 5)
+    fill!(wfq.field, 1 + 0im)
+    c = 1.2
+    dx = wfq.sampling_m
+    k = pi / (wfq.wavelength_m * c)
+    ref = Matrix{ComplexF64}(undef, size(wfq.field)...)
+    for j in axes(ref, 2), i in axes(ref, 1)
+        x0 = Proper._shifted_index_0based(j - 1, size(ref, 2)) * dx
+        y0 = Proper._shifted_index_0based(i - 1, size(ref, 1)) * dx
+        ref[i, j] = cis(k * (x0 * x0 + y0 * y0))
+    end
+    prop_qphase(wfq, c)
+    @test wfq.field ≈ ref
 end
 
 @testset "Centered core helpers" begin

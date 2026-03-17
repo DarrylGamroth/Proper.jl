@@ -292,6 +292,16 @@ Status: Completed
     - dominant shared PROPER callers above FFT are `prop_propagate`, `prop_ptp`, `prop_stw`, and `prop_wts`
     - `prop_qphase` is present but clearly secondary to the FFT-heavy propagation kernels
     - residual `prepare_fft_field!` / `copyto!` traffic is measurable but much smaller than the FFT cost
+  - 2026-03-17 focused shared-core follow-up:
+    - `prop_qphase` CPU strided path now uses a separable quadratic phase formulation with reusable workspace vectors instead of evaluating `cis(...)` over the full 2D field.
+    - phase-2 kernel benchmark snapshot after that change:
+      - `prop_qphase`: `324566.5 ns`
+      - `prop_lens`: `313105.5 ns`
+      - `prop_ptp`: `13862287.5 ns`
+    - compact workload spot-check after that change:
+      - `compact_hlc`: median `352.05 ms`, median alloc `49.52 MiB`
+      - `compact_spc_spec_long`: median `676.82 ms`, median alloc `193.53 MiB`
+    - updated hotspot sample on `compact_spc_spec_long` shows FFT execution and `prop_propagate`/`prop_ptp` still dominate, while `prop_qphase` no longer appears as a material hotspot.
   - conclusion from the finer split: if a new shared-core optimization pass is taken, the first diagnosis target should be the tail sequence after the filter (`LENS -> FOLD_4 -> IMAGE`), with the field-stop leg second. Those are the dominant shared propagation/lens segments inside the WFIRST workload.
   - conclusion: the next performance work should stay in shared propagation/lens/FFT code inside the `to_image` sequence, not in WFIRST-specific orchestration. Specifically, the next core target should be the FFT-heavy propagation path rather than more small staging/copy cleanups.
   - updated CPU defaults after benchmarking: mask path remains loop-default; `prop_end!` shifted copy/intensity keeps KA pilot for large arrays.
