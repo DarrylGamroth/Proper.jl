@@ -415,9 +415,21 @@ Completed in slice 1:
     - AMDGPU host allocations: `1827 -> 1547`
     - AMDGPU host bytes: `62.39 KiB -> 49.58 KiB`
   - supported kernel lane:
-    - `prop_ptp`: AMDGPU allocations `514 -> 456`, bytes `14.55 KiB -> 11.80 KiB`
-    - `prop_wts`: AMDGPU allocations `433 -> 404`, bytes `11.33 KiB -> 9.95 KiB`
-    - `prop_stw`: AMDGPU allocations `433 -> 404`, bytes `11.33 KiB -> 9.95 KiB`
+  - `prop_ptp`: AMDGPU allocations `514 -> 456`, bytes `14.55 KiB -> 11.80 KiB`
+  - `prop_wts`: AMDGPU allocations `433 -> 404`, bytes `11.33 KiB -> 9.95 KiB`
+  - `prop_stw`: AMDGPU allocations `433 -> 404`, bytes `11.33 KiB -> 9.95 KiB`
+
+Completed in slice 2:
+- directly measured the remaining AMDGPU `prop_qphase` host allocation path and
+  found that:
+  - first measured call after extension/backend warmup can still be large
+  - steady-state repeated `prop_qphase` drops to low-kilobyte host allocation
+  - the remaining cost is dominated by kernel launch/runtime overhead rather
+    than type instability or a CPU fallback bug
+- consequence:
+  - `prop_qphase` is no longer the best next GPU optimization target
+  - larger returns are more likely in FFT-heavy propagation, geometry/mask
+    kernels, or further launch/materialization cleanup around those paths
 
 ## Immediate Execution Order
 
@@ -474,6 +486,9 @@ Every GPU-focused change should include the applicable checks below.
   host allocations in the propagation benchmarks.
 - 2026-03-18: `G3` gates were tightened to double-warm before measuring so GPU
   allocation checks reflect the intended steady-state contract.
+- 2026-03-18: direct AMDGPU `prop_qphase` measurement confirmed the remaining
+  warm-path host overhead is launch/runtime churn, not a semantics or type
+  stability defect.
   - hidden host fallback in rotate/cubic-conv/end
   - CPU-owned `rho2` cache in `FFTWorkspace`
   - convenience-wrapper context churn in resample/magnify paths
