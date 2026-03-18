@@ -154,7 +154,7 @@ Acceptance:
 - GPU benchmark outputs remain comparable across CPU/CUDA/AMDGPU.
 
 ### G1: Remove Hidden Host Fallback From GPU-Visible Hot Paths
-Status: In Progress
+Status: Completed
 
 Priority: Highest
 
@@ -206,7 +206,7 @@ Completed in slice 1:
   `CuArray`/`ROCArray` storage on those backends
 
 ### G3: Establish Warmed Propagation Allocation Gates For GPU
-Status: Not Started
+Status: Completed
 
 Priority: High
 
@@ -225,6 +225,20 @@ Acceptance:
 - GPU propagation regression tests fail on repeated warm-path host allocation
   regressions.
 - Benchmarks and tests use the same warmed execution assumptions.
+
+Completed in slice 1:
+- optional CUDA/AMDGPU smoke now records warmed host-allocation bounds for:
+  - `prop_qphase`
+  - `prop_ptp`
+  - `prop_wts`
+  - `prop_stw`
+  - `prop_end!`
+- the same smoke verifies state-churn invariants that matter for warm execution:
+  - FFT plans are reused across repeated propagation calls
+  - cached `rho2` storage is reused by `ensure_rho2_map!`
+- current gates are bounded host-allocation checks, not a false zero-allocation
+  claim for every GPU backend; device allocation tracking remains a benchmark
+  and profiling concern for now
 
 ### G4: Promote Mutating, Context-Aware APIs As The GPU Performance Surface
 Status: Not Started
@@ -385,6 +399,15 @@ Every GPU-focused change should include the applicable checks below.
   - `FFTWorkspace.rho2` is now backend-native and no longer hard-coded as a CPU
     `Matrix`
   - CUDA and AMDGPU extensions now construct backend-native cached frequency
-    maps alongside backend-native FFT scratch
+  maps alongside backend-native FFT scratch
   - `ensure_rho2_map!` now fills the cache on the active backend instead of
     forcing a CPU fill path
+- 2026-03-17: G3 completed.
+  - optional backend smoke now includes warmed propagation host-allocation
+    regression gates for `prop_qphase`, `prop_ptp`, `prop_wts`, `prop_stw`,
+    and `prop_end!`
+  - the same smoke now checks repeated warm-path reuse of cached FFT plans and
+    `rho2` storage
+  - current GPU warm-path checks are bounded-allocation guards rather than
+    zero-allocation guarantees, reflecting the measured AMDGPU host-side
+    overhead today

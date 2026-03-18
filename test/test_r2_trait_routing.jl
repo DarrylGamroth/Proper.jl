@@ -1,5 +1,76 @@
 using Test
 
+function _warmed_gpu_qphase_alloc(wf, z, ctx, sync!)
+    prop_qphase(wf, z, ctx)
+    sync!()
+    return @allocated begin
+        prop_qphase(wf, z, ctx)
+        sync!()
+    end
+end
+
+function _warmed_gpu_ptp_alloc(wf, dz, ctx, sync!)
+    wf.reference_surface = Proper.PLANAR
+    prop_ptp(wf, dz, ctx)
+    sync!()
+    return @allocated begin
+        wf.reference_surface = Proper.PLANAR
+        prop_ptp(wf, dz, ctx)
+        sync!()
+    end
+end
+
+function _warmed_gpu_wts_alloc(wf, dz, ctx, sync!)
+    wf.reference_surface = Proper.PLANAR
+    prop_wts(wf, dz, ctx)
+    sync!()
+    return @allocated begin
+        wf.reference_surface = Proper.PLANAR
+        prop_wts(wf, dz, ctx)
+        sync!()
+    end
+end
+
+function _warmed_gpu_stw_alloc(wf, dz, ctx, sync!)
+    wf.reference_surface = Proper.SPHERICAL
+    prop_stw(wf, dz, ctx)
+    sync!()
+    return @allocated begin
+        wf.reference_surface = Proper.SPHERICAL
+        prop_stw(wf, dz, ctx)
+        sync!()
+    end
+end
+
+function _warmed_gpu_end_real_alloc(out, wf, sync!)
+    wf.reference_surface = Proper.PLANAR
+    Proper.prop_end!(out, wf)
+    sync!()
+    return @allocated begin
+        wf.reference_surface = Proper.PLANAR
+        Proper.prop_end!(out, wf)
+        sync!()
+    end
+end
+
+function _warmed_gpu_end_complex_alloc(out, wf, sync!)
+    wf.reference_surface = Proper.PLANAR
+    Proper.prop_end!(out, wf; noabs=true)
+    sync!()
+    return @allocated begin
+        wf.reference_surface = Proper.PLANAR
+        Proper.prop_end!(out, wf; noabs=true)
+        sync!()
+    end
+end
+
+const GPU_WARM_QPHASE_ALLOC_MAX = 12_288
+const GPU_WARM_PTP_ALLOC_MAX = 12_288
+const GPU_WARM_WTS_ALLOC_MAX = 12_288
+const GPU_WARM_STW_ALLOC_MAX = 8_192
+const GPU_WARM_END_REAL_ALLOC_MAX = 16_384
+const GPU_WARM_END_COMPLEX_ALLOC_MAX = 16_384
+
 @testset "R2 trait-driven routing" begin
     @testset "Style dispatch for cubic convolution" begin
         struct TestInterpStyle <: Proper.InterpStyle end
@@ -249,6 +320,7 @@ using Test
             prop_ptp(wf, 0.01f0, ctx)
             @test fws.forward_plan === pfft
             @test fws.backward_plan === pbfft
+            @test Proper.ensure_rho2_map!(fws, 16, 16, 1f-3) === rho2
             prop_circular_aperture(wf, 2.5f-4)
             @test wf.workspace.mask.mask isa CUDA.CuArray
             wf_ref = Proper.WaveFront(fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
@@ -268,6 +340,14 @@ using Test
             @test sampling == wf.sampling_m
             @test sampling == sampling_ref
             @test isapprox(Array(out), out_ref; atol=1f-5, rtol=1f-5)
+            wf_alloc = Proper.WaveFront(CUDA.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
+            out_alloc = similar(wf_alloc.field, Float32, 16, 16)
+            @test _warmed_gpu_qphase_alloc(wf_alloc, 0.25f0, ctx, CUDA.synchronize) <= GPU_WARM_QPHASE_ALLOC_MAX
+            @test _warmed_gpu_ptp_alloc(wf_alloc, 0.01f0, ctx, CUDA.synchronize) <= GPU_WARM_PTP_ALLOC_MAX
+            @test _warmed_gpu_wts_alloc(wf_alloc, 0.01f0, ctx, CUDA.synchronize) <= GPU_WARM_WTS_ALLOC_MAX
+            @test _warmed_gpu_stw_alloc(wf_alloc, 0.01f0, ctx, CUDA.synchronize) <= GPU_WARM_STW_ALLOC_MAX
+            @test _warmed_gpu_end_real_alloc(out_alloc, wf_alloc, CUDA.synchronize) <= GPU_WARM_END_REAL_ALLOC_MAX
+            @test _warmed_gpu_end_complex_alloc(similar(wf_alloc.field), wf_alloc, CUDA.synchronize) <= GPU_WARM_END_COMPLEX_ALLOC_MAX
         else
             @test true
         end
@@ -329,6 +409,7 @@ using Test
             prop_ptp(wf, 0.01f0, ctx)
             @test fws.forward_plan === pfft
             @test fws.backward_plan === pbfft
+            @test Proper.ensure_rho2_map!(fws, 16, 16, 1f-3) === rho2
             wf_ref = Proper.WaveFront(fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
             prop_qphase(wf_ref, 0.25f0)
             wf_ref.reference_surface = Proper.PLANAR
@@ -344,6 +425,14 @@ using Test
             @test sampling == wf.sampling_m
             @test sampling == sampling_ref
             @test Array(out) isa Matrix{Float32}
+            wf_alloc = Proper.WaveFront(AMDGPU.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
+            out_alloc = similar(wf_alloc.field, Float32, 16, 16)
+            @test _warmed_gpu_qphase_alloc(wf_alloc, 0.25f0, ctx, AMDGPU.synchronize) <= GPU_WARM_QPHASE_ALLOC_MAX
+            @test _warmed_gpu_ptp_alloc(wf_alloc, 0.01f0, ctx, AMDGPU.synchronize) <= GPU_WARM_PTP_ALLOC_MAX
+            @test _warmed_gpu_wts_alloc(wf_alloc, 0.01f0, ctx, AMDGPU.synchronize) <= GPU_WARM_WTS_ALLOC_MAX
+            @test _warmed_gpu_stw_alloc(wf_alloc, 0.01f0, ctx, AMDGPU.synchronize) <= GPU_WARM_STW_ALLOC_MAX
+            @test _warmed_gpu_end_real_alloc(out_alloc, wf_alloc, AMDGPU.synchronize) <= GPU_WARM_END_REAL_ALLOC_MAX
+            @test _warmed_gpu_end_complex_alloc(similar(wf_alloc.field), wf_alloc, AMDGPU.synchronize) <= GPU_WARM_END_COMPLEX_ALLOC_MAX
         else
             @test true
         end
