@@ -15,6 +15,7 @@ CUDA.allowscalar(false)
 
 wf, ctx, snap = gpu_core_propagation_tail_case(cuda_wavefront_begin, cuda_sync, Float64)
 restore_and_run_core_propagation_tail!(wf, snap, ctx)
+restore_and_run_core_propagation_tail!(wf, snap, ctx)
 cuda_sync()
 
 trial = run(@benchmarkable begin

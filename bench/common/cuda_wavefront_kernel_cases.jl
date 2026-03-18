@@ -143,6 +143,7 @@ function benchmark_cuda_wavefront_kernel_stats(::Type{T}; grid_n::Integer, sampl
     stats = Dict{String,Any}()
     for name in CUDA_WAVEFRONT_KERNEL_ORDER
         case = getproperty(cases, Symbol(name))
+        warmup_cuda_benchmark_case(case, 2)
         stats[name] = trial_stats(run_cuda_benchmark_case(case, samples))
     end
     return stats

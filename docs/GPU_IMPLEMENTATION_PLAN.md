@@ -153,6 +153,23 @@ Acceptance:
 - Docs consistently distinguish steady-state from cold-start.
 - GPU benchmark outputs remain comparable across CPU/CUDA/AMDGPU.
 
+Completed in slice 1:
+- GPU benchmark lanes now explicitly double-warm the repeated CUDA/AMDGPU
+  workloads before `BenchmarkTools` sampling in:
+  - [`bench/common/amdgpu_wavefront_kernel_cases.jl`](../bench/common/amdgpu_wavefront_kernel_cases.jl)
+  - [`bench/common/cuda_wavefront_kernel_cases.jl`](../bench/common/cuda_wavefront_kernel_cases.jl)
+  - [`bench/common/amdgpu_steady_state_workload.jl`](../bench/common/amdgpu_steady_state_workload.jl)
+  - [`bench/common/cuda_steady_state_workload.jl`](../bench/common/cuda_steady_state_workload.jl)
+  - [`bench/julia/amdgpu/core_propagation_tail.jl`](../bench/julia/amdgpu/core_propagation_tail.jl)
+  - [`bench/julia/cuda/core_propagation_tail.jl`](../bench/julia/cuda/core_propagation_tail.jl)
+- consequence:
+  - GPU benchmark rows now align better with the warmed-steady-state contract
+    already used by the GPU allocation tests, instead of depending on a single
+    pre-benchmark warm call
+  - current AMDGPU summary on this machine after the harness fix:
+    - steady-state workload: `3.00 ms`
+    - synthetic core propagation tail: `10.86 ms`
+
 ### G1: Remove Hidden Host Fallback From GPU-Visible Hot Paths
 Status: Completed
 
@@ -570,6 +587,9 @@ Every GPU-focused change should include the applicable checks below.
 - 2026-03-18: `G8` slice 6 fused paired GPU damped-sinc table fills for
   `prop_szoom!`, reducing AMDGPU host churn and improving the `prop_szoom`
   supported-kernel row.
+- 2026-03-18: `G0` slice 1 hardened the CUDA/AMDGPU benchmark harnesses with a
+  second explicit warm pass so reported GPU rows better reflect steady-state
+  behavior.
 - 2026-03-18: direct AMDGPU `prop_qphase` measurement confirmed the remaining
   warm-path host overhead is launch/runtime churn, not a semantics or type
   stability defect.

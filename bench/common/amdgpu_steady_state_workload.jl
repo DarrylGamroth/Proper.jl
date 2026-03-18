@@ -33,6 +33,7 @@ function run_amdgpu_steady_state_report(
 ) where {T<:AbstractFloat}
     prepared = amdgpu_steady_state_prepared(T, grid_n)
     amdgpu_steady_state_workload(prepared)
+    amdgpu_steady_state_workload(prepared)
 
     trial = run(@benchmarkable begin
         amdgpu_steady_state_workload($prepared)

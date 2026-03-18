@@ -15,6 +15,7 @@ AMDGPU.allowscalar(false)
 
 wf, ctx, snap = gpu_core_propagation_tail_case(amdgpu_wavefront_begin, amdgpu_sync, Float64)
 restore_and_run_core_propagation_tail!(wf, snap, ctx)
+restore_and_run_core_propagation_tail!(wf, snap, ctx)
 amdgpu_sync()
 
 trial = run(@benchmarkable begin

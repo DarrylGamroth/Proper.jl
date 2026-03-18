@@ -24,6 +24,15 @@ function run_amdgpu_benchmark_case(case::AMDGPUBenchmarkCase, samples::Integer)
     end setup=($setup!()) evals=1 samples=samples)
 end
 
+function warmup_amdgpu_benchmark_case(case::AMDGPUBenchmarkCase, warmup_iters::Integer)
+    for _ in 1:warmup_iters
+        case.setup!()
+        case.run_async!()
+        amdgpu_sync()
+    end
+    return nothing
+end
+
 function build_amdgpu_wavefront_kernel_cases(::Type{T}, grid_n::Integer) where {T<:AbstractFloat}
     phase = T(10)
     distance = T(0.01)
@@ -99,6 +108,7 @@ function benchmark_amdgpu_wavefront_kernel_stats(::Type{T}; grid_n::Integer, sam
     stats = Dict{String,Any}()
     for name in AMDGPU_WAVEFRONT_KERNEL_ORDER
         case = getproperty(cases, Symbol(name))
+        warmup_amdgpu_benchmark_case(case, 2)
         stats[name] = trial_stats(run_amdgpu_benchmark_case(case, samples))
     end
     return stats

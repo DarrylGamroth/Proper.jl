@@ -27,6 +27,7 @@ end
 function _run_cuda_steady_state_report(::Type{T}, run_tag::String, report_path::AbstractString; grid_n::Integer=CUDA_STEADY_GRID_N, samples::Integer=CUDA_STEADY_SAMPLES) where {T<:AbstractFloat}
     prepared = cuda_steady_state_prepared(T, grid_n)
     cuda_steady_state_workload(prepared)
+    cuda_steady_state_workload(prepared)
 
     trial = run(@benchmarkable begin
         cuda_steady_state_workload($prepared)
