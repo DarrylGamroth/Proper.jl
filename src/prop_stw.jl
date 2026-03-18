@@ -18,7 +18,7 @@
     end
 
     # Match legacy normalization: both branches scale by 1/n.
-    f ./= n
+    rmul!(f, inv(T(n)))
     wf.field = f
     return wf
 end
@@ -34,12 +34,13 @@ end
     ny, nx = size(wf.field)
     f = prepare_fft_field!(ws, wf.field, ny, nx)
     pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
+    T = float(real(eltype(f)))
     if d >= 0
         LinearAlgebra.mul!(f, pfft, f)
     else
         LinearAlgebra.mul!(f, pbfft, f)
     end
-    f ./= n
+    ka_scale_field!(f, inv(T(n)))
     wf.field = f
     return wf
 end
@@ -55,12 +56,13 @@ end
     ny, nx = size(wf.field)
     f = prepare_fft_field!(ws, wf.field, ny, nx)
     pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
+    T = float(real(eltype(f)))
     if d >= 0
         pfft * f
     else
         pbfft * f
     end
-    f ./= n
+    ka_scale_field!(f, inv(T(n)))
     wf.field = f
     return wf
 end

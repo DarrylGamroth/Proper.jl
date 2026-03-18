@@ -503,6 +503,21 @@ end
     end
 end
 
+@kernel function _ka_scale_field_kernel!(
+    field,
+    scale,
+    ny::Int,
+    nx::Int,
+)
+    I = @index(Global, NTuple)
+    i = I[1]
+    j = I[2]
+
+    if i <= ny && j <= nx
+        field[i, j] *= scale
+    end
+end
+
 @kernel function _ka_cubic_conv_grid_kernel!(
     out,
     @Const(a),
@@ -1063,6 +1078,13 @@ end
     backend = AK.get_backend(rho2)
     _ka_fill_fft_order_rho2_kernel!(backend, (16, 16))(rho2, inv_dy, inv_dx, ny, nx; ndrange=(ny, nx))
     return rho2
+end
+
+@inline function ka_scale_field!(field::AbstractMatrix{Complex{T}}, scale::T) where {T<:AbstractFloat}
+    ny, nx = size(field)
+    backend = AK.get_backend(field)
+    _ka_scale_field_kernel!(backend, (16, 16))(field, scale, ny, nx; ndrange=(ny, nx))
+    return field
 end
 
 @inline function ka_cubic_conv_grid!(

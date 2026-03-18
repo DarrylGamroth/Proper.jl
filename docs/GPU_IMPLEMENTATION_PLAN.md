@@ -379,7 +379,7 @@ Completed in slice 1:
     present but secondary
 
 ### G8: Julia-Language Cleanup For GPU Paths
-Status: Not Started
+Status: In Progress
 
 Priority: Medium
 
@@ -394,6 +394,22 @@ Acceptance:
 - No new abstract-field or ad hoc dynamic-dispatch regressions in GPU hot
   paths.
 - Hot GPU helpers remain inference-friendly.
+
+Completed in slice 1:
+- replaced broadcast scaling in the warmed FFT propagation path with an
+  explicit backend kernel for CUDA/AMDGPU and `rmul!` on the strided CPU path:
+  - [`prop_ptp.jl`](../src/prop_ptp.jl)
+  - [`prop_wts.jl`](../src/prop_wts.jl)
+  - [`prop_stw.jl`](../src/prop_stw.jl)
+  - [`ka_kernels.jl`](../src/core/ka_kernels.jl)
+- measured effect on this machine after the change:
+  - synthetic core propagation tail:
+    - AMDGPU host allocations: `1827 -> 1547`
+    - AMDGPU host bytes: `62.39 KiB -> 49.58 KiB`
+  - supported kernel lane:
+    - `prop_ptp`: AMDGPU allocations `514 -> 456`, bytes `14.55 KiB -> 11.80 KiB`
+    - `prop_wts`: AMDGPU allocations `433 -> 404`, bytes `11.33 KiB -> 9.95 KiB`
+    - `prop_stw`: AMDGPU allocations `433 -> 404`, bytes `11.33 KiB -> 9.95 KiB`
 
 ## Immediate Execution Order
 
@@ -445,6 +461,9 @@ Every GPU-focused change should include the applicable checks below.
 - 2026-03-17: Initial findings captured:
 - 2026-03-18: `G7` completed with a synthetic core propagation benchmark and
   profiling harness so GPU work no longer depends on WFIRST-derived wrappers.
+- 2026-03-18: `G8` slice 1 replaced broadcast scaling in the warmed FFT
+  propagation path with explicit backend scaling kernels and reduced AMDGPU
+  host allocations in the propagation benchmarks.
   - hidden host fallback in rotate/cubic-conv/end
   - CPU-owned `rho2` cache in `FFTWorkspace`
   - convenience-wrapper context churn in resample/magnify paths

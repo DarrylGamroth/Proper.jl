@@ -27,7 +27,7 @@ function _prop_ptp_fft!(
     _apply_fft_quadratic_phase_strided!(f, T(kphase), T(dx), qphase_workspace(ctx), inv(T(n)))
 
     LinearAlgebra.mul!(f, pbfft, f)
-    f ./= n
+    rmul!(f, inv(T(n)))
     wf.field = f
     return wf
 end
@@ -45,11 +45,12 @@ function _prop_ptp_fft!(
 )
     f = prepare_fft_field!(ws, wf.field, ny, nx)
     pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
+    T = typeof(float(dx))
     LinearAlgebra.mul!(f, pfft, f)
-    f ./= n
+    ka_scale_field!(f, inv(T(n)))
     ka_apply_frequency_phase!(f, kphase, dx)
     LinearAlgebra.mul!(f, pbfft, f)
-    f ./= n
+    ka_scale_field!(f, inv(T(n)))
     wf.field = f
     return wf
 end
@@ -67,11 +68,12 @@ function _prop_ptp_fft!(
 )
     f = prepare_fft_field!(ws, wf.field, ny, nx)
     pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
+    T = typeof(float(dx))
     pfft * f
-    f ./= n
+    ka_scale_field!(f, inv(T(n)))
     ka_apply_frequency_phase!(f, kphase, dx)
     pbfft * f
-    f ./= n
+    ka_scale_field!(f, inv(T(n)))
     wf.field = f
     return wf
 end
