@@ -120,6 +120,8 @@ interpolation.
 # Notes
 - The default path uses `prop_szoom` and supports non-square arrays.
 - `QUICK=true` uses cubic interpolation and is usually faster but less exact.
+- For repeated GPU work, prefer `prop_magnify!(out, image_in, mag, ctx; ...)`
+  so interpolation and sampling workspace state is reused.
 """
 function prop_magnify!(
     out::AbstractMatrix,
@@ -162,6 +164,8 @@ Return a magnified or demagnified copy of an image.
 # Notes
 - The default PROPER behavior is the damped-sinc resampler.
 - When `size_out == 0`, Julia computes output height and width independently.
+- This allocating wrapper is convenient for one-off use. For repeated CPU/GPU
+  workloads, preallocate `out` and call `prop_magnify!` with an explicit `ctx`.
 """
 function prop_magnify(
     image_in::AbstractMatrix,

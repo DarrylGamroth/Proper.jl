@@ -81,15 +81,85 @@ Semantics:
 - Future backends:
   - oneAPI/ROCm backends may be added without API break if they satisfy trait contracts
 
-## 4. Error Handling
+## 4. Honest Support Matrix
+
+This section describes the current user-facing GPU support surface. It is meant
+to answer a practical question: which paths are truly backend-native today,
+which require specific overloads/options, and which intentionally fail instead
+of silently falling back to the host.
+
+### 4.1 Fully Backend-Native On CUDA And AMDGPU
+- Propagation core with explicit context reuse:
+  - `prop_qphase`
+  - `prop_ptp`
+  - `prop_wts`
+  - `prop_stw`
+  - `prop_end!` when `out` and `wf.field` use the same backend
+- GPU geometry/mask paths already exercised by the optional backend smoke:
+  - `prop_circular_aperture`
+  - `prop_rectangle`
+  - `prop_rounded_rectangle`
+- Map-application helpers when the map is already on the same backend as the
+  wavefront:
+  - `prop_add_phase`
+  - `prop_multiply`
+  - `prop_divide`
+- FITS map application surface after promotion to the wavefront backend:
+  - `prop_readmap`
+  - `prop_errormap`
+  - `prop_psd_errormap`
+
+### 4.2 Backend-Native Only For Specific Entry Points Or Options
+- `prop_rotate`
+  - full-image rotate paths are backend-native for the supported array
+    backends
+  - explicit point-sampling and coordinate-grid `prop_cubic_conv` forms are not
+    the GPU performance surface
+- `prop_magnify`
+  - use `prop_magnify!` with an explicit `ctx` for the stable performance path
+  - allocating wrappers exist for convenience but may create fresh workspace
+    state
+- `prop_resamplemap`
+  - use `prop_resamplemap!` with an explicit `ctx` for the stable performance
+    path
+  - allocating wrappers exist for convenience and may allocate interpolation
+    state
+- `prop_end`
+  - the allocating wrapper is backend-native
+  - `prop_end!` is backend-native only when the output array uses the same
+    backend as the wavefront field
+
+### 4.3 Intentionally Unsupported On GPU
+- `prop_cubic_conv` scalar point-sampling on GPU arrays
+- `prop_cubic_conv` pointwise vector mode on GPU arrays
+- `prop_cubic_conv` `grid=false` coordinate-grid mode on GPU arrays
+- `prop_end!` with mismatched output and wavefront backends
+
+These paths throw explicit `ArgumentError` rather than silently materializing
+through host `Matrix(...)` fallbacks.
+
+## 5. Error Handling
 - Missing backend method behavior:
   - `MethodError`
 - Unsupported feature behavior:
   - explicit `ArgumentError`/`ErrorException` with supported alternatives
 
-## 5. Contract Tests
+## 6. Performance-Surface Contract
+- For repeated GPU work, the intended performance surface is:
+  - mutating `!` APIs
+  - explicit `RunContext`
+  - prepared execution where applicable
+- Allocating wrappers remain available for convenience and portability, but they
+  are not the preferred steady-state benchmark or HIL surface.
+- Benchmark policy:
+  - `BenchmarkTools` numbers represent warmed steady-state execution
+  - cold-start / TTFx must be measured separately in fresh processes
+
+## 7. Contract Tests
 - [x] Trait dispatch tests by backend (CPU baseline + optional CUDA smoke when CUDA is available)
 - [ ] FFT equivalence tests across backends
 - [x] Interpolation consistency tests across context/style-dispatched entry points
 - [x] Explicit no-scalar-indexing checks on GPU smoke path (`CUDA.allowscalar(false)`, availability-gated)
+- [x] Warmed host-allocation regression gates for GPU propagation hot paths
+- [x] Optional GPU smoke for same-backend map application, FITS map reads, error-map application, and PSD error-map application
 - [ ] Inference checks for hot kernels (`@code_warntype`/equivalent CI gate)

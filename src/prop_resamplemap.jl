@@ -65,6 +65,9 @@ Resample `dmap` onto the current wavefront grid and write the result to `out`.
 - The output dimensions always match `size(wf.field)`.
 - The interpolation path follows the accepted executable-baseline cubic
   resampling contract used by parity tests.
+- This is the performance-facing entry point for repeated GPU use when paired
+  with an explicit `ctx`. The no-`ctx` overload is a convenience wrapper and
+  may allocate fresh interpolation state.
 """
 function prop_resamplemap!(
     out::AbstractMatrix,
@@ -148,6 +151,8 @@ Return a new map resampled to the current wavefront grid.
 
 # Notes
 - This is the allocating convenience wrapper around `prop_resamplemap!`.
+- For repeated CPU/GPU work, prefer `prop_resamplemap!(out, ..., ctx)` so the
+  interpolation workspace is reused.
 - The behavior matches the executable PROPER baseline used by the parity
   harnesses.
 """

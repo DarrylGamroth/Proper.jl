@@ -15,6 +15,8 @@ planning/audit records from the port effort.
 - The resulting summary is written to `bench/reports/julia_cpu_gpu_summary.md`
 - The driver uses any available Julia GPU backends (`CUDA.jl` and/or
   `AMDGPU.jl`)
+- BenchmarkTools-based rows in that lane are warmed steady-state results, not
+  cold-start / TTFx measurements
 - If a GPU backend or supported device is unavailable, the summary records that
   backend as skipped rather than failing the whole benchmark lane
 - Active GPU implementation tracking lives in

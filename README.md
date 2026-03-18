@@ -45,6 +45,33 @@ The script uses the Julia steady-state CPU lane plus any available GPU lanes
 environment. If a GPU backend or supported device is unavailable, it records
 that backend as skipped instead of failing the whole run.
 
+### GPU Usage Contract
+- The intended GPU performance surface is:
+  - mutating `!` APIs
+  - explicit `RunContext`
+  - prepared execution for repeated runs
+- Allocating wrappers remain available for convenience, but they are not the
+  steady-state performance contract.
+- `BenchmarkTools` results in the benchmark lanes are warmed steady-state
+  numbers, not cold-start / TTFx numbers.
+
+Examples:
+
+```julia
+ctx = RunContext(typeof(wf.field))
+prop_resamplemap!(out, wf, dmap, opts, ctx)
+prop_magnify!(out, image_in, mag, ctx; QUICK=true)
+```
+
+Current GPU support is strongest for:
+- propagation core (`prop_qphase`, `prop_ptp`, `prop_wts`, `prop_stw`, `prop_end!`)
+- same-backend map application (`prop_add_phase`, `prop_multiply`, `prop_divide`)
+- promoted map/error-map paths (`prop_readmap`, `prop_errormap`, `prop_psd_errormap`)
+
+Unsupported GPU combinations fail explicitly instead of silently falling back to
+host materialization. See [docs/backend_traits.md](docs/backend_traits.md) for
+the current support matrix.
+
 ## Requirements
 - Julia 1.10 or newer
 - `FITSIO.jl` for FITS input/output

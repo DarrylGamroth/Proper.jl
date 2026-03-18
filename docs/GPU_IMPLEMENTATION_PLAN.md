@@ -241,7 +241,7 @@ Completed in slice 1:
   and profiling concern for now
 
 ### G4: Promote Mutating, Context-Aware APIs As The GPU Performance Surface
-Status: Not Started
+Status: Completed
 
 Priority: High
 
@@ -259,6 +259,15 @@ Examples:
 Acceptance:
 - User-facing docs clearly separate convenience APIs from performance APIs.
 - Benchmarks use explicit contexts/prepared execution consistently.
+
+Completed in slice 1:
+- public docstrings for `prop_resamplemap!`/`prop_resamplemap` and
+  `prop_magnify!`/`prop_magnify` now call out that `ctx` + mutating entry
+  points are the repeated GPU performance surface
+- user-facing docs now distinguish:
+  - warmed steady-state benchmark rows
+  - convenience wrappers
+  - explicit `RunContext` and prepared execution as the intended GPU contract
 
 ### G5: Convert Map-Application Helpers To Scratch-Backed GPU Paths
 Status: Completed
@@ -298,7 +307,7 @@ Completed in slice 1:
   temporaries
 
 ### G6: Honest Backend Support Matrix
-Status: Not Started
+Status: Completed
 
 Priority: Medium
 
@@ -315,6 +324,15 @@ Tasks:
 Acceptance:
 - A contributor or user can tell which GPU paths are real.
 - Trait tests cover the intended support matrix.
+
+Completed in slice 1:
+- [backend_traits.md](backend_traits.md) now classifies the current backend
+  surface into:
+  - fully backend-native paths
+  - paths that are backend-native only for specific entry points or options
+  - intentionally unsupported GPU combinations
+- the root README now summarizes the GPU usage contract and links to the full
+  support matrix
 
 ### G7: Synthetic Core GPU Benchmark And Profiling Harness
 Status: Not Started
@@ -434,3 +452,13 @@ Every GPU-focused change should include the applicable checks below.
     GPU maps on-backend through their hot transform/apply path
   - optional GPU smoke now exercises map application, FITS map reads, error-map
     application, and PSD error-map output/application on AMDGPU
+- 2026-03-18: G4 completed.
+  - public docstrings now make `ctx` + mutating APIs the explicit repeated GPU
+    performance surface for `prop_resamplemap` and `prop_magnify`
+  - README/docs now state that BenchmarkTools-based GPU benchmark rows are
+    warmed steady-state measurements, not cold-start / TTFx
+- 2026-03-18: G6 completed.
+  - `backend_traits.md` now contains an explicit backend support matrix for
+    fully-native, conditionally-native, and intentionally unsupported GPU paths
+  - root docs now link that support matrix from the user-facing GPU benchmark
+    section
