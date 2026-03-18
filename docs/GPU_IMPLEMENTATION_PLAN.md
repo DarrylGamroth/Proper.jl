@@ -463,6 +463,33 @@ Completed in slice 4:
   - this was still worth keeping because it reduces host churn materially
     without changing semantics or making the kernel path more complex
 
+Completed in slice 5:
+- fused the paired GPU affine-axis fills used by
+  [`prop_resamplemap.jl`](../src/prop_resamplemap.jl) and the `QUICK=true`
+  path in [`prop_magnify.jl`](../src/prop_magnify.jl) into a single backend
+  kernel via new helpers in:
+  - [`workspace.jl`](../src/core/workspace.jl)
+  - [`ka_kernels.jl`](../src/core/ka_kernels.jl)
+- measured effect on this machine:
+  - direct warmed AMDGPU `prop_resamplemap!` allocation:
+    - `12.14 KiB -> 10.99 KiB`
+  - direct warmed AMDGPU quick `prop_magnify!` allocation:
+    - `13.89 KiB -> 11.89 KiB`
+  - supported-kernel lane:
+    - AMDGPU `prop_resamplemap_mutating`:
+      - allocs `432 -> 395`
+      - bytes `11.08 KiB -> 9.88 KiB`
+      - median `439.85 us -> 399.36 us`
+    - AMDGPU `prop_magnify_quick_mutating`:
+      - allocs `267 -> 199`
+      - bytes `7.30 KiB -> 5.56 KiB`
+      - median `289.45 us -> 260.97 us`
+- consequence:
+  - the remaining resample/magnify GPU overhead is no longer dominated by the
+    paired affine-axis launches, so the next worthwhile cleanup should move to
+    whichever helper still shows the largest steady-state host churn in the
+    supported-kernel lane
+
 ## Immediate Execution Order
 
 This is the intended implementation order for the next GPU-focused slices.
@@ -518,6 +545,9 @@ Every GPU-focused change should include the applicable checks below.
   host allocations in the propagation benchmarks.
 - 2026-03-18: `G3` gates were tightened to double-warm before measuring so GPU
   allocation checks reflect the intended steady-state contract.
+- 2026-03-18: `G8` slice 5 fused paired GPU affine-axis fills for resample and
+  quick magnify, reducing AMDGPU host churn and improving both supported-kernel
+  rows.
 - 2026-03-18: direct AMDGPU `prop_qphase` measurement confirmed the remaining
   warm-path host overhead is launch/runtime churn, not a semantics or type
   stability defect.

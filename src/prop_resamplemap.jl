@@ -37,8 +37,7 @@ function _prop_resamplemap!(
     xoff = T(opts.xc) - T(opts.xshift) / T(opts.pixscale)
     yoff = T(opts.yc) - T(opts.yshift) / T(opts.pixscale)
 
-    fill_affine_axis!(fillsty, xcoords, T(nx ÷ 2), scale, xoff)
-    fill_affine_axis!(fillsty, ycoords, T(ny ÷ 2), scale, yoff)
+    fill_affine_axes!(fillsty, xcoords, ycoords, T(nx ÷ 2), T(ny ÷ 2), scale, scale, xoff, yoff)
 
     return prop_cubic_conv_grid!(out, sty, dmap, xcoords, ycoords)
 end

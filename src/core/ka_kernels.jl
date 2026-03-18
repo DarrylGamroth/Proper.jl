@@ -484,6 +484,28 @@ end
     end
 end
 
+@kernel function _ka_fill_affine_axes_kernel!(
+    xout,
+    yout,
+    xorigin,
+    yorigin,
+    xscale,
+    yscale,
+    xoffset,
+    yoffset,
+    nx::Int,
+    ny::Int,
+)
+    i = @index(Global, Linear)
+
+    if i <= nx
+        xout[i] = (typeof(xorigin)(i - 1) - xorigin) * xscale + xoffset
+    end
+    if i <= ny
+        yout[i] = (typeof(yorigin)(i - 1) - yorigin) * yscale + yoffset
+    end
+end
+
 @kernel function _ka_fill_fft_order_rho2_kernel!(
     rho2,
     inv_dy,
@@ -1121,6 +1143,24 @@ end
     backend = AK.get_backend(out)
     _ka_fill_affine_axis_kernel!(backend, 256)(out, origin, scale, offset, n; ndrange=n)
     return out
+end
+
+@inline function ka_fill_affine_axes!(
+    xout::AbstractVector,
+    yout::AbstractVector,
+    xorigin,
+    yorigin,
+    xscale,
+    yscale,
+    xoffset,
+    yoffset,
+)
+    nx = length(xout)
+    ny = length(yout)
+    n = max(nx, ny)
+    backend = AK.get_backend(xout)
+    _ka_fill_affine_axes_kernel!(backend, 256)(xout, yout, xorigin, yorigin, xscale, yscale, xoffset, yoffset, nx, ny; ndrange=n)
+    return xout, yout
 end
 
 @inline function ka_fill_fft_order_rho2!(

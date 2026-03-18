@@ -286,6 +286,36 @@ end
     return ka_fill_affine_axis!(out, origin, scale, offset)
 end
 
+@inline function fill_affine_axes!(
+    ::AxisFillLoopExecStyle,
+    xout::AbstractVector{T},
+    yout::AbstractVector{T},
+    xorigin::T,
+    yorigin::T,
+    xscale::T,
+    yscale::T,
+    xoffset::T,
+    yoffset::T,
+) where {T<:AbstractFloat}
+    fill_affine_axis!(AxisFillLoopExecStyle(), xout, xorigin, xscale, xoffset)
+    fill_affine_axis!(AxisFillLoopExecStyle(), yout, yorigin, yscale, yoffset)
+    return xout, yout
+end
+
+@inline function fill_affine_axes!(
+    ::AxisFillKAExecStyle,
+    xout::AbstractVector,
+    yout::AbstractVector,
+    xorigin,
+    yorigin,
+    xscale,
+    yscale,
+    xoffset,
+    yoffset,
+)
+    return ka_fill_affine_axes!(xout, yout, xorigin, yorigin, xscale, yscale, xoffset, yoffset)
+end
+
 @inline function reset_workspace!(ws::InterpWorkspace)
     return ws
 end

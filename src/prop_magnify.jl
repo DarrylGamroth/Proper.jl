@@ -47,8 +47,7 @@ end
 
         xcoords, ycoords = ensure_interp_axes!(ws, nx_out, ny_out)
         invmag = inv(T(mag))
-        fill_affine_axis!(fillsty, xcoords, cx_out, invmag, cx_in)
-        fill_affine_axis!(fillsty, ycoords, cy_out, invmag, cy_in)
+        fill_affine_axes!(fillsty, xcoords, ycoords, cx_out, cy_out, invmag, invmag, cx_in, cy_in)
         prop_cubic_conv_grid!(out, sty, image_in, xcoords, ycoords)
     else
         T = typeof(float(real(zero(eltype(image_in)))))
