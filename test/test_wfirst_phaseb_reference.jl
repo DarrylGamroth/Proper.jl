@@ -14,8 +14,8 @@ using Proper.WFIRSTPhaseBProper
     end
 
     a = reshape(collect(1.0:16.0), 4, 4)
-    @test trim(a, 2) == [6.0 10.0; 7.0 11.0]
-    @test size(trim(a, 6)) == (6, 6)
+    @test Proper.WFIRSTPhaseBProper.trim(a, 2) == [6.0 10.0; 7.0 11.0]
+    @test size(Proper.WFIRSTPhaseBProper.trim(a, 6)) == (6, 6)
 
     c = ComplexF64.(reshape(1:16, 4, 4))
     @test ffts(copy(c), -1) ≈ circshift(fft(circshift(c, (-2, -2))) ./ length(c), (2, 2))
