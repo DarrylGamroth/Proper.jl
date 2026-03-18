@@ -4,6 +4,8 @@ using Random
 function _warmed_gpu_qphase_alloc(wf, z, ctx, sync!)
     prop_qphase(wf, z, ctx)
     sync!()
+    prop_qphase(wf, z, ctx)
+    sync!()
     return @allocated begin
         prop_qphase(wf, z, ctx)
         sync!()
@@ -11,6 +13,9 @@ function _warmed_gpu_qphase_alloc(wf, z, ctx, sync!)
 end
 
 function _warmed_gpu_ptp_alloc(wf, dz, ctx, sync!)
+    wf.reference_surface = Proper.PLANAR
+    prop_ptp(wf, dz, ctx)
+    sync!()
     wf.reference_surface = Proper.PLANAR
     prop_ptp(wf, dz, ctx)
     sync!()
@@ -25,6 +30,9 @@ function _warmed_gpu_wts_alloc(wf, dz, ctx, sync!)
     wf.reference_surface = Proper.PLANAR
     prop_wts(wf, dz, ctx)
     sync!()
+    wf.reference_surface = Proper.PLANAR
+    prop_wts(wf, dz, ctx)
+    sync!()
     return @allocated begin
         wf.reference_surface = Proper.PLANAR
         prop_wts(wf, dz, ctx)
@@ -33,6 +41,9 @@ function _warmed_gpu_wts_alloc(wf, dz, ctx, sync!)
 end
 
 function _warmed_gpu_stw_alloc(wf, dz, ctx, sync!)
+    wf.reference_surface = Proper.SPHERICAL
+    prop_stw(wf, dz, ctx)
+    sync!()
     wf.reference_surface = Proper.SPHERICAL
     prop_stw(wf, dz, ctx)
     sync!()
@@ -47,6 +58,9 @@ function _warmed_gpu_end_real_alloc(out, wf, sync!)
     wf.reference_surface = Proper.PLANAR
     Proper.prop_end!(out, wf)
     sync!()
+    wf.reference_surface = Proper.PLANAR
+    Proper.prop_end!(out, wf)
+    sync!()
     return @allocated begin
         wf.reference_surface = Proper.PLANAR
         Proper.prop_end!(out, wf)
@@ -55,6 +69,9 @@ function _warmed_gpu_end_real_alloc(out, wf, sync!)
 end
 
 function _warmed_gpu_end_complex_alloc(out, wf, sync!)
+    wf.reference_surface = Proper.PLANAR
+    Proper.prop_end!(out, wf; noabs=true)
+    sync!()
     wf.reference_surface = Proper.PLANAR
     Proper.prop_end!(out, wf; noabs=true)
     sync!()

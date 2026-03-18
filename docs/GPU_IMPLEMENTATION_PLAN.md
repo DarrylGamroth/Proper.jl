@@ -240,6 +240,14 @@ Completed in slice 1:
   claim for every GPU backend; device allocation tracking remains a benchmark
   and profiling concern for now
 
+Completed in slice 2:
+- the warmed GPU allocation helpers now perform a second warm call before
+  measurement so the gates track steady-state behavior rather than first-launch
+  backend churn after extension load
+- this specifically stabilized the AMDGPU `prop_qphase` gate, whose steady-state
+  path is low-kilobyte launch overhead rather than the one-time first-launch
+  host churn seen immediately after precompile/extension load
+
 ### G4: Promote Mutating, Context-Aware APIs As The GPU Performance Surface
 Status: Completed
 
@@ -464,6 +472,8 @@ Every GPU-focused change should include the applicable checks below.
 - 2026-03-18: `G8` slice 1 replaced broadcast scaling in the warmed FFT
   propagation path with explicit backend scaling kernels and reduced AMDGPU
   host allocations in the propagation benchmarks.
+- 2026-03-18: `G3` gates were tightened to double-warm before measuring so GPU
+  allocation checks reflect the intended steady-state contract.
   - hidden host fallback in rotate/cubic-conv/end
   - CPU-owned `rho2` cache in `FFTWorkspace`
   - convenience-wrapper context churn in resample/magnify paths
