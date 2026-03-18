@@ -431,6 +431,22 @@ Completed in slice 2:
   - larger returns are more likely in FFT-heavy propagation, geometry/mask
     kernels, or further launch/materialization cleanup around those paths
 
+Completed in slice 3:
+- replaced the same-backend full-size GPU `prop_end!` path with the existing
+  single-kernel KA copy path instead of the old four-quadrant broadcast/view
+  path in [`prop_end.jl`](../src/prop_end.jl)
+- measured effect on this machine:
+  - direct warmed AMDGPU `prop_end!` allocation:
+    - `21.47 KiB -> 8.91 KiB`
+  - supported-kernel lane:
+    - AMDGPU `prop_end_mutating`:
+      - allocs `397 -> 179`
+      - bytes `15.58 KiB -> 4.00 KiB`
+      - median `132.44 us -> 125.54 us`
+- consequence:
+  - `prop_end!` is no longer a lagging GPU row; it is now clearly faster than
+    the CPU row on this machine
+
 ## Immediate Execution Order
 
 This is the intended implementation order for the next GPU-focused slices.
@@ -489,6 +505,9 @@ Every GPU-focused change should include the applicable checks below.
 - 2026-03-18: direct AMDGPU `prop_qphase` measurement confirmed the remaining
   warm-path host overhead is launch/runtime churn, not a semantics or type
   stability defect.
+- 2026-03-18: full-size GPU `prop_end!` switched from quadrant broadcast/view
+  staging to a single backend kernel, materially reducing warmed AMDGPU host
+  allocations.
   - hidden host fallback in rotate/cubic-conv/end
   - CPU-owned `rho2` cache in `FFTWorkspace`
   - convenience-wrapper context churn in resample/magnify paths

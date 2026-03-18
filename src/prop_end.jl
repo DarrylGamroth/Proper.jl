@@ -26,6 +26,9 @@ end
 ) where {Tout<:Complex,Tin<:Complex}
     ny, nx = size(field)
     size(out) == (ny, nx) || throw(ArgumentError("full-copy path requires matching output size"))
+    if ka_end_enabled(typeof(out), ny, nx) && same_backend_style(typeof(out), typeof(field))
+        return ka_copy_shifted_complex!(out, field, 1, 1)
+    end
     sy, sx, top_h, left_w = _prop_end_full_quadrants(ny, nx)
 
     @views begin
@@ -44,6 +47,9 @@ end
 ) where {Tout<:Number,Tin<:Complex}
     ny, nx = size(field)
     size(out) == (ny, nx) || throw(ArgumentError("full-copy path requires matching output size"))
+    if ka_end_enabled(typeof(out), ny, nx) && same_backend_style(typeof(out), typeof(field))
+        return ka_copy_shifted_intensity!(out, field, 1, 1)
+    end
     sy, sx, top_h, left_w = _prop_end_full_quadrants(ny, nx)
 
     @views begin
