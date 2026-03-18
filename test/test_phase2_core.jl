@@ -36,6 +36,11 @@ using FFTW
     out32 = similar(img32)
     ctx32 = RunContext(typeof(img32))
     @test prop_szoom!(out32, img32, 1.1, ctx32) === out32
+    mag_kw = similar(img32)
+    mag_opts = similar(img32)
+    @test prop_magnify!(mag_kw, img32, 1.0, ctx32) === mag_kw
+    @test prop_magnify!(mag_opts, img32, 1.0, Proper.DEFAULT_MAGNIFY_OPTIONS, ctx32) === mag_opts
+    @test mag_kw == mag_opts
 
     wf4 = prop_begin(1.0, 500e-9, 32)
     @test (@inferred prop_select_propagator(wf4, 0.1)) isa Float64

@@ -566,6 +566,29 @@ Completed in slice 7:
   - the remaining rotate cost is now in the backend kernel/launch itself, not
     in avoidable Julia-side option handling
 
+Completed in slice 8:
+- directly re-measured warmed AMDGPU `prop_resamplemap!` and
+  `prop_magnify!` wrapper paths and confirmed:
+  - `prop_resamplemap!` still has a large first measured host-allocation spike
+    after warmup, but the second warmed call settles near the existing
+    supported-kernel row (`~10 KiB`), so it is no longer a high-value rewrite
+    target
+  - `prop_magnify!(...; QUICK=true)` was still carrying option-wrapper noise in
+    the helper benchmark row even though the underlying quick path was already
+    available through a prebuilt `MagnifyOptions`
+- consequence:
+  - `prop_magnify!` now has the same empty-keyword fast-path behavior as
+    `prop_rotate!` for the default no-keyword case
+  - CPU/CUDA/AMDGPU supported-kernel rows for
+    `prop_magnify_quick_mutating` now benchmark the prebuilt
+    `MagnifyOptions(true, false, false)` path so they reflect the actual quick
+    magnify kernel rather than keyword parsing overhead
+- measured effect on this machine after the benchmark correction:
+  - CPU `prop_magnify_quick_mutating`: `2.17 ms`, `0 allocs`
+  - AMDGPU `prop_magnify_quick_mutating`: `89.16 us`, `209 allocs`,
+    `5.27 KiB`
+  - `prop_resamplemap_mutating`: `390.10 us`, `396 allocs`, `9.94 KiB`
+
 ## Immediate Execution Order
 
 This is the intended implementation order for the next GPU-focused slices.
@@ -627,6 +650,10 @@ Every GPU-focused change should include the applicable checks below.
 - 2026-03-18: `G8` slice 6 fused paired GPU damped-sinc table fills for
   `prop_szoom!`, reducing AMDGPU host churn and improving the `prop_szoom`
   supported-kernel row.
+- 2026-03-18: `G8` slice 8 confirmed `prop_resamplemap!` is already in the
+  expected warmed range and switched the `prop_magnify_quick_mutating`
+  benchmark row to a prebuilt options object so it reflects the real quick
+  kernel path instead of keyword-wrapper overhead.
 - 2026-03-18: `G0` slice 1 hardened the CUDA/AMDGPU benchmark harnesses with a
   second explicit warm pass so reported GPU rows better reflect steady-state
   behavior.

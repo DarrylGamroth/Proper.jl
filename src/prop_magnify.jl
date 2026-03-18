@@ -4,6 +4,8 @@ struct MagnifyOptions
     amp_conserve::Bool
 end
 
+const DEFAULT_MAGNIFY_OPTIONS = MagnifyOptions(false, false, false)
+
 @inline function MagnifyOptions(kwargs::Base.Iterators.Pairs)
     return MagnifyOptions(
         kw_lookup_bool(kwargs, :QUICK, false),
@@ -128,7 +130,8 @@ function prop_magnify!(
     mag0::Real;
     kwargs...,
 )
-    return prop_magnify!(out, image_in, mag0, MagnifyOptions(kwargs))
+    opts = isempty(kwargs) ? DEFAULT_MAGNIFY_OPTIONS : MagnifyOptions(kwargs)
+    return prop_magnify!(out, image_in, mag0, opts)
 end
 
 function prop_magnify!(
@@ -138,7 +141,8 @@ function prop_magnify!(
     ctx::RunContext;
     kwargs...,
 )
-    return prop_magnify!(out, image_in, mag0, MagnifyOptions(kwargs), ctx)
+    opts = isempty(kwargs) ? DEFAULT_MAGNIFY_OPTIONS : MagnifyOptions(kwargs)
+    return prop_magnify!(out, image_in, mag0, opts, ctx)
 end
 
 """

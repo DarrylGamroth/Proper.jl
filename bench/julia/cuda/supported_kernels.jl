@@ -21,6 +21,7 @@ function bench_cuda_supported_kernels()
 
     img = cuda_rand(Float32, nmap, nmap)
     ctx_img = RunContext(typeof(img))
+    mag_quick_opts = Proper.MagnifyOptions(true, false, false)
     rot_out = similar(img)
     mag_out = similar(img)
     szoom_out = similar(img)
@@ -36,14 +37,14 @@ function bench_cuda_supported_kernels()
 
     # Warmup
     prop_rotate!(rot_out, img, 12.0, ctx_img)
-    prop_magnify!(mag_out, img, 1.1, ctx_img; QUICK=true)
+    prop_magnify!(mag_out, img, 1.1, mag_quick_opts, ctx_img)
     prop_szoom!(szoom_out, img, 1.1, ctx_img)
     Proper._prop_pixellate_factor!(pix_out, img, 2)
     prop_resamplemap!(res_out, wf_map, dmap, res_opts, ctx_map)
     prop_rectangle!(rect_out, wf_map, 0.4, 0.2, 0.03, -0.05; ROTATION=22.0, NORM=true)
     prop_rounded_rectangle!(round_out, wf_map, 0.05, 0.3, 0.2, 0.01, -0.02)
     prop_rotate!(rot_out, img, 12.0, ctx_img)
-    prop_magnify!(mag_out, img, 1.1, ctx_img; QUICK=true)
+    prop_magnify!(mag_out, img, 1.1, mag_quick_opts, ctx_img)
     prop_szoom!(szoom_out, img, 1.1, ctx_img)
     Proper._prop_pixellate_factor!(pix_out, img, 2)
     prop_resamplemap!(res_out, wf_map, dmap, res_opts, ctx_map)
@@ -57,7 +58,7 @@ function bench_cuda_supported_kernels()
     end evals=1 samples=samples)
 
     m = run(@benchmarkable begin
-        prop_magnify!($mag_out, $img, 1.1, $ctx_img; QUICK=true)
+        prop_magnify!($mag_out, $img, 1.1, $mag_quick_opts, $ctx_img)
         cuda_sync()
     end evals=1 samples=samples)
 

@@ -43,6 +43,7 @@ function bench_supported_kernels()
 
     img = rand(Float32, nmap, nmap)
     ctx_img = RunContext(typeof(img))
+    mag_quick_opts = Proper.MagnifyOptions(true, false, false)
     rot_out = similar(img)
     mag_out = similar(img)
     szoom_out = similar(img)
@@ -72,7 +73,7 @@ function bench_supported_kernels()
     prop_circular_aperture(wf_a, 0.6)
     prop_end!(out_end, wf_e)
     prop_rotate!(rot_out, img, 12.0, ctx_img)
-    prop_magnify!(mag_out, img, 1.1, ctx_img; QUICK=true)
+    prop_magnify!(mag_out, img, 1.1, mag_quick_opts, ctx_img)
     prop_szoom!(szoom_out, img, 1.1, ctx_img)
     Proper._prop_pixellate_factor!(pix_out, img, 2)
     prop_resamplemap!(res_out, wf_map, dmap, res_opts, ctx_map)
@@ -108,7 +109,7 @@ function bench_supported_kernels()
     end evals=1 samples=samples)
 
     m = run(@benchmarkable begin
-        prop_magnify!($mag_out, $img, 1.1, $ctx_img; QUICK=true)
+        prop_magnify!($mag_out, $img, 1.1, $mag_quick_opts, $ctx_img)
     end evals=1 samples=samples)
 
     sz = run(@benchmarkable begin
