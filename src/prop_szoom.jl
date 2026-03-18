@@ -142,8 +142,7 @@ function _prop_szoom!(
     sws::SamplingWorkspace{T},
 ) where {T<:AbstractFloat}
     tablex, tabley = ensure_sampling_tables!(sws, size(out, 2), size(out, 1), SZOOM_K)
-    ka_szoom_table!(tabley, mag, size(out, 1), SZOOM_K, SZOOM_DK)
-    tablex === tabley || ka_szoom_table!(tablex, mag, size(out, 2), SZOOM_K, SZOOM_DK)
+    ka_szoom_tables!(tablex, tabley, mag, SZOOM_K, SZOOM_DK)
     return ka_szoom_apply!(out, image_in, tablex, tabley, mag)
 end
 

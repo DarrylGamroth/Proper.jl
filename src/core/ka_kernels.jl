@@ -869,6 +869,55 @@ end
     end
 end
 
+@kernel function _ka_szoom_tables_kernel!(
+    tablex,
+    tabley,
+    mag,
+    n_outx::Int,
+    n_outy::Int,
+    k::Int,
+    dk::Int,
+)
+    I = @index(Global, NTuple)
+    row = I[1]
+    idx = I[2]
+
+    T = typeof(mag)
+    if row <= n_outx && idx <= k
+        xin = T(row - 1 - (n_outx ÷ 2)) / mag
+        xphase = xin - _ka_szoom_round(xin)
+        x = T(idx - 1 - (k ÷ 2)) - xphase
+
+        if abs(x) <= T(dk)
+            xpi = x * T(pi)
+            if xpi == zero(T)
+                tablex[row, idx] = one(T)
+            else
+                tablex[row, idx] = (sin(xpi) / xpi) * (sin(xpi / T(dk)) / (xpi / T(dk)))
+            end
+        else
+            tablex[row, idx] = zero(T)
+        end
+    end
+
+    if row <= n_outy && idx <= k
+        yin = T(row - 1 - (n_outy ÷ 2)) / mag
+        yphase = yin - _ka_szoom_round(yin)
+        y = T(idx - 1 - (k ÷ 2)) - yphase
+
+        if abs(y) <= T(dk)
+            ypi = y * T(pi)
+            if ypi == zero(T)
+                tabley[row, idx] = one(T)
+            else
+                tabley[row, idx] = (sin(ypi) / ypi) * (sin(ypi / T(dk)) / (ypi / T(dk)))
+            end
+        else
+            tabley[row, idx] = zero(T)
+        end
+    end
+end
+
 @kernel function _ka_szoom_apply_kernel!(
     out,
     @Const(image_in),
@@ -1391,6 +1440,28 @@ end
     backend = AK.get_backend(table)
     _ka_szoom_table_kernel!(backend, (16, 16))(table, mag, n_out, k, dk; ndrange=size(table))
     return table
+end
+
+@inline function ka_szoom_tables!(
+    tablex::AbstractMatrix{T},
+    tabley::AbstractMatrix{T},
+    mag::T,
+    k::Int,
+    dk::Int,
+) where {T<:AbstractFloat}
+    backend = AK.get_backend(tablex)
+    ndrange = (max(size(tablex, 1), size(tabley, 1)), k)
+    _ka_szoom_tables_kernel!(backend, (16, 16))(
+        tablex,
+        tabley,
+        mag,
+        size(tablex, 1),
+        size(tabley, 1),
+        k,
+        dk;
+        ndrange=ndrange,
+    )
+    return tablex, tabley
 end
 
 @inline function ka_szoom_apply!(

@@ -490,6 +490,25 @@ Completed in slice 5:
     whichever helper still shows the largest steady-state host churn in the
     supported-kernel lane
 
+Completed in slice 6:
+- fused the paired GPU damped-sinc table fills used by
+  [`prop_szoom.jl`](../src/prop_szoom.jl) into a single backend kernel in
+  [`ka_kernels.jl`](../src/core/ka_kernels.jl)
+- measured effect on this machine:
+  - direct warmed AMDGPU `prop_szoom!` allocation:
+    - `12.80 KiB -> 10.80 KiB`
+  - direct warmed GPU table-fill split:
+    - fused table fill steady-state `8.82 KiB`
+    - apply kernel steady-state `8.80 KiB`
+  - supported-kernel lane:
+    - AMDGPU `prop_szoom_mutating`:
+      - allocs `468 -> 427`
+      - bytes `12.80 KiB -> 11.23 KiB`
+      - median `809.76 us -> 730.13 us`
+- consequence:
+  - `prop_szoom!` remains one of the heavier non-FFT GPU helpers, but the
+    paired table-fill launches are no longer the main avoidable cost
+
 ## Immediate Execution Order
 
 This is the intended implementation order for the next GPU-focused slices.
@@ -548,6 +567,9 @@ Every GPU-focused change should include the applicable checks below.
 - 2026-03-18: `G8` slice 5 fused paired GPU affine-axis fills for resample and
   quick magnify, reducing AMDGPU host churn and improving both supported-kernel
   rows.
+- 2026-03-18: `G8` slice 6 fused paired GPU damped-sinc table fills for
+  `prop_szoom!`, reducing AMDGPU host churn and improving the `prop_szoom`
+  supported-kernel row.
 - 2026-03-18: direct AMDGPU `prop_qphase` measurement confirmed the remaining
   warm-path host overhead is launch/runtime churn, not a semantics or type
   stability defect.
