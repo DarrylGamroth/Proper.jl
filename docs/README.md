@@ -17,6 +17,8 @@ planning/audit records from the port effort.
   `AMDGPU.jl`)
 - If a GPU backend or supported device is unavailable, the summary records that
   backend as skipped rather than failing the whole benchmark lane
+- Active GPU implementation tracking lives in
+  [GPU implementation plan](GPU_IMPLEMENTATION_PLAN.md)
 
 ## Core Contracts
 - [Numerics contract](numerics_contract.md)
@@ -39,6 +41,7 @@ investigation, or understanding how the port evolved. They are not the primary
 entry point for new users.
 
 - [Implementation progress](IMPLEMENTATION_PROGRESS.md)
+- [GPU implementation plan](GPU_IMPLEMENTATION_PLAN.md)
 - [Runtime optimization plan](RUNTIME_OPTIMIZATION_PLAN.md)
 - [Performance follow-up plan](PERFORMANCE_FOLLOWUP_PLAN.md)
 - [CUDA optimization plan](CUDA_OPTIMIZATION_PLAN.md)

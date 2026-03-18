@@ -1,5 +1,8 @@
 # CUDA Optimization Plan
 
+Backend-specific historical note. The active cross-backend GPU work tracker is
+[GPU_IMPLEMENTATION_PLAN.md](GPU_IMPLEMENTATION_PLAN.md).
+
 Working backend-tuning note. This document tracks CUDA-specific optimization
 questions and hardware validation tasks; it is not part of the stable user API
 surface.
