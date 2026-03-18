@@ -638,25 +638,26 @@ Every GPU-focused change should include the applicable checks below.
 - Remote validation on `spiders` (Julia 1.12.5, NVIDIA RTX A2000, driver
   550.135) confirmed that:
   - `CUDA.jl` loads and `CUDA.functional()` is `true`
-  - CUDA propagation itself is not the immediate problem:
+  - CUDA propagation itself is sane:
     - direct `prop_ptp` CPU-vs-CUDA comparison on a `16x16` test case stayed
       close (`max abs diff ≈ 3.05e-4`) with matching total energy
-  - the current CUDA geometry path is not yet functionally clean:
+  - the earlier CUDA geometry mismatch in `prop_circular_aperture` was fixed by
+    correcting the circle fast-path threshold semantics for sub-pixel radii
+  - after that fix:
+    - direct CPU-vs-CUDA comparison after `prop_circular_aperture` on the same
+      `16x16` case dropped to `max abs diff ≈ 2.98e-8`
     - the optional CUDA smoke in
       [`test/test_r2_trait_routing.jl`](../test/test_r2_trait_routing.jl)
-      fails at the `prop_circular_aperture` parity check
-    - direct CPU-vs-CUDA comparison after `prop_circular_aperture` on the same
-      `16x16` case showed:
-      - `max abs diff ≈ 8.26e-1`
-      - CUDA center sample stayed near `1.0`
-      - CPU center sample was `0.17355372`
-      - CUDA total energy stayed near `1.0`
-      - CPU total energy was `0.030120894`
+      passes on `spiders`
+  - the full package test suite on `spiders` is still partially blocked by
+    missing upstream baseline directories for file-mapping/parity tests, not by
+    CUDA backend failures
+  - the CPU/CUDA benchmark lane completed successfully on `spiders`
 - practical consequence:
-  - CUDA backend verification should be treated as blocked on a geometry-kernel
-    fix, not as complete
-  - the next CUDA-specific debug target is the centered circle / aperture path,
-    not FFT propagation
+  - CUDA backend validation is now functionally in a good state on a real CUDA
+    machine
+  - remaining remote-test limitations are environment/layout issues for the
+    upstream parity fixtures, not backend-routing bugs
 
 ## Execution Log
 - 2026-03-17: Plan created from GPU implementation review.
@@ -678,10 +679,10 @@ Every GPU-focused change should include the applicable checks below.
   expected warmed range and switched the `prop_magnify_quick_mutating`
   benchmark row to a prebuilt options object so it reflects the real quick
   kernel path instead of keyword-wrapper overhead.
-- 2026-03-18: remote CUDA validation on `spiders` confirmed CUDA loads and the
-  propagation core is broadly sane, but exposed a real `prop_circular_aperture`
-  mismatch in the optional CUDA smoke. CUDA backend validation is therefore
-  still blocked on a geometry-kernel fix.
+- 2026-03-18: remote CUDA validation on `spiders` first exposed, and then
+  confirmed the fix for, a real `prop_circular_aperture` geometry mismatch on
+  CUDA. Optional CUDA smoke now passes there, and the CPU/CUDA benchmark lane
+  completes successfully on that machine.
 - 2026-03-18: `G0` slice 1 hardened the CUDA/AMDGPU benchmark harnesses with a
   second explicit warm pass so reported GPU rows better reflect steady-state
   behavior.
