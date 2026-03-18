@@ -447,6 +447,22 @@ Completed in slice 3:
   - `prop_end!` is no longer a lagging GPU row; it is now clearly faster than
     the CPU row on this machine
 
+Completed in slice 4:
+- replaced the GPU rectangle-mask path in [`ka_kernels.jl`](../src/core/ka_kernels.jl)
+  with a single full-grid kernel instead of the old `fill!` plus bounded-box
+  kernel sequence
+- measured effect on this machine:
+  - direct warmed AMDGPU `prop_rectangle!` allocation:
+    - `12.91 KiB -> 10.34 KiB`
+  - supported-kernel lane:
+    - AMDGPU `prop_rectangle_mutating`:
+      - allocs `269 -> 199`
+      - bytes `7.03 KiB -> 4.86 KiB`
+      - median stayed roughly flat (`131.91 us -> 133.12 us`)
+- consequence:
+  - this was still worth keeping because it reduces host churn materially
+    without changing semantics or making the kernel path more complex
+
 ## Immediate Execution Order
 
 This is the intended implementation order for the next GPU-focused slices.
@@ -507,6 +523,9 @@ Every GPU-focused change should include the applicable checks below.
   stability defect.
 - 2026-03-18: full-size GPU `prop_end!` switched from quadrant broadcast/view
   staging to a single backend kernel, materially reducing warmed AMDGPU host
+  allocations.
+- 2026-03-18: GPU rectangle-mask staging collapsed from `fill!` plus bounded
+  kernel launch to one full-grid kernel, reducing warmed AMDGPU host
   allocations.
   - hidden host fallback in rotate/cubic-conv/end
   - CPU-owned `rho2` cache in `FFTWorkspace`

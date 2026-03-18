@@ -636,6 +636,61 @@ end
     end
 end
 
+@kernel function _ka_rectangle_mask_full_kernel!(
+    image,
+    xcp,
+    ycp,
+    xrp,
+    yrp,
+    cθ,
+    sθ,
+    minx::Int,
+    maxx::Int,
+    miny::Int,
+    maxy::Int,
+    nsub::Int,
+    dark::Bool,
+    ny::Int,
+    nx::Int,
+)
+    I = @index(Global, NTuple)
+    i = I[1]
+    j = I[2]
+
+    if i <= ny && j <= nx
+        @uniform begin
+            T = typeof(xcp)
+            inv_nsub2 = inv(T(nsub * nsub))
+            outside = dark ? one(T) : zero(T)
+            inside_fill = dark ? zero(T) : one(T)
+        end
+
+        ypix = i - 1
+        xpix = j - 1
+
+        if xpix < minx || xpix > maxx || ypix < miny || ypix > maxy
+            image[i, j] = outside
+        else
+            x0 = T(xpix) - xcp
+            y0 = T(ypix) - ycp
+            cnt = 0
+
+            for ys in 1:nsub
+                yo = y0 + _ka_subsample_offset(ys, nsub, one(T))
+                for xs in 1:nsub
+                    xo = x0 + _ka_subsample_offset(xs, nsub, one(T))
+                    xr = xo * cθ - yo * sθ
+                    yr = xo * sθ + yo * cθ
+                    cnt += (abs(xr) <= xrp && abs(yr) <= yrp)
+                end
+            end
+
+            pixval = T(cnt) * inv_nsub2
+            image[i, j] = dark ? (one(T) - pixval) : pixval
+        end
+    end
+end
+
 @kernel function _ka_ellipse_mask_kernel!(
     image,
     xcenter_pix,
@@ -1156,13 +1211,9 @@ end
     dark::Bool=false,
     nsub::Int=1,
 ) where {T<:AbstractFloat}
-    fill!(image, dark ? one(T) : zero(T))
-    boxny = max(maxy - miny + 1, 0)
-    boxnx = max(maxx - minx + 1, 0)
-    boxny == 0 && return image
-    boxnx == 0 && return image
+    ny, nx = size(image)
     backend = AK.get_backend(image)
-    _ka_rectangle_mask_kernel!(backend, (16, 16))(
+    _ka_rectangle_mask_full_kernel!(backend, (16, 16))(
         image,
         xcp,
         ycp,
@@ -1170,12 +1221,15 @@ end
         yrp,
         cθ,
         sθ,
-        miny + 1,
-        minx + 1,
-        boxny,
-        boxnx,
+        minx,
+        maxx,
+        miny,
+        maxy,
         nsub,
-        ndrange=(boxny, boxnx),
+        dark,
+        ny,
+        nx;
+        ndrange=(ny, nx),
     )
     return image
 end
