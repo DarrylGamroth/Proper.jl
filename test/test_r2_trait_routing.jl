@@ -239,6 +239,8 @@ using Test
             prop_ptp(wf, 0.01f0, ctx)
             fws = Proper.fft_workspace(ctx)
             @test fws.scratch isa CUDA.CuArray
+            rho2 = Proper.ensure_rho2_map!(fws, 16, 16, 1f-3)
+            @test rho2 isa CUDA.CuArray
             @test fws.forward_plan !== nothing
             @test fws.backward_plan !== nothing
             pfft = fws.forward_plan
@@ -317,6 +319,8 @@ using Test
             prop_ptp(wf, 0.01f0, ctx)
             fws = Proper.fft_workspace(ctx)
             @test fws.scratch isa AMDGPU.ROCArray
+            rho2 = Proper.ensure_rho2_map!(fws, 16, 16, 1f-3)
+            @test rho2 isa AMDGPU.ROCArray
             @test fws.forward_plan !== nothing
             @test fws.backward_plan !== nothing
             pfft = fws.forward_plan

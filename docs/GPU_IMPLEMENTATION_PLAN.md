@@ -183,7 +183,7 @@ Completed in slice 1:
   transfer stays explicit at the call site
 
 ### G2: Make Workspaces Fully Backend-Native
-Status: Not Started
+Status: Completed
 
 Priority: Highest
 
@@ -196,6 +196,14 @@ Acceptance:
 - No CPU-only cache fields remain in GPU propagation workspaces unless the path
   is explicitly CPU-only.
 - Generic propagation fallback does not repeatedly adapt CPU maps to the device.
+
+Completed in slice 1:
+- `FFTWorkspace.rho2` is now backend-parametric instead of hard-coded as
+  `Matrix{T}`
+- CUDA and AMDGPU now construct backend-native `rho2` caches
+- `ensure_rho2_map!` fills the cached map on the active backend
+- optional backend smoke now verifies that `ensure_rho2_map!` returns
+  `CuArray`/`ROCArray` storage on those backends
 
 ### G3: Establish Warmed Propagation Allocation Gates For GPU
 Status: Not Started
@@ -373,3 +381,10 @@ Every GPU-focused change should include the applicable checks below.
     scalar/pointwise/coordinate-grid paths
   - made `prop_end!` require matching output and wavefront backends
   - added regression coverage in `test/test_r2_trait_routing.jl`
+- 2026-03-17: G2 completed.
+  - `FFTWorkspace.rho2` is now backend-native and no longer hard-coded as a CPU
+    `Matrix`
+  - CUDA and AMDGPU extensions now construct backend-native cached frequency
+    maps alongside backend-native FFT scratch
+  - `ensure_rho2_map!` now fills the cache on the active backend instead of
+    forcing a CPU fill path

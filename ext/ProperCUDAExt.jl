@@ -22,10 +22,11 @@ Proper.workspace_complex_matrix(::Type{<:CUDA.CuArray}, ::Type{T}, ny::Integer=0
 Proper.fft_plan_exec_style(::Type{<:CUDA.CuArray}) = Proper.FFTPlanAvailableStyle()
 
 function Proper.FFTWorkspace(::Type{<:CUDA.CuArray}, ::Type{T}=Float64) where {T<:AbstractFloat}
+    rho2 = CUDA.CuMatrix{T}(undef, 0, 0)
     scratch = CUDA.CuMatrix{Complex{T}}(undef, 0, 0)
     real_scratch = CUDA.CuMatrix{T}(undef, 0, 0)
-    return Proper.FFTWorkspace{T,typeof(scratch),typeof(real_scratch),MaybeCUFFTFwdPlan2D{T},MaybeCUFFTBwdPlan2D{T}}(
-        Matrix{T}(undef, 0, 0),
+    return Proper.FFTWorkspace{T,typeof(rho2),typeof(scratch),typeof(real_scratch),MaybeCUFFTFwdPlan2D{T},MaybeCUFFTBwdPlan2D{T}}(
+        rho2,
         scratch,
         real_scratch,
         nothing,
@@ -43,7 +44,7 @@ end
 
 function Proper._ensure_fft_plans!(
     ::Proper.FFTPlanAvailableStyle,
-    ws::Proper.FFTWorkspace{T,<:CUDA.CuMatrix{Complex{T}},<:CUDA.CuMatrix{T},MaybeCUFFTFwdPlan2D{T},MaybeCUFFTBwdPlan2D{T}},
+    ws::Proper.FFTWorkspace{T,<:CUDA.CuMatrix{T},<:CUDA.CuMatrix{Complex{T}},<:CUDA.CuMatrix{T},MaybeCUFFTFwdPlan2D{T},MaybeCUFFTBwdPlan2D{T}},
     ny::Integer,
     nx::Integer,
     planning::Proper.FFTPlanningStyle,

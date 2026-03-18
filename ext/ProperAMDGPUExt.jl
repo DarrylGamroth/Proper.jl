@@ -22,10 +22,11 @@ Proper.workspace_complex_matrix(::Type{<:AMDGPU.ROCArray}, ::Type{T}, ny::Intege
 Proper.fft_plan_exec_style(::Type{<:AMDGPU.ROCArray}) = Proper.FFTPlanAvailableStyle()
 
 function Proper.FFTWorkspace(::Type{<:AMDGPU.ROCArray}, ::Type{T}=Float64) where {T<:AbstractFloat}
+    rho2 = AMDGPU.ROCMatrix{T}(undef, 0, 0)
     scratch = AMDGPU.ROCMatrix{Complex{T}}(undef, 0, 0)
     real_scratch = AMDGPU.ROCMatrix{T}(undef, 0, 0)
-    return Proper.FFTWorkspace{T,typeof(scratch),typeof(real_scratch),MaybeROCFFTFwdPlan2D{T},MaybeROCFFTBwdPlan2D{T}}(
-        Matrix{T}(undef, 0, 0),
+    return Proper.FFTWorkspace{T,typeof(rho2),typeof(scratch),typeof(real_scratch),MaybeROCFFTFwdPlan2D{T},MaybeROCFFTBwdPlan2D{T}}(
+        rho2,
         scratch,
         real_scratch,
         nothing,
@@ -43,7 +44,7 @@ end
 
 function Proper._ensure_fft_plans!(
     ::Proper.FFTPlanAvailableStyle,
-    ws::Proper.FFTWorkspace{T,<:AMDGPU.ROCMatrix{Complex{T}},<:AMDGPU.ROCMatrix{T},MaybeROCFFTFwdPlan2D{T},MaybeROCFFTBwdPlan2D{T}},
+    ws::Proper.FFTWorkspace{T,<:AMDGPU.ROCMatrix{T},<:AMDGPU.ROCMatrix{Complex{T}},<:AMDGPU.ROCMatrix{T},MaybeROCFFTFwdPlan2D{T},MaybeROCFFTBwdPlan2D{T}},
     ny::Integer,
     nx::Integer,
     planning::Proper.FFTPlanningStyle,

@@ -463,6 +463,25 @@ end
     end
 end
 
+@kernel function _ka_fill_fft_order_rho2_kernel!(
+    rho2,
+    inv_dy,
+    inv_dx,
+    ny::Int,
+    nx::Int,
+)
+    I = @index(Global, NTuple)
+    i = I[1]
+    j = I[2]
+
+    if i <= ny && j <= nx
+        @uniform T = eltype(rho2)
+        fx = T(_ka_shifted_index_0based(j - 1, nx)) * inv_dx
+        fy = T(_ka_shifted_index_0based(i - 1, ny)) * inv_dy
+        rho2[i, j] = fx * fx + fy * fy
+    end
+end
+
 @kernel function _ka_cubic_conv_grid_kernel!(
     out,
     @Const(a),
@@ -998,6 +1017,18 @@ end
     backend = AK.get_backend(out)
     _ka_fill_affine_axis_kernel!(backend, 256)(out, origin, scale, offset, n; ndrange=n)
     return out
+end
+
+@inline function ka_fill_fft_order_rho2!(
+    rho2::AbstractMatrix{T},
+    dx::T,
+) where {T<:AbstractFloat}
+    ny, nx = size(rho2)
+    inv_dy = inv(T(ny) * dx)
+    inv_dx = inv(T(nx) * dx)
+    backend = AK.get_backend(rho2)
+    _ka_fill_fft_order_rho2_kernel!(backend, (16, 16))(rho2, inv_dy, inv_dx, ny, nx; ndrange=(ny, nx))
+    return rho2
 end
 
 @inline function ka_cubic_conv_grid!(

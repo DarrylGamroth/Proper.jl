@@ -92,12 +92,13 @@ const MaybeFFTWBwdPlan2D{T} = Union{Nothing,FFTWBwdPlan2D{T}}
 
 mutable struct FFTWorkspace{
     T<:AbstractFloat,
+    RHO<:AbstractMatrix{T},
     SCR<:AbstractMatrix{Complex{T}},
     RS<:AbstractMatrix{T},
     FP,
     BP,
 }
-    rho2::Matrix{T}
+    rho2::RHO
     scratch::SCR
     real_scratch::RS
     forward_plan::FP
@@ -113,10 +114,11 @@ mutable struct FFTWorkspace{
 end
 
 function FFTWorkspace(::Type{T}=Float64) where {T<:AbstractFloat}
+    rho2 = Matrix{T}(undef, 0, 0)
     scratch = Matrix{Complex{T}}(undef, 0, 0)
     real_scratch = Matrix{T}(undef, 0, 0)
-    return FFTWorkspace{T,typeof(scratch),typeof(real_scratch),MaybeFFTWFwdPlan2D{T},MaybeFFTWBwdPlan2D{T}}(
-        Matrix{T}(undef, 0, 0),
+    return FFTWorkspace{T,typeof(rho2),typeof(scratch),typeof(real_scratch),MaybeFFTWFwdPlan2D{T},MaybeFFTWBwdPlan2D{T}}(
+        rho2,
         scratch,
         real_scratch,
         nothing,
@@ -133,10 +135,11 @@ function FFTWorkspace(::Type{T}=Float64) where {T<:AbstractFloat}
 end
 
 function FFTWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:AbstractFloat}
+    rho2 = workspace_matrix(A, T, 0, 0)
     scratch = workspace_complex_matrix(A, T, 0, 0)
     real_scratch = workspace_matrix(A, T, 0, 0)
-    return FFTWorkspace{T,typeof(scratch),typeof(real_scratch),MaybeFFTWFwdPlan2D{T},MaybeFFTWBwdPlan2D{T}}(
-        Matrix{T}(undef, 0, 0),
+    return FFTWorkspace{T,typeof(rho2),typeof(scratch),typeof(real_scratch),MaybeFFTWFwdPlan2D{T},MaybeFFTWBwdPlan2D{T}}(
+        rho2,
         scratch,
         real_scratch,
         nothing,
@@ -156,7 +159,7 @@ end
     dxT = T(dx)
     if !(ws.valid && ws.nx == nx && ws.ny == ny && ws.dx == dxT)
         ws.rho2 = _ensure_workspace_matrix(ws.rho2, ny, nx)
-        _fill_fft_order_rho2!(CPUBackend(), ws.rho2, dxT)
+        _fill_fft_order_rho2!(backend_style(typeof(ws.rho2)), ws.rho2, dxT)
         ws.nx = nx
         ws.ny = ny
         ws.dx = dxT
@@ -250,6 +253,14 @@ end
         end
     end
     return rho2
+end
+
+@inline function _fill_fft_order_rho2!(::CUDABackend, rho2::AbstractMatrix{T}, dx::T) where {T<:AbstractFloat}
+    return ka_fill_fft_order_rho2!(rho2, dx)
+end
+
+@inline function _fill_fft_order_rho2!(::AMDGPUBackend, rho2::AbstractMatrix{T}, dx::T) where {T<:AbstractFloat}
+    return ka_fill_fft_order_rho2!(rho2, dx)
 end
 
 @inline function fill_affine_axis!(
