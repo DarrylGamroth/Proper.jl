@@ -174,9 +174,19 @@ Completed in slice 1:
     - synthetic core propagation tail: `10.86 ms`
     - supported helper rows stabilized in the expected warmed range, for
       example:
-      - `prop_rotate_mutating`: `154.02 us`
-      - `prop_magnify_quick_mutating`: `94.37 us`
-      - `prop_resamplemap_mutating`: `406.05 us`, `6.91 KiB`
+    - `prop_rotate_mutating`: `154.02 us`
+    - `prop_magnify_quick_mutating`: `94.37 us`
+    - `prop_resamplemap_mutating`: `406.05 us`, `6.91 KiB`
+    - `prop_szoom_mutating` should be benchmarked with an explicit `ctx`, not
+      the convenience overload, because the documented GPU performance contract
+      is `ctx` + mutating APIs
+    - follow-up correction:
+      - the `prop_szoom_mutating` benchmark rows now use the explicit `ctx`
+        overload, and the library path now accepts generic `Real`
+        magnification values consistently with a context/workspace present
+      - current corrected row on this machine:
+        - CPU: `3.70 ms`, `0 allocs`
+        - AMDGPU: `571.28 us`, `386 allocs`, `10.02 KiB`
 
 ### G1: Remove Hidden Host Fallback From GPU-Visible Hot Paths
 Status: Completed

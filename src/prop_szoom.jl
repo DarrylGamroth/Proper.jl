@@ -155,6 +155,15 @@ function _prop_szoom!(
     return _prop_szoom!(sampling_exec_style(typeof(out), size(out, 1), size(out, 2)), out, image_in, mag, sws)
 end
 
+@inline function _prop_szoom!(
+    out::AbstractMatrix,
+    image_in::AbstractMatrix,
+    mag::Real,
+    sws::SamplingWorkspace{T},
+) where {T<:AbstractFloat}
+    return _prop_szoom!(out, image_in, T(mag), sws)
+end
+
 """
     prop_szoom!(out, image_in, mag)
     prop_szoom!(out, image_in, mag, ctx)
