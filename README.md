@@ -38,12 +38,28 @@ Run the dedicated Julia CPU/GPU comparison lane with:
 This generates:
 - `bench/reports/julia_cpu_gpu_summary.md`
 - `bench/reports/julia_cpu_gpu_steady_state.csv`
+- `bench/reports/julia_cpu_gpu_core_propagation_tail.csv`
 - `bench/reports/julia_cpu_gpu_supported_kernels.csv`
 
 The script uses the Julia steady-state CPU lane plus any available GPU lanes
 (`CUDA.jl` and/or `AMDGPU.jl`). It does not depend on the Python parity
 environment. If a GPU backend or supported device is unavailable, it records
 that backend as skipped instead of failing the whole run.
+
+The summary includes both:
+- the standard steady-state workload
+- a synthetic core propagation-tail workload derived from the repeated
+  lens/propagate sequence identified during hotspot analysis
+
+For profiling the shared core workload directly, run:
+
+```bash
+./scripts/profile_core_cpu_gpu.sh
+```
+
+This writes backend-specific text profiles under `bench/reports/` and keeps GPU
+optimization work tied to shared propagation code rather than model-specific
+wrappers.
 
 ### GPU Usage Contract
 - The intended GPU performance surface is:

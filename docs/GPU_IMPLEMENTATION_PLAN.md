@@ -335,7 +335,7 @@ Completed in slice 1:
   support matrix
 
 ### G7: Synthetic Core GPU Benchmark And Profiling Harness
-Status: Not Started
+Status: Completed
 
 Priority: Medium
 
@@ -352,6 +352,31 @@ Tasks:
 Acceptance:
 - GPU performance work can be evaluated on a shared core workload rather than
   model-specific wrappers.
+
+Completed in slice 1:
+- added a synthetic core propagation-tail workload under
+  [`bench/common/core_propagation_tail.jl`](../bench/common/core_propagation_tail.jl)
+  built from repeated `prop_lens`/`prop_propagate` transitions
+- added steady-state benchmark entry points for:
+  - CPU
+  - CUDA
+  - AMDGPU
+- added a profiling driver:
+  [`scripts/profile_core_cpu_gpu.sh`](../scripts/profile_core_cpu_gpu.sh)
+- integrated the synthetic core workload into the Julia CPU/GPU summary as
+  `Synthetic Core Propagation Tail`
+- current measured summary row on this machine:
+  - Julia CPU: `72.43 ms`
+  - Julia AMDGPU: `10.82 ms`
+  - CPU/AMDGPU: `6.69x`
+- current profile artifacts written to `bench/reports/`:
+  - `core_propagation_tail_profile_cpu.txt`
+  - `core_propagation_tail_profile_cuda.txt` when CUDA is available
+  - `core_propagation_tail_profile_amdgpu.txt`
+- current hotspot takeaway:
+  - CPU remains dominated by FFT execution in `prop_wts` / `prop_stw`
+  - AMDGPU is similarly dominated by rocFFT execution, with `prop_qphase`
+    present but secondary
 
 ### G8: Julia-Language Cleanup For GPU Paths
 Status: Not Started
@@ -418,6 +443,8 @@ Every GPU-focused change should include the applicable checks below.
 ## Execution Log
 - 2026-03-17: Plan created from GPU implementation review.
 - 2026-03-17: Initial findings captured:
+- 2026-03-18: `G7` completed with a synthetic core propagation benchmark and
+  profiling harness so GPU work no longer depends on WFIRST-derived wrappers.
   - hidden host fallback in rotate/cubic-conv/end
   - CPU-owned `rho2` cache in `FFTWorkspace`
   - convenience-wrapper context churn in resample/magnify paths

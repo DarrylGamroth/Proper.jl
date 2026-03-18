@@ -163,6 +163,9 @@ cuda_precision = loadjson(joinpath(root, "cuda_precision_split.json"))
 cuda_isolated = loadjson(joinpath(root, "cuda_isolated_wavefront_kernels.json"))
 amdgpu_jl = loadjson(joinpath(root, "julia_amdgpu_steady_state.json"))
 amdgpu_kernels = loadjson(joinpath(root, "amdgpu_supported_kernels.json"))
+core_cpu = loadjson(joinpath(root, "julia_core_propagation_tail_cpu.json"))
+core_cuda = loadjson(joinpath(root, "julia_core_propagation_tail_cuda.json"))
+core_amdgpu = loadjson(joinpath(root, "julia_core_propagation_tail_amdgpu.json"))
 
 summary_md_path = joinpath(root, "julia_cpu_gpu_summary.md")
 generated_paths = String[]
@@ -226,6 +229,53 @@ end
 append_ascii_section!(term, "Julia Steady-State CPU vs GPU", steady_headers, steady_rows; aligns=[:l, :r, :r, :r], notes=steady_notes)
 append_markdown_section!(md, "Julia Steady-State CPU vs GPU", steady_headers, steady_rows; notes=steady_notes)
 push!(generated_paths, write_csv(joinpath(root, "julia_cpu_gpu_steady_state.csv"), steady_headers, steady_rows))
+
+core_headers = ["Backend", "Median", "Samples", "Vs CPU", "Allocs", "Bytes"]
+core_rows = Vector{Vector{String}}()
+core_notes = String[]
+core_cpu_med = maybe_float(getpath(core_cpu, "stats", "median_ns"))
+if core_cpu !== nothing
+    push!(core_rows, [
+        "Julia CPU",
+        fmt_ns(core_cpu_med),
+        fmt_int(getpath(core_cpu, "stats", "samples")),
+        "1.00x",
+        fmt_int(getpath(core_cpu, "stats", "median_allocs")),
+        fmt_bytes(getpath(core_cpu, "stats", "median_bytes")),
+    ])
+end
+if maybe_bool(getpath(core_cuda, "meta", "available"))
+    core_cuda_med = maybe_float(getpath(core_cuda, "stats", "median_ns"))
+    push!(core_rows, [
+        "Julia CUDA",
+        fmt_ns(core_cuda_med),
+        fmt_int(getpath(core_cuda, "stats", "samples")),
+        core_cpu_med === nothing ? "-" : fmt_ratio(core_cpu_med / core_cuda_med),
+        fmt_int(getpath(core_cuda, "stats", "median_allocs")),
+        fmt_bytes(getpath(core_cuda, "stats", "median_bytes")),
+    ])
+elseif core_cuda !== nothing
+    push!(core_notes, "CUDA core propagation tail status: skipped")
+end
+if maybe_bool(getpath(core_amdgpu, "meta", "available"))
+    core_amdgpu_med = maybe_float(getpath(core_amdgpu, "stats", "median_ns"))
+    push!(core_rows, [
+        "Julia AMDGPU",
+        fmt_ns(core_amdgpu_med),
+        fmt_int(getpath(core_amdgpu, "stats", "samples")),
+        core_cpu_med === nothing ? "-" : fmt_ratio(core_cpu_med / core_amdgpu_med),
+        fmt_int(getpath(core_amdgpu, "stats", "median_allocs")),
+        fmt_bytes(getpath(core_amdgpu, "stats", "median_bytes")),
+    ])
+elseif core_amdgpu !== nothing
+    push!(core_notes, "AMDGPU core propagation tail status: skipped")
+end
+if core_cpu !== nothing
+    push!(core_notes, "Synthetic core workload derived from the repeated lens/propagate sequence identified by WFIRST hotspot analysis; used for shared-core tuning, not model-specific tuning.")
+end
+append_ascii_section!(term, "Synthetic Core Propagation Tail", core_headers, core_rows; aligns=[:l, :r, :r, :r, :r, :r], notes=core_notes)
+append_markdown_section!(md, "Synthetic Core Propagation Tail", core_headers, core_rows; notes=core_notes)
+push!(generated_paths, write_csv(joinpath(root, "julia_cpu_gpu_core_propagation_tail.csv"), core_headers, core_rows))
 
 cpu_kernel_data = getpath(cpu_supported, "kernels")
 cuda_kernel_data = cuda_available ? getpath(cuda_kernels, "kernels") : nothing

@@ -17,6 +17,7 @@ run_step() {
 }
 
 run_step "Julia CPU steady-state workload" julia --project=. bench/julia/steady_state/run.jl
+run_step "Julia CPU core propagation tail" julia --project=. bench/julia/steady_state/core_propagation_tail.jl
 run_step "Julia CPU supported kernels" julia --project=. bench/julia/steady_state/supported_kernels.jl
 run_cuda_benchmarks
 run_amdgpu_benchmarks
