@@ -410,6 +410,27 @@ end
     end
 end
 
+@kernel function _ka_shift_copy_kernel!(
+    out,
+    @Const(input),
+    sy::Int,
+    sx::Int,
+    ny::Int,
+    nx::Int,
+)
+    I = @index(Global, NTuple)
+    i = I[1]
+    j = I[2]
+
+    if i <= ny && j <= nx
+        is = i + sy
+        js = j + sx
+        is = ifelse(is > ny, is - ny, is)
+        js = ifelse(js > nx, js - nx, js)
+        out[is, js] = input[i, j]
+    end
+end
+
 @kernel function _ka_apply_qphase_kernel!(
     field,
     k,
@@ -979,6 +1000,19 @@ end
     oy, ox = size(out)
     backend = AK.get_backend(out)
     _ka_copy_shifted_complex_kernel!(backend, (16, 16))(out, field, r0, c0, ny ÷ 2, nx ÷ 2, ny, nx, oy, ox; ndrange=(oy, ox))
+    return out
+end
+
+@inline function ka_shift_copy!(
+    out::AbstractMatrix,
+    input::AbstractMatrix,
+    sy::Integer,
+    sx::Integer,
+)
+    ny, nx = size(input)
+    size(out) == (ny, nx) || throw(ArgumentError("shift output size must match input size"))
+    backend = AK.get_backend(out)
+    _ka_shift_copy_kernel!(backend, (16, 16))(out, input, sy, sx, ny, nx; ndrange=(ny, nx))
     return out
 end
 

@@ -42,8 +42,24 @@ end
     return "wavefront"
 end
 
+@inline function _with_no_apply(opts::PSDErrorMapOptions{T,R}, no_apply::Bool) where {T<:AbstractFloat,R}
+    return PSDErrorMapOptions{T,R}(
+        opts.rng,
+        opts.file,
+        opts.inclination,
+        opts.rotation,
+        opts.tpf,
+        opts.max_frequency,
+        opts.rms,
+        no_apply,
+        opts.mirror,
+        opts.amplitude_target,
+    )
+end
+
 @inline function _phase_from_map!(wf::WaveFront, dmap::AbstractMatrix, scale::Real)
-    wf.field .*= cis.(scale .* backend_adapt(wf.field, dmap))
+    map_backend = same_backend_style(typeof(wf.field), typeof(dmap)) ? dmap : backend_adapt(wf.field, dmap)
+    wf.field .*= cis.(scale .* map_backend)
     return wf
 end
 
@@ -52,42 +68,22 @@ end
     dmap_shifted::AbstractMatrix,
     scale::Real,
 )
-    wf.field .*= cis.(scale .* backend_adapt(wf.field, prop_shift_center(dmap_shifted)))
-    return wf
-end
-
-@inline function _phase_from_shifted_map!(
-    wf::WaveFront{T,<:StridedMatrix{Complex{T}}},
-    dmap_shifted::StridedMatrix{T},
-    scale::Real,
-) where {T<:AbstractFloat}
-    scratch = ensure_fft_real_scratch!(wf.workspace.fft, size(dmap_shifted, 1), size(dmap_shifted, 2))
-    prop_shift_center!(scratch, dmap_shifted)
-    wf.field .*= cis.(scale .* scratch)
+    wf.field .*= cis.(scale .* shift_center_for_wavefront!(wf, dmap_shifted))
     return wf
 end
 
 @inline function _apply_shifted_amplitude_map!(
-    field::AbstractMatrix{<:Complex},
+    wf::WaveFront,
     dmap_shifted::AbstractMatrix,
 )
-    field .*= backend_adapt(field, prop_shift_center(dmap_shifted))
-    return field
-end
-
-@inline function _apply_shifted_amplitude_map!(
-    field::StridedMatrix{Complex{T}},
-    dmap_shifted::StridedMatrix{T},
-) where {T<:AbstractFloat}
-    ws = active_run_workspace()
-    ws isa ProperWorkspace{T} || begin
-        field .*= prop_shift_center(dmap_shifted)
-        return field
+    if same_backend_style(typeof(wf.field), typeof(dmap_shifted))
+        scratch = ensure_fft_real_scratch!(wf.workspace.fft, size(dmap_shifted, 1), size(dmap_shifted, 2))
+        prop_shift_center!(scratch, dmap_shifted)
+        wf.field .*= scratch
+        return wf.field
     end
-    scratch = ensure_fft_real_scratch!(ws.fft, size(dmap_shifted, 1), size(dmap_shifted, 2))
-    prop_shift_center!(scratch, dmap_shifted)
-    field .*= scratch
-    return field
+    wf.field .*= backend_adapt(wf.field, prop_shift_center(dmap_shifted))
+    return wf.field
 end
 
 @inline function _read_psd_map(wf::WaveFront, fpath::AbstractString, ::Type{T}) where {T<:AbstractFloat}
@@ -111,12 +107,16 @@ end
 
 @inline function _shift_center_inplace!(dmap::Matrix{T}, ws::FFTWorkspace{T}) where {T<:AbstractFloat}
     ny, nx = size(dmap)
-    scratch = ensure_fft_real_scratch!(ws, ny, nx)
-    if scratch === dmap
-        copyto!(dmap, prop_shift_center(dmap))
+    if ws.real_scratch isa Matrix{T}
+        scratch = ensure_fft_real_scratch!(ws, ny, nx)
+        if scratch === dmap
+            copyto!(dmap, prop_shift_center(dmap))
+        else
+            prop_shift_center!(scratch, dmap)
+            copyto!(dmap, scratch)
+        end
     else
-        prop_shift_center!(scratch, dmap)
-        copyto!(dmap, scratch)
+        copyto!(dmap, prop_shift_center(dmap))
     end
     return dmap
 end
@@ -321,24 +321,16 @@ end
 
 @inline function _build_psd_map_default!(
     dmap::Matrix{T},
-    wf::WaveFront{T,<:StridedMatrix{Complex{T}}},
-    amp::Real,
-    b::Real,
-    c::Real,
-    opts::PSDErrorMapOptions{T},
-) where {T<:AbstractFloat}
-    _build_psd_map_shifted!(dmap, wf, amp, b, c, opts, wf.workspace.fft)
-    return true
-end
-
-@inline function _build_psd_map_default!(
-    dmap::Matrix{T},
     wf::WaveFront{T},
     amp::Real,
     b::Real,
     c::Real,
     opts::PSDErrorMapOptions{T},
 ) where {T<:AbstractFloat}
+    if backend_style(typeof(wf.field)) isa CPUBackend && wf.field isa StridedMatrix{Complex{T}}
+        _build_psd_map_shifted!(dmap, wf, amp, b, c, opts, wf.workspace.fft)
+        return true
+    end
     copyto!(dmap, _build_psd_map_unshifted(wf, amp, b, c, opts))
     return false
 end
@@ -368,7 +360,7 @@ function _prop_psd_errormap!(
         dmap .+= opts.amplitude_target - maximum(dmap)
         if !opts.no_apply
             if map_is_shifted
-                _apply_shifted_amplitude_map!(wf.field, dmap)
+                _apply_shifted_amplitude_map!(wf, dmap)
             else
                 wf.field .*= dmap
             end
@@ -425,14 +417,24 @@ function _prop_psd_errormap!(
         return _prop_psd_errormap!(dmap::Matrix{T}, wf, amp, b, c, opts)
     end
     tmp = Matrix{T}(undef, size(dmap)...)
-    _prop_psd_errormap!(tmp, wf, amp, b, c, opts)
+    build_opts = opts.no_apply ? opts : _with_no_apply(opts, true)
+    _prop_psd_errormap!(tmp, wf, amp, b, c, build_opts)
     copyto!(dmap, tmp)
+    if !opts.no_apply
+        maptype = _psd_maptype(opts)
+        if opts.amplitude_target !== nothing
+            _apply_shifted_amplitude_map!(wf, dmap)
+        else
+            scale = maptype === :mirror_surface ? -4pi / wf.wavelength_m : 2pi / wf.wavelength_m
+            _phase_from_shifted_map!(wf, dmap, scale)
+        end
+    end
     return dmap
 end
 
 function _prop_psd_errormap!(wf::WaveFront, amp::Real, b::Real, c::Real, opts::PSDErrorMapOptions{T}) where {T<:AbstractFloat}
     n = size(wf.field, 1)
-    dmap = Matrix{T}(undef, n, n)
+    dmap = similar(wf.field, T, n, n)
     return _prop_psd_errormap!(dmap, wf, amp, b, c, opts)
 end
 

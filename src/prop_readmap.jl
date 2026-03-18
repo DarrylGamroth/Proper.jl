@@ -7,6 +7,7 @@ function prop_readmap(
     kwargs...,
 )
     dmap, header = prop_fits_read_with_header(filename)
+    ctx = RunContext(wf)
     sampling = kw_lookup_float(kwargs, :SAMPLING, nothing)
     xc_map = kw_lookup_float(kwargs, :XC_MAP, nothing)
     yc_map = kw_lookup_float(kwargs, :YC_MAP, nothing)
@@ -24,12 +25,12 @@ function prop_readmap(
     xc = xc_map !== nothing ? xc_map : size(dmap, 2) ÷ 2
     yc = yc_map !== nothing ? yc_map : size(dmap, 1) ÷ 2
 
-    out = prop_resamplemap(wf, dmap, pixsize, xc, yc, xshift, yshift)
-    if out isa StridedMatrix{<:AbstractFloat}
-        scratch = ensure_fft_real_scratch!(wf.workspace.fft, size(out, 1), size(out, 2))
-        prop_shift_center!(scratch, out; inverse=true)
-        copyto!(out, scratch)
-        return out
-    end
-    return prop_shift_center(out; inverse=true)
+    ny, nx = size(wf.field)
+    Tout = float(promote_type(real(eltype(dmap)), typeof(wf.sampling_m), typeof(pixsize), typeof(xc), typeof(yc), typeof(xshift), typeof(yshift)))
+    dmap_backend = same_backend_style(typeof(wf.field), typeof(dmap)) ? dmap : backend_adapt(wf.field, dmap)
+    out = similar(dmap_backend, Tout, ny, nx)
+    prop_resamplemap!(out, wf, dmap_backend, pixsize, xc, yc, ctx, xshift, yshift)
+    shifted = shift_center_for_wavefront!(wf, out; inverse=true)
+    out === shifted || copyto!(out, shifted)
+    return out
 end

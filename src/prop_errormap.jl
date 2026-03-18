@@ -38,6 +38,7 @@ end
 end
 
 function _prop_errormap!(wf::WaveFront, filename::AbstractString, xshift::Real, yshift::Real, opts::ErrorMapOptions)
+    ctx = RunContext(wf)
     dmap = prop_readmap(
         wf,
         filename,
@@ -49,22 +50,14 @@ function _prop_errormap!(wf::WaveFront, filename::AbstractString, xshift::Real, 
     )
 
     if opts.rotatemap !== nothing || opts.magnify !== nothing
-        scratch = ensure_fft_real_scratch!(wf.workspace.fft, size(dmap, 1), size(dmap, 2))
-        prop_shift_center!(scratch, dmap)
-        dmap = scratch
+        dmap = shift_center_for_wavefront!(wf, dmap)
         if opts.rotatemap !== nothing
-            dmap = prop_rotate(dmap, opts.rotatemap; METH="cubic", MISSING=0.0)
+            dmap = prop_rotate(dmap, opts.rotatemap, ctx; METH="cubic", MISSING=0.0)
         end
         if opts.magnify !== nothing
-            dmap = prop_magnify(dmap, opts.magnify, size(dmap, 1))
+            dmap = prop_magnify(dmap, opts.magnify, size(dmap, 1), ctx)
         end
-        if dmap isa StridedMatrix{<:AbstractFloat}
-            scratch = ensure_fft_real_scratch!(wf.workspace.fft, size(dmap, 1), size(dmap, 2))
-            prop_shift_center!(scratch, dmap; inverse=true)
-            dmap = copy(scratch)
-        else
-            dmap = prop_shift_center(dmap; inverse=true)
-        end
+        dmap = shift_center_for_wavefront!(wf, dmap; inverse=true)
     end
 
     if opts.microns
@@ -78,10 +71,11 @@ function _prop_errormap!(wf::WaveFront, filename::AbstractString, xshift::Real, 
 
     maptype = _errormap_maptype(opts)
     if maptype === :amplitude
-        wf.field .*= backend_adapt(wf.field, dmap)
+        wf.field .*= same_backend_style(typeof(wf.field), typeof(dmap)) ? dmap : backend_adapt(wf.field, dmap)
     else
         scale = maptype === :mirror_surface ? -4pi / wf.wavelength_m : 2pi / wf.wavelength_m
-        wf.field .*= cis.(scale .* backend_adapt(wf.field, dmap))
+        map_backend = same_backend_style(typeof(wf.field), typeof(dmap)) ? dmap : backend_adapt(wf.field, dmap)
+        wf.field .*= cis.(scale .* map_backend)
     end
     return wf
 end

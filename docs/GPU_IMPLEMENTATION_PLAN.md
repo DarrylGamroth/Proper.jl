@@ -261,7 +261,7 @@ Acceptance:
 - Benchmarks use explicit contexts/prepared execution consistently.
 
 ### G5: Convert Map-Application Helpers To Scratch-Backed GPU Paths
-Status: Not Started
+Status: Completed
 
 Priority: High
 
@@ -281,6 +281,21 @@ Approach:
 Acceptance:
 - GPU-visible map-application paths stay on backend for their hot transforms.
 - No silent CPU shift/magnify/rotate staging remains in promoted fast paths.
+
+Completed in slice 1:
+- `prop_shift_center!` now has a backend-native KA shift path for CUDA and
+  AMDGPU arrays, so same-backend map centering no longer falls back to scalar
+  host iteration
+- `prop_add_phase`, `prop_multiply`, and `prop_divide` now reuse backend-native
+  FFT scratch via `shift_center_for_wavefront!` instead of allocating shifted
+  temporaries for same-backend GPU maps
+- `prop_readmap` now resamples onto the wavefront backend and returns a
+  backend-native shifted map for GPU wavefronts
+- `prop_errormap` now keeps rotate/magnify and final application on the
+  wavefront backend when the map has already been promoted there
+- `prop_psd_errormap` now returns backend-native outputs for non-CPU wavefronts
+  and applies shifted maps on-backend instead of bouncing through host-adapted
+  temporaries
 
 ### G6: Honest Backend Support Matrix
 Status: Not Started
@@ -411,3 +426,11 @@ Every GPU-focused change should include the applicable checks below.
   - current GPU warm-path checks are bounded-allocation guards rather than
     zero-allocation guarantees, reflecting the measured AMDGPU host-side
     overhead today
+- 2026-03-17: G5 completed.
+  - added backend-native KA center-shift support for CUDA and AMDGPU arrays
+  - `prop_add_phase`, `prop_multiply`, and `prop_divide` now reuse
+    backend-native scratch for same-backend map application
+  - `prop_readmap`, `prop_errormap`, and `prop_psd_errormap` now keep promoted
+    GPU maps on-backend through their hot transform/apply path
+  - optional GPU smoke now exercises map application, FITS map reads, error-map
+    application, and PSD error-map output/application on AMDGPU

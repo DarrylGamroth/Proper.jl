@@ -61,6 +61,7 @@ end
 
 @inline Proper.ka_mask_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AMDGPU.ROCArray} = ny > 0 && nx > 0
 @inline Proper.ka_end_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AMDGPU.ROCArray} = ny > 0 && nx > 0
+@inline Proper.ka_shift_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AMDGPU.ROCArray} = ny > 0 && nx > 0
 @inline Proper.ka_geometry_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AMDGPU.ROCArray} = ny > 0 && nx > 0
 @inline Proper.ka_sampling_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AMDGPU.ROCArray} = ny > 0 && nx > 0
 @inline Proper.ka_cubic_grid_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AMDGPU.ROCArray} = ny > 0 && nx > 0

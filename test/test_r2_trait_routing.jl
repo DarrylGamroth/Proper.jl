@@ -1,4 +1,5 @@
 using Test
+using Random
 
 function _warmed_gpu_qphase_alloc(wf, z, ctx, sync!)
     prop_qphase(wf, z, ctx)
@@ -70,6 +71,74 @@ const GPU_WARM_WTS_ALLOC_MAX = 12_288
 const GPU_WARM_STW_ALLOC_MAX = 8_192
 const GPU_WARM_END_REAL_ALLOC_MAX = 16_384
 const GPU_WARM_END_COMPLEX_ALLOC_MAX = 16_384
+
+function _gpu_map_apply_smoke!(
+    wf_gpu,
+    gpu_real_matrix,
+    cpu_array_type,
+    sync!,
+)
+    n = size(wf_gpu.field, 1)
+    scale_map_cpu = fill(Float32(1.25), n, n)
+    phase_map_cpu = fill(Float32(1f-9), n, n)
+    scale_map_gpu = copyto!(similar(gpu_real_matrix, size(scale_map_cpu)...), scale_map_cpu)
+    phase_map_gpu = copyto!(similar(gpu_real_matrix, size(phase_map_cpu)...), phase_map_cpu)
+
+    wf_mul_gpu = Proper.WaveFront(similar(wf_gpu.field), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
+    fill!(wf_mul_gpu.field, ComplexF32(1))
+    wf_mul_cpu = Proper.WaveFront(fill(ComplexF32(1), n, n), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
+    prop_multiply(wf_mul_gpu, scale_map_gpu)
+    sync!()
+    prop_multiply(wf_mul_cpu, scale_map_cpu)
+    @test isapprox(Array(wf_mul_gpu.field), wf_mul_cpu.field; atol=1f-6, rtol=1f-6)
+
+    wf_div_gpu = Proper.WaveFront(similar(wf_gpu.field), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
+    fill!(wf_div_gpu.field, ComplexF32(2))
+    wf_div_cpu = Proper.WaveFront(fill(ComplexF32(2), n, n), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
+    prop_divide(wf_div_gpu, scale_map_gpu)
+    sync!()
+    prop_divide(wf_div_cpu, scale_map_cpu)
+    @test isapprox(Array(wf_div_gpu.field), wf_div_cpu.field; atol=1f-6, rtol=1f-6)
+
+    wf_phase_gpu = Proper.WaveFront(similar(wf_gpu.field), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
+    fill!(wf_phase_gpu.field, ComplexF32(1))
+    wf_phase_cpu = Proper.WaveFront(fill(ComplexF32(1), n, n), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
+    prop_add_phase(wf_phase_gpu, phase_map_gpu)
+    sync!()
+    prop_add_phase(wf_phase_cpu, phase_map_cpu)
+    @test isapprox(Array(wf_phase_gpu.field), wf_phase_cpu.field; atol=1f-6, rtol=1f-6)
+
+    mktempdir() do dir
+        f = joinpath(dir, "map.fits")
+        Proper.prop_fits_write(f, scale_map_cpu; HEADER=Dict("PIXSIZE" => wf_gpu.sampling_m))
+
+        map_read = prop_readmap(wf_gpu, f; SAMPLING=wf_gpu.sampling_m)
+        sync!()
+        @test map_read isa cpu_array_type
+
+        wf_err_gpu = Proper.WaveFront(similar(wf_gpu.field), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
+        fill!(wf_err_gpu.field, ComplexF32(1))
+        wf_err_cpu = Proper.WaveFront(fill(ComplexF32(1), n, n), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
+        prop_errormap(wf_err_gpu, f; SAMPLING=wf_gpu.sampling_m, WAVEFRONT=true)
+        sync!()
+        prop_errormap(wf_err_cpu, f; SAMPLING=wf_gpu.sampling_m, WAVEFRONT=true)
+        @test isapprox(Array(wf_err_gpu.field), wf_err_cpu.field; atol=1f-5, rtol=1f-5)
+    end
+
+    wf_psd_gpu = Proper.WaveFront(similar(wf_gpu.field), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
+    fill!(wf_psd_gpu.field, ComplexF32(1))
+    dmap_gpu = prop_psd_errormap(wf_psd_gpu, 1e-18, 10.0, 3.0; no_apply=true, rng=Random.MersenneTwister(7))
+    sync!()
+    @test dmap_gpu isa cpu_array_type
+
+    wf_psd_apply_gpu = Proper.WaveFront(similar(wf_gpu.field), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
+    fill!(wf_psd_apply_gpu.field, ComplexF32(1))
+    wf_psd_apply_cpu = Proper.WaveFront(fill(ComplexF32(1), n, n), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
+    prop_psd_errormap(wf_psd_apply_gpu, 1e-18, 10.0, 3.0; MIRROR=true, rng=Random.MersenneTwister(11))
+    sync!()
+    prop_psd_errormap(wf_psd_apply_cpu, 1e-18, 10.0, 3.0; MIRROR=true, rng=Random.MersenneTwister(11))
+    @test isapprox(Array(wf_psd_apply_gpu.field), wf_psd_apply_cpu.field; atol=3f-4, rtol=1f-3)
+end
 
 @testset "R2 trait-driven routing" begin
     @testset "Style dispatch for cubic convolution" begin
@@ -348,6 +417,7 @@ const GPU_WARM_END_COMPLEX_ALLOC_MAX = 16_384
             @test _warmed_gpu_stw_alloc(wf_alloc, 0.01f0, ctx, CUDA.synchronize) <= GPU_WARM_STW_ALLOC_MAX
             @test _warmed_gpu_end_real_alloc(out_alloc, wf_alloc, CUDA.synchronize) <= GPU_WARM_END_REAL_ALLOC_MAX
             @test _warmed_gpu_end_complex_alloc(similar(wf_alloc.field), wf_alloc, CUDA.synchronize) <= GPU_WARM_END_COMPLEX_ALLOC_MAX
+            _gpu_map_apply_smoke!(wf_alloc, CUDA.zeros(Float32, 16, 16), CUDA.CuArray, CUDA.synchronize)
         else
             @test true
         end
@@ -433,6 +503,7 @@ const GPU_WARM_END_COMPLEX_ALLOC_MAX = 16_384
             @test _warmed_gpu_stw_alloc(wf_alloc, 0.01f0, ctx, AMDGPU.synchronize) <= GPU_WARM_STW_ALLOC_MAX
             @test _warmed_gpu_end_real_alloc(out_alloc, wf_alloc, AMDGPU.synchronize) <= GPU_WARM_END_REAL_ALLOC_MAX
             @test _warmed_gpu_end_complex_alloc(similar(wf_alloc.field), wf_alloc, AMDGPU.synchronize) <= GPU_WARM_END_COMPLEX_ALLOC_MAX
+            _gpu_map_apply_smoke!(wf_alloc, AMDGPU.zeros(Float32, 16, 16), AMDGPU.ROCArray, AMDGPU.synchronize)
         else
             @test true
         end
