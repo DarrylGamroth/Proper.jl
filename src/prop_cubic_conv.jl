@@ -42,6 +42,7 @@ abstract type CubicGridExecStyle end
 struct CubicGridLoopExecStyle <: CubicGridExecStyle end
 struct CubicGridKAExecStyle <: CubicGridExecStyle end
 struct CubicGridHostExecStyle <: CubicGridExecStyle end
+struct CubicGridUnsupportedExecStyle <: CubicGridExecStyle end
 
 @inline cubic_grid_exec_style(
     ::StridedLayout,
@@ -64,11 +65,20 @@ struct CubicGridHostExecStyle <: CubicGridExecStyle end
 @inline cubic_grid_exec_style(
     ::ArrayLayoutStyle,
     ::ArrayLayoutStyle,
+    ::CPUBackend,
+    ::CPUBackend,
+    ::InterpStyle,
+    ::Val,
+) = CubicGridHostExecStyle()
+
+@inline cubic_grid_exec_style(
+    ::ArrayLayoutStyle,
+    ::ArrayLayoutStyle,
     ::BackendStyle,
     ::BackendStyle,
     ::InterpStyle,
     ::Val,
-) = CubicGridHostExecStyle()
+) = CubicGridUnsupportedExecStyle()
 
 @inline function _prop_cubic_conv_grid!(
     ::CubicGridLoopExecStyle,
@@ -104,6 +114,20 @@ end
     prop_cubic_conv_grid!(host_out, sty, Matrix(a), xval, yval)
     copyto!(out, host_out)
     return out
+end
+
+@inline function _prop_cubic_conv_grid!(
+    ::CubicGridUnsupportedExecStyle,
+    out::AbstractMatrix,
+    sty::InterpStyle,
+    a::AbstractMatrix,
+    xval::AbstractVector,
+    yval::AbstractVector,
+)
+    _ = sty
+    _ = xval
+    _ = yval
+    throw(ArgumentError("prop_cubic_conv_grid! has no native implementation for $(typeof(a)) -> $(typeof(out)); use matching CPU arrays or a backend-native path"))
 end
 
 """
@@ -164,6 +188,9 @@ requests.
 - Scalar calls sample one point, vector calls support pointwise or grid
   interpolation, and `prop_cubic_conv_grid!` writes directly into a caller
   buffer.
+- GPU/backend execution requires a native implementation for the requested
+  topology. Unsupported backend combinations throw instead of silently falling
+  back to host materialization.
 """
 function prop_cubic_conv(sty::InterpStyle, a::AbstractMatrix, y::Real, x::Real)
     return _prop_cubic_conv_point(array_layout_style(typeof(a)), backend_style(typeof(a)), sty, a, y, x)
@@ -182,13 +209,27 @@ end
 
 @inline function _prop_cubic_conv_point(
     ::ArrayLayoutStyle,
-    ::BackendStyle,
+    ::CPUBackend,
     sty::InterpStyle,
     a::AbstractMatrix,
     y::Real,
     x::Real,
 )
     return _cubic_sample(sty, Matrix(a), y, x)
+end
+
+@inline function _prop_cubic_conv_point(
+    ::ArrayLayoutStyle,
+    ::BackendStyle,
+    sty::InterpStyle,
+    a::AbstractMatrix,
+    y::Real,
+    x::Real,
+)
+    _ = sty
+    _ = y
+    _ = x
+    throw(ArgumentError("prop_cubic_conv has no native point-sampling implementation for $(typeof(a)); use CPU arrays or a backend-native path"))
 end
 
 function prop_cubic_conv(a::AbstractMatrix, y::Real, x::Real)
@@ -220,7 +261,7 @@ end
 
 @inline function _prop_cubic_conv_pointwise(
     ::ArrayLayoutStyle,
-    ::BackendStyle,
+    ::CPUBackend,
     sty::InterpStyle,
     a::AbstractMatrix,
     xval::AbstractVector,
@@ -230,6 +271,20 @@ end
     out = similar(a, eltype(host_out), size(host_out)...)
     copyto!(out, host_out)
     return out
+end
+
+@inline function _prop_cubic_conv_pointwise(
+    ::ArrayLayoutStyle,
+    ::BackendStyle,
+    sty::InterpStyle,
+    a::AbstractMatrix,
+    xval::AbstractVector,
+    yval::AbstractVector,
+)
+    _ = sty
+    _ = xval
+    _ = yval
+    throw(ArgumentError("prop_cubic_conv pointwise mode has no native implementation for $(typeof(a)); use CPU arrays or a backend-native path"))
 end
 
 function prop_cubic_conv(a::AbstractMatrix, xval::AbstractVector, yval::AbstractVector; threaded::Bool=true, grid::Bool=true)
@@ -257,7 +312,7 @@ end
 
 @inline function _prop_cubic_conv_coordinate_grid(
     ::ArrayLayoutStyle,
-    ::BackendStyle,
+    ::CPUBackend,
     sty::InterpStyle,
     a::AbstractMatrix,
     xgrid::AbstractMatrix,
@@ -267,6 +322,20 @@ end
     out = similar(a, eltype(host_out), size(host_out)...)
     copyto!(out, host_out)
     return out
+end
+
+@inline function _prop_cubic_conv_coordinate_grid(
+    ::ArrayLayoutStyle,
+    ::BackendStyle,
+    sty::InterpStyle,
+    a::AbstractMatrix,
+    xgrid::AbstractMatrix,
+    ygrid::AbstractMatrix,
+)
+    _ = sty
+    _ = xgrid
+    _ = ygrid
+    throw(ArgumentError("prop_cubic_conv grid=false coordinate mode has no native implementation for $(typeof(a)); use CPU arrays or a backend-native path"))
 end
 
 function prop_cubic_conv(a::AbstractMatrix, xgrid::AbstractMatrix, ygrid::AbstractMatrix; threaded::Bool=true, grid::Bool=false)

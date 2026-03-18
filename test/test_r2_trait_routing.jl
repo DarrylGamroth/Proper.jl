@@ -33,6 +33,12 @@ using Test
         @test isapprox(m_ctx, m_def; atol=1e-6, rtol=1e-6)
     end
 
+    @testset "Explicit backend boundary for hot output paths" begin
+        wf = prop_begin(1.0, 500e-9, 16)
+        cpu_out = zeros(Float64, 16, 16)
+        @test prop_end!(cpu_out, wf) === cpu_out
+    end
+
     @testset "KA interpolation pilot parity on large CPU arrays" begin
         n = 256
         @test !Proper.ka_cubic_grid_enabled(Matrix{Float32}, n, n)
@@ -218,6 +224,7 @@ using Test
             ropts = Proper.ResampleMapOptions(wf_resample, wf_resample.sampling_m, 8f0, 8f0)
             res = similar(a)
             Proper.prop_resamplemap!(res, wf_resample, a, ropts, ctx)
+            @test_throws ArgumentError Proper.prop_cubic_conv(a, 1.5f0, 1.5f0)
             @test size(m) == (16, 16)
             @test size(r) == (16, 16)
             @test size(s) == (16, 16)
@@ -251,6 +258,7 @@ using Test
             rect = prop_rectangle(wf, 5f-4, 4f-4)
             round = prop_rounded_rectangle(wf, 2f-4, 5f-4, 4f-4)
             out, sampling = prop_end(wf)
+            @test_throws ArgumentError Proper.prop_end!(zeros(Float32, 16, 16), wf)
             out_ref, sampling_ref = prop_end(wf_ref)
             @test size(rect) == (16, 16)
             @test size(round) == (16, 16)
@@ -294,6 +302,7 @@ using Test
             ropts = Proper.ResampleMapOptions(wf_resample, wf_resample.sampling_m, 8f0, 8f0)
             res = similar(a)
             Proper.prop_resamplemap!(res, wf_resample, a, ropts, ctx)
+            @test_throws ArgumentError Proper.prop_cubic_conv(a, 1.5f0, 1.5f0)
             @test size(m) == (16, 16)
             @test size(r) == (16, 16)
             @test size(s) == (16, 16)
@@ -325,6 +334,7 @@ using Test
             @test wf.workspace.mask.mask isa AMDGPU.ROCArray
             prop_circular_aperture(wf_ref, 2.5f-4)
             out, sampling = prop_end(wf)
+            @test_throws ArgumentError Proper.prop_end!(zeros(Float32, 16, 16), wf)
             out_ref, sampling_ref = prop_end(wf_ref)
             @test size(out) == (16, 16)
             @test sampling == wf.sampling_m

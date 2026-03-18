@@ -83,6 +83,7 @@ abstract type RotateExecStyle end
 struct RotateLoopExecStyle <: RotateExecStyle end
 struct RotateKAExecStyle <: RotateExecStyle end
 struct RotateHostExecStyle <: RotateExecStyle end
+struct RotateUnsupportedExecStyle <: RotateExecStyle end
 
 @inline rotate_ka_support(::Val{ROTATE_LINEAR}, ::InterpStyle) = Val(true)
 @inline rotate_ka_support(::Val{ROTATE_CUBIC}, ::CubicInterpStyle) = Val(true)
@@ -118,11 +119,20 @@ struct RotateHostExecStyle <: RotateExecStyle end
 @inline rotate_exec_style(
     ::ArrayLayoutStyle,
     ::ArrayLayoutStyle,
-    ::BackendStyle,
-    ::BackendStyle,
+    ::CPUBackend,
+    ::CPUBackend,
     ::Val,
     ::Val,
 ) = RotateHostExecStyle()
+
+@inline rotate_exec_style(
+    ::ArrayLayoutStyle,
+    ::ArrayLayoutStyle,
+    ::BackendStyle,
+    ::BackendStyle,
+    ::Val,
+    ::Val,
+) = RotateUnsupportedExecStyle()
 
 @inline function _prop_rotate_ka!(
     ::Val{ROTATE_LINEAR},
@@ -216,6 +226,20 @@ end
     return out
 end
 
+@inline function _prop_rotate_exec!(
+    ::RotateUnsupportedExecStyle,
+    sty::InterpStyle,
+    out::AbstractMatrix,
+    old_image::AbstractMatrix,
+    theta::Real,
+    opts::RotateOptions,
+)
+    _ = sty
+    _ = theta
+    _ = opts
+    throw(ArgumentError("prop_rotate has no native implementation for $(typeof(old_image)) -> $(typeof(out)); use matching CPU arrays or a backend-native path"))
+end
+
 @inline function _prop_rotate!(
     sty::InterpStyle,
     out::AbstractMatrix,
@@ -264,6 +288,8 @@ Rotate `old_image` by `theta` degrees counter-clockwise and write the result to
   default path: linear interpolation unless cubic is explicitly requested.
 - The cubic path uses the upstream PROPER cubic-convolution kernel rather than
   a general spline/interp2 implementation.
+- GPU/backend performance paths require native backend support; unsupported
+  backend combinations throw instead of silently materializing on the CPU.
 """
 @inline function prop_rotate!(out::AbstractMatrix, old_image::AbstractMatrix, theta::Real, opts::RotateOptions, ctx::RunContext)
     return _prop_rotate!(interp_style(ctx), out, old_image, theta, opts)

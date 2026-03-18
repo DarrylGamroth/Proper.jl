@@ -192,13 +192,31 @@ end
     return _copy_shifted_intensity_generic!(out, field, r0, c0)
 end
 
-"""Finalize propagation into a preallocated output buffer."""
+"""
+    prop_end!(out, wf; noabs=false, extract=nothing)
+
+Finalize propagation into a caller-provided output buffer.
+
+# Arguments
+- `out`: destination array
+- `wf`: input wavefront
+
+# Keywords
+- `noabs`: when `true`, write the complex field instead of intensity
+- `extract`: optional centered crop size
+
+# Notes
+- `out` and `wf.field` must use the same backend. Host/device transfer is an
+  explicit caller responsibility.
+"""
 function prop_end!(
     out::AbstractMatrix,
     wf::WaveFront;
     noabs::Bool=false,
     extract::Union{Nothing,Int}=nothing,
 )
+    same_backend_style(typeof(out), typeof(wf.field)) ||
+        throw(ArgumentError("prop_end! requires output and wavefront to use the same backend; perform an explicit host/device transfer at the call site"))
     ny, nx = size(wf.field)
     oy, ox, r0, c0 = _prop_end_layout(ny, nx, extract)
     size(out) == (oy, ox) || throw(ArgumentError("output size must be ($(oy), $(ox))"))
@@ -215,7 +233,14 @@ function prop_end!(
     return _prop_end_copy_intensity!(out, wf.field, r0, c0)
 end
 
-"""Finalize propagation into caller-provided buffer and return output plus sampling."""
+"""
+    prop_end(wf, out; noabs=false, extract=nothing)
+
+Finalize propagation into a caller-provided buffer and return `(out, sampling)`.
+
+# Notes
+- `out` must use the same backend as `wf.field`.
+"""
 function prop_end(
     wf::WaveFront,
     out::AbstractMatrix;
@@ -226,7 +251,15 @@ function prop_end(
     return out, wf.sampling_m
 end
 
-"""Finalize propagation and return either intensity or complex field plus sampling."""
+"""
+    prop_end(wf; noabs=false, extract=nothing)
+
+Finalize propagation and return either intensity or complex field plus
+sampling.
+
+# Notes
+- The allocating wrapper preserves the wavefront backend.
+"""
 function prop_end(wf::WaveFront; noabs::Bool=false, extract::Union{Nothing,Int}=nothing)
     ny, nx = size(wf.field)
     oy, ox, _, _ = _prop_end_layout(ny, nx, extract)

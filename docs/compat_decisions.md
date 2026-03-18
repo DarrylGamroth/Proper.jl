@@ -602,3 +602,26 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   - Core damped-sinc magnification now matches MATLAB behavior on non-square arrays instead of only on square inputs.
   - `prop_magnify(...; QUICK=false)` no longer needs a square-input restriction when `size_out` is omitted.
   - Backend kernels must preserve the same rectangular semantics as the loop reference path.
+
+## D-0052: GPU-Visible Hot Paths Must Not Silently Fallback To Host Execution
+- Date: 2026-03-17
+- Status: Accepted
+- Context:
+  - Some public helpers were still executing on GPU-visible arrays by
+    materializing `Matrix(...)` temporaries on the CPU and copying results back.
+  - This affected interpolation/rotation helpers and implicit cross-backend
+    extraction through `prop_end!`.
+  - Silent host fallback hides the actual backend support boundary and produces
+    misleading GPU benchmark numbers.
+- Decision:
+  - GPU-visible hot paths must either execute natively on the active backend or
+    throw an explicit `ArgumentError`.
+  - CPU-only generic fallback remains acceptable for CPU array layouts.
+  - `prop_end!` requires output and wavefront field to use the same backend;
+    callers perform host/device transfer explicitly when needed.
+- Consequences:
+  - Unsupported GPU combinations now fail loudly instead of paying hidden
+    host-materialization costs.
+  - The backend support matrix becomes more honest and easier to benchmark.
+  - Callers that need CPU materialization from a GPU result must request it
+    explicitly at the call site.

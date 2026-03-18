@@ -154,7 +154,7 @@ Acceptance:
 - GPU benchmark outputs remain comparable across CPU/CUDA/AMDGPU.
 
 ### G1: Remove Hidden Host Fallback From GPU-Visible Hot Paths
-Status: Not Started
+Status: In Progress
 
 Priority: Highest
 
@@ -173,6 +173,14 @@ Acceptance:
 - Trait routing clearly distinguishes:
   - native backend execution
   - unsupported backend execution
+
+Completed in slice 1:
+- `prop_rotate` now throws on unsupported non-CPU backend/layout combinations
+  instead of silently materializing on the host
+- `prop_cubic_conv` now throws on unsupported non-CPU point/grid paths instead
+  of silently materializing on the host
+- `prop_end!` now requires matching output and wavefront backends so host/device
+  transfer stays explicit at the call site
 
 ### G2: Make Workspaces Fully Backend-Native
 Status: Not Started
@@ -359,3 +367,9 @@ Every GPU-focused change should include the applicable checks below.
   - CPU-owned `rho2` cache in `FFTWorkspace`
   - convenience-wrapper context churn in resample/magnify paths
   - GPU map-application paths still rely on temporary shifts/adaptation
+- 2026-03-17: G1 slice 1 implemented.
+  - removed hidden host fallback from unsupported non-CPU `prop_rotate` paths
+  - removed hidden host fallback from unsupported non-CPU `prop_cubic_conv`
+    scalar/pointwise/coordinate-grid paths
+  - made `prop_end!` require matching output and wavefront backends
+  - added regression coverage in `test/test_r2_trait_routing.jl`
