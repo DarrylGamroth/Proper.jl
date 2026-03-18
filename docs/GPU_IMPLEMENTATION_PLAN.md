@@ -162,6 +162,9 @@ Completed in slice 1:
   - [`bench/common/cuda_steady_state_workload.jl`](../bench/common/cuda_steady_state_workload.jl)
   - [`bench/julia/amdgpu/core_propagation_tail.jl`](../bench/julia/amdgpu/core_propagation_tail.jl)
   - [`bench/julia/cuda/core_propagation_tail.jl`](../bench/julia/cuda/core_propagation_tail.jl)
+- helper/image-map supported-kernel lanes also now double-warm before sampling:
+  - [`bench/julia/amdgpu/supported_kernels.jl`](../bench/julia/amdgpu/supported_kernels.jl)
+  - [`bench/julia/cuda/supported_kernels.jl`](../bench/julia/cuda/supported_kernels.jl)
 - consequence:
   - GPU benchmark rows now align better with the warmed-steady-state contract
     already used by the GPU allocation tests, instead of depending on a single
@@ -169,6 +172,11 @@ Completed in slice 1:
   - current AMDGPU summary on this machine after the harness fix:
     - steady-state workload: `3.00 ms`
     - synthetic core propagation tail: `10.86 ms`
+    - supported helper rows stabilized in the expected warmed range, for
+      example:
+      - `prop_rotate_mutating`: `154.02 us`
+      - `prop_magnify_quick_mutating`: `94.37 us`
+      - `prop_resamplemap_mutating`: `406.05 us`, `6.91 KiB`
 
 ### G1: Remove Hidden Host Fallback From GPU-Visible Hot Paths
 Status: Completed
