@@ -15,6 +15,13 @@ using FFTW
     wf2 = prop_begin(1.0, 500e-9, 32)
     prop_circular_aperture(wf2, 0.2)
     @test any(iszero, abs.(wf2.field))
+    wf2_small = prop_begin(1.0, 500e-9, 16)
+    fill!(wf2_small.field, 1 + 0im)
+    prop_circular_aperture(wf2_small, 2.5e-4)
+    wf2_small_ref = prop_begin(1.0, 500e-9, 16)
+    fill!(wf2_small_ref.field, 1 + 0im)
+    prop_elliptical_aperture(wf2_small_ref, 2.5e-4, 2.5e-4)
+    @test wf2_small.field ≈ wf2_small_ref.field
 
     wf3 = prop_begin(1.0, 500e-9, 32)
     prop_propagate(wf3, 0.25)

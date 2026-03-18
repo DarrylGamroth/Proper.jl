@@ -71,14 +71,14 @@ end
     yoffset_pix = opts.norm ? T(yc) * beamrad_pix : T(yc) / dx
     dr = inv(rad_pix)
     hi = rad_pix * (one(T) + dr)
-    lo = max(rad_pix * (one(T) - dr), zero(T))
+    lo = rad_pix * (one(T) - dr)
     limit = rad_pix * T(1 + 1e-10)
     return CircleGeometry(
         xoffset_pix,
         yoffset_pix,
         rad_pix,
         hi * hi,
-        lo * lo,
+        lo > zero(T) ? (lo * lo) : -one(T),
         limit * limit,
     )
 end
