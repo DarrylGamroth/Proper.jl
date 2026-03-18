@@ -544,6 +544,28 @@ Completed in slice 6:
   - `prop_szoom!` remains one of the heavier non-FFT GPU helpers, but the
     paired table-fill launches are no longer the main avoidable cost
 
+Completed in slice 7:
+- added explicit default-option fast paths for [`prop_rotate.jl`](../src/prop_rotate.jl)
+  so the public no-keyword entry points no longer route through empty keyword
+  parsing on every call
+- fixed the related benchmark and API surface so the public `ctx` path now
+  reflects the documented performance contract without extra wrapper overhead
+- added regression coverage in
+  [`test_phase2_core.jl`](../test/test_phase2_core.jl)
+- measured effect on this machine:
+  - supported-kernel lane:
+    - CPU `prop_rotate_mutating`:
+      - allocs `64 -> 0`
+      - bytes `2.12 KiB -> 0 B`
+      - median `488.83 us -> 478.84 us`
+    - AMDGPU `prop_rotate_mutating`:
+      - allocs `243 -> 186`
+      - bytes `6.12 KiB -> 4.11 KiB`
+      - median `94.49 us -> 89.18 us`
+- consequence:
+  - the remaining rotate cost is now in the backend kernel/launch itself, not
+    in avoidable Julia-side option handling
+
 ## Immediate Execution Order
 
 This is the intended implementation order for the next GPU-focused slices.

@@ -32,6 +32,12 @@ end
     return RotateOptions{T}(method, cxv, cyv, sxv, syv, missingv)
 end
 
+@inline function RotateOptions(old_image::AbstractMatrix)
+    ny, nx = size(old_image)
+    T = float(promote_type(real(eltype(old_image)), Float64))
+    return RotateOptions{T}(ROTATE_LINEAR, T(nx ÷ 2 + 1), T(ny ÷ 2 + 1), zero(T), zero(T), zero(T))
+end
+
 @inline function _prop_rotate_linear!(
     out::AbstractMatrix,
     old_image::AbstractMatrix,
@@ -300,11 +306,13 @@ end
 end
 
 @inline function prop_rotate!(out::AbstractMatrix, old_image::AbstractMatrix, theta::Real; kwargs...)
-    return prop_rotate!(out, old_image, theta, RotateOptions(old_image, kwargs))
+    opts = isempty(kwargs) ? RotateOptions(old_image) : RotateOptions(old_image, kwargs)
+    return prop_rotate!(out, old_image, theta, opts)
 end
 
 @inline function prop_rotate!(out::AbstractMatrix, old_image::AbstractMatrix, theta::Real, ctx::RunContext; kwargs...)
-    return prop_rotate!(out, old_image, theta, RotateOptions(old_image, kwargs), ctx)
+    opts = isempty(kwargs) ? RotateOptions(old_image) : RotateOptions(old_image, kwargs)
+    return prop_rotate!(out, old_image, theta, opts, ctx)
 end
 
 @inline function prop_rotate(old_image::AbstractMatrix, theta::Real, opts::RotateOptions, ctx::RunContext)
@@ -347,11 +355,11 @@ function prop_rotate(
     theta::Real;
     kwargs...,
 )
-    opts = RotateOptions(old_image, kwargs)
+    opts = isempty(kwargs) ? RotateOptions(old_image) : RotateOptions(old_image, kwargs)
     return prop_rotate(old_image, theta, opts)
 end
 
 function prop_rotate(old_image::AbstractMatrix, theta::Real, ctx::RunContext; kwargs...)
-    opts = RotateOptions(old_image, kwargs)
+    opts = isempty(kwargs) ? RotateOptions(old_image) : RotateOptions(old_image, kwargs)
     return prop_rotate(old_image, theta, opts, ctx)
 end
