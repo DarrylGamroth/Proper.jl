@@ -98,8 +98,6 @@ include("prop_writemap.jl")
 include("prop_wts.jl")
 include("prop_zernikes.jl")
 include("switch_set.jl")
-include("models/wfirst_phaseb_proper/__init__.jl")
-
 export BackendStyle, CPUBackend, CUDABackend, AMDGPUBackend, UnknownBackend, FFTStyle, FFTWStyle, CUFFTStyle, ROCFFTStyle, GenericFFTStyle
 export InterpStyle, GenericInterpStyle, CubicInterpStyle, RNGStyle, GenericRNGStyle
 export ShiftKernelStyle, ShiftLoopStyle, ShiftKAStyle

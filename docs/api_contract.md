@@ -66,7 +66,10 @@ Compatibility-only exported helpers:
 - `prop_dftidefs`
 
 Namespaced-only specialized modules:
-- `Proper.WFIRSTPhaseBProper`
+- none in the top-level `Proper` namespace
+
+Reference-model modules:
+- `reference_models/wfirst_phaseb_proper/__init__.jl`
 
 Notes:
 - Keep PROPER-style names for user familiarity.

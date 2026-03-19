@@ -129,5 +129,5 @@ end
     @test !Base.isexported(Proper, :switch_set)
     @test !Base.isexported(Proper, :DftiErrorMessage)
     @test !Base.isexported(Proper, :WFIRSTPhaseBProper)
-    @test isdefined(Proper, :WFIRSTPhaseBProper)
+    @test !isdefined(Proper, :WFIRSTPhaseBProper)
 end

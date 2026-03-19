@@ -2,7 +2,9 @@ using Test
 using FFTW
 using Statistics
 using Proper
-using Proper.WFIRSTPhaseBProper
+
+@isdefined(WFIRSTPhaseBProper) || include(joinpath(@__DIR__, "..", "reference_models", "wfirst_phaseb_proper", "__init__.jl"))
+using .WFIRSTPhaseBProper
 
 @testset "WFIRST Phase B reference helpers" begin
     old_root = data_dir()
@@ -14,17 +16,17 @@ using Proper.WFIRSTPhaseBProper
     end
 
     a = reshape(collect(1.0:16.0), 4, 4)
-    @test Proper.WFIRSTPhaseBProper.trim(a, 2) == [6.0 10.0; 7.0 11.0]
-    @test size(Proper.WFIRSTPhaseBProper.trim(a, 6)) == (6, 6)
+    @test WFIRSTPhaseBProper.trim(a, 2) == [6.0 10.0; 7.0 11.0]
+    @test size(WFIRSTPhaseBProper.trim(a, 6)) == (6, 6)
 
     c = ComplexF64.(reshape(1:16, 4, 4))
     @test ffts(copy(c), -1) ≈ circshift(fft(circshift(c, (-2, -2))) ./ length(c), (2, 2))
 
     m = mft2(c, 0.1, 2.0, 4, -1)
     @test size(m) == (4, 4)
-    plan = Proper.WFIRSTPhaseBProper.prepare_phaseb_mft_plan(4, 0.1, 2.0, 4, -1)
+    plan = WFIRSTPhaseBProper.prepare_phaseb_mft_plan(4, 0.1, 2.0, 4, -1)
     mout = Matrix{ComplexF64}(undef, 4, 4)
-    Proper.WFIRSTPhaseBProper.phaseb_mft2!(mout, c, plan)
+    WFIRSTPhaseBProper.phaseb_mft2!(mout, c, plan)
     @test mout ≈ m
     let field_in = c, dout = 0.1, D = 2.0, nout = 4, direction = -1
         nfield_in = size(field_in, 2)
@@ -93,45 +95,45 @@ using Proper.WFIRSTPhaseBProper
     @test cases["full_spc_spec_long_no_pupil_mask"].passvalue["use_pupil_mask"] == 0
     @test cases["full_none"].passvalue["cor_type"] == "none"
 
-    sx, sy = Proper.WFIRSTPhaseBProper._source_offset_lambda_over_d((source_x_offset_mas=10.0, source_y_offset=1.5), 0.575e-6, 2.363)
+    sx, sy = WFIRSTPhaseBProper._source_offset_lambda_over_d((source_x_offset_mas=10.0, source_y_offset=1.5), 0.575e-6, 2.363)
     expected_mas_per_lamd = 0.575e-6 * 360.0 * 3600.0 / (2π * 2.363) * 1000
     @test isapprox(sx, 10.0 / expected_mas_per_lamd; rtol=1e-12)
     @test sy == 1.5
 
-    cfg_hlc = Proper.WFIRSTPhaseBProper._phaseb_config("hlc", 0.575e-6, "/tmp"; compact=false, use_fpm=1)
+    cfg_hlc = WFIRSTPhaseBProper._phaseb_config("hlc", 0.575e-6, "/tmp"; compact=false, use_fpm=1)
     @test cfg_hlc.branch == :hlc
     @test cfg_hlc.n_default == 1024
     @test cfg_hlc.n_to_fpm == 2048
     @test occursin("run461_pupil_rotated.fits", cfg_hlc.pupil_file)
 
-    cfg_spc = Proper.WFIRSTPhaseBProper._phaseb_config("spc-ifs_short", 0.66e-6, "/tmp"; compact=false, use_fpm=1)
+    cfg_spc = WFIRSTPhaseBProper._phaseb_config("spc-ifs_short", 0.66e-6, "/tmp"; compact=false, use_fpm=1)
     @test cfg_spc.branch == :spc
     @test cfg_spc.lambda0_m == 0.66e-6
     @test cfg_spc.n_default == 2048
     @test cfg_spc.n_mft == 1400
     @test occursin("SPM_SPC-20190130.fits", cfg_spc.pupil_mask_file)
 
-    cfg_spc_long = Proper.WFIRSTPhaseBProper._phaseb_config("spc-ifs_long", 0.73e-6, "/tmp"; compact=false, use_fpm=1)
+    cfg_spc_long = WFIRSTPhaseBProper._phaseb_config("spc-ifs_long", 0.73e-6, "/tmp"; compact=false, use_fpm=1)
     @test cfg_spc_long.branch == :spc
     @test cfg_spc_long.lambda0_m == 0.73e-6
 
-    cfg_spc_compact = Proper.WFIRSTPhaseBProper._phaseb_config("spc-wide", 0.825e-6, "/tmp"; compact=true, use_fpm=1)
+    cfg_spc_compact = WFIRSTPhaseBProper._phaseb_config("spc-wide", 0.825e-6, "/tmp"; compact=true, use_fpm=1)
     @test cfg_spc_compact.branch == :spc
     @test cfg_spc_compact.n_big == 1400
     @test occursin("rotated", cfg_spc_compact.pupil_mask_file)
 
-    cfg_none = Proper.WFIRSTPhaseBProper._phaseb_config("none", 0.575e-6, "/tmp"; compact=false, use_fpm=0)
+    cfg_none = WFIRSTPhaseBProper._phaseb_config("none", 0.575e-6, "/tmp"; compact=false, use_fpm=0)
     @test cfg_none.branch == :none
     @test cfg_none.lyot_stop_file === nothing
 
-    ws = Proper.WFIRSTPhaseBProper.PhaseBModelWorkspace(8)
-    @test size(Proper.WFIRSTPhaseBProper.phaseb_field(ws, 1400)) == (1400, 1400)
-    @test Proper.WFIRSTPhaseBProper.phaseb_field(ws, 1400) === Proper.WFIRSTPhaseBProper.phaseb_field(ws, 1400)
-    @test Proper.WFIRSTPhaseBProper.phaseb_fft_cache(ws, 1400) === Proper.WFIRSTPhaseBProper.phaseb_fft_cache(ws, 1400)
+    ws = WFIRSTPhaseBProper.PhaseBModelWorkspace(8)
+    @test size(WFIRSTPhaseBProper.phaseb_field(ws, 1400)) == (1400, 1400)
+    @test WFIRSTPhaseBProper.phaseb_field(ws, 1400) === WFIRSTPhaseBProper.phaseb_field(ws, 1400)
+    @test WFIRSTPhaseBProper.phaseb_fft_cache(ws, 1400) === WFIRSTPhaseBProper.phaseb_fft_cache(ws, 1400)
 
     wf_tilt = prop_begin(1.0, 550e-9, 8)
     field_before_tilt = copy(wf_tilt.field)
-    Proper.WFIRSTPhaseBProper._apply_source_offset!(wf_tilt, 6.0, 0.575e-6, 550e-9, 0.1, -0.2)
+    WFIRSTPhaseBProper._apply_source_offset!(wf_tilt, 6.0, 0.575e-6, 550e-9, 0.1, -0.2)
     @test wf_tilt.field != field_before_tilt
 
     wf_ref = prop_begin(1.0, 550e-9, 8)

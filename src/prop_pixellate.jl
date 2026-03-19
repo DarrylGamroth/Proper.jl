@@ -1,3 +1,8 @@
+@inline _pixellate_backend_contract(::CPUBackend) = nothing
+@inline function _pixellate_backend_contract(::BackendStyle)
+    throw(ArgumentError("prop_pixellate currently supports host CPU arrays only"))
+end
+
 """Box-average downsample by integer factor."""
 function _prop_pixellate_factor!(
     ::SamplingLoopExecStyle,
@@ -126,6 +131,7 @@ The integrated image is then resampled to detector-pixel spacing.
 # Notes
 - This matches the upstream PROPER public API rather than the older internal
   integer-factor helper that remains private in Julia.
+- This public resampling path currently supports host CPU arrays only.
 """
 function prop_pixellate(
     img::AbstractMatrix,
@@ -135,6 +141,7 @@ function prop_pixellate(
 )
     sampling_in > 0 || throw(ArgumentError("sampling_in must be positive"))
     sampling_out > 0 || throw(ArgumentError("sampling_out must be positive"))
+    _pixellate_backend_contract(backend_style(typeof(img)))
     return _prop_pixellate_resample(img, sampling_in, sampling_out, n_out)
 end
 
@@ -152,6 +159,7 @@ Integrate a sampled PSF onto detector pixels and write the result into `out`.
 # Notes
 - `out` must match the size implied by the requested detector sampling and the
   chosen output dimensions.
+- This public resampling path currently supports host CPU arrays only.
 """
 function prop_pixellate!(
     out::AbstractMatrix,
@@ -161,6 +169,8 @@ function prop_pixellate!(
 )
     sampling_in > 0 || throw(ArgumentError("sampling_in must be positive"))
     sampling_out > 0 || throw(ArgumentError("sampling_out must be positive"))
+    _pixellate_backend_contract(backend_style(typeof(img)))
+    _pixellate_backend_contract(backend_style(typeof(out)))
     tmp = _prop_pixellate_resample(img, sampling_in, sampling_out, size(out, 2))
     size(tmp) == size(out) || throw(ArgumentError("output size must be $(size(tmp))"))
     copyto!(out, tmp)

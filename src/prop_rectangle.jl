@@ -30,8 +30,7 @@ function _prop_rectangle!(
     pr = beamrad / dx
 
     θ = T(deg2rad(opts.rotation))
-    cθ = cos(θ)
-    sθ = sin(θ)
+    sθ, cθ = sincos(θ)
 
     xcp = T(n ÷ 2) + (opts.norm ? T(xc) * pr : T(xc) / dx)
     ycp = T(n ÷ 2) + (opts.norm ? T(yc) * pr : T(yc) / dx)
@@ -97,8 +96,7 @@ function _prop_rectangle!(
     pr = beamrad / dx
 
     θ = T(deg2rad(opts.rotation))
-    cθ = cos(θ)
-    sθ = sin(θ)
+    sθ, cθ = sincos(θ)
 
     xcp = T(n ÷ 2) + (opts.norm ? T(xc) * pr : T(xc) / dx)
     ycp = T(n ÷ 2) + (opts.norm ? T(yc) * pr : T(yc) / dx)

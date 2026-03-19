@@ -1,5 +1,7 @@
 using Proper
-using Proper.WFIRSTPhaseBProper
+
+@isdefined(WFIRSTPhaseBProper) || include(joinpath(@__DIR__, "..", "reference_models", "wfirst_phaseb_proper", "__init__.jl"))
+using .WFIRSTPhaseBProper
 
 function wfirst_phaseb_reference_demo(; case_name::AbstractString="compact_hlc", threaded::Bool=true, data_root::AbstractString=phaseb_default_data_root())
     cases = phaseb_case_definitions()

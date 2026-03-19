@@ -300,7 +300,7 @@ Important current examples:
 - `examples/` contains ported example prescriptions and smoke examples
 - the WFIRST Phase B reference port is included as a broad correctness and
   benchmarking workload
-- the WFIRST reference module is available as `Proper.WFIRSTPhaseBProper`
+- the WFIRST reference model lives under `reference_models/wfirst_phaseb_proper`
 
 ## Documentation
 - [Documentation index](docs/README.md)

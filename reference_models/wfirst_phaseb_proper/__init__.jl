@@ -2,8 +2,8 @@ module WFIRSTPhaseBProper
 
 using FFTW
 using LinearAlgebra
-import ..Proper
-import ..Proper: PreparedModel, PreparedAssetPool, prepare_asset_pool, prepare_model, prop_add_phase,
+using Proper
+import Proper: PreparedModel, PreparedAssetPool, prepare_asset_pool, prepare_model, prop_add_phase,
     prop_begin, prop_circular_aperture, prop_define_entrance, prop_end!, prop_fits_read,
     prop_get_beamradius, prop_get_fratio, prop_get_sampling, prop_get_wavelength, prop_lens,
     prop_dm,

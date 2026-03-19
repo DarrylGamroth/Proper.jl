@@ -1,6 +1,8 @@
 using Profile
 using Proper
-using Proper.WFIRSTPhaseBProper
+
+@isdefined(WFIRSTPhaseBProper) || include(joinpath(@__DIR__, "..", "..", "..", "reference_models", "wfirst_phaseb_proper", "__init__.jl"))
+using .WFIRSTPhaseBProper
 
 function arg_value(flag::String, default=nothing)
     idx = findfirst(==(flag), ARGS)

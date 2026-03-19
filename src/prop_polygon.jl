@@ -24,8 +24,9 @@ end
     Δθ = -T(2pi) / T(nsides)
     θ = θ0
     @inbounds for k in 1:nsides
-        xv[k] = x0 + rad * cos(θ)
-        yv[k] = y0 + rad * sin(θ)
+        sθ, cθ = sincos(θ)
+        xv[k] = x0 + rad * cθ
+        yv[k] = y0 + rad * sθ
         θ += Δθ
     end
     return xv, yv

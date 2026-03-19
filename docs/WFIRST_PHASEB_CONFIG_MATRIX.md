@@ -21,7 +21,7 @@ Representative configuration-matrix coverage for the Julia reference port and th
 ## Implementation Note
 
 The WFIRST reference port reads Phase B FITS assets in Python array order inside
-`WFIRSTPhaseBProper` instead of using raw FITSIO axis order directly. This is an
+the standalone `WFIRSTPhaseBProper` reference-model module instead of using raw FITSIO axis order directly. This is an
 internal compatibility detail needed to keep Julia field placement and parity
 metrics aligned with the Python executable baseline.
 

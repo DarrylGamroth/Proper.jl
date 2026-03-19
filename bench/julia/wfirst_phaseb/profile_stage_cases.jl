@@ -1,6 +1,8 @@
 using JSON3
 using Proper
-using Proper.WFIRSTPhaseBProper
+
+@isdefined(WFIRSTPhaseBProper) || include(joinpath(@__DIR__, "..", "..", "..", "reference_models", "wfirst_phaseb_proper", "__init__.jl"))
+using .WFIRSTPhaseBProper
 
 function arg_value(flag::String, default=nothing)
     idx = findfirst(==(flag), ARGS)
@@ -13,7 +15,7 @@ function stage_row(case_name::AbstractString, data_root::AbstractString)
     cases = phaseb_case_definitions()
     haskey(cases, case_name) || error("unsupported case $(case_name)")
     base_case = cases[case_name]
-    timer = Proper.WFIRSTPhaseBProper.PhaseBStageTimer()
+    timer = WFIRSTPhaseBProper.PhaseBStageTimer()
     prof_case = merge(base_case, (passvalue=merge(base_case.passvalue, Dict("stage_timer" => timer)),))
     models, _assets = prepare_phaseb_models(prof_case; data_root=data_root)
     run_phaseb_case(models; threaded=false)
@@ -21,7 +23,7 @@ function stage_row(case_name::AbstractString, data_root::AbstractString)
         "case" => case_name,
         "description" => String(base_case.description),
         "wavelength_count" => length(base_case.wavelengths_m),
-        "stage_report" => Proper.WFIRSTPhaseBProper.phaseb_stage_report(timer),
+        "stage_report" => WFIRSTPhaseBProper.phaseb_stage_report(timer),
     )
 end
 

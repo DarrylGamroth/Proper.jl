@@ -142,7 +142,7 @@ end
 @inline phaseb_half_shift!(out::AbstractMatrix{T}, input::AbstractMatrix) where {T} = Proper.half_shift_copy!(out, input)
 @inline phaseb_reverse_shift1!(out::AbstractMatrix{ComplexF64}, input::AbstractMatrix{<:Complex}) = Proper.reverse_shift1!(out, input)
 
-function PhaseBFFTCache(n::Integer; flags=FFTW.MEASURE)
+function phaseb_fft_cache_ctor(n::Integer; flags=FFTW.MEASURE)
     return Proper.CenteredFFTCache(Float64, n; flags=flags)
 end
 
@@ -153,8 +153,8 @@ function PhaseBModelWorkspace(output_dim::Integer)
             2048 => Matrix{ComplexF64}(undef, 2048, 2048),
         ),
         Dict(
-            1024 => PhaseBFFTCache(1024),
-            2048 => PhaseBFFTCache(2048),
+            1024 => phaseb_fft_cache_ctor(1024),
+            2048 => phaseb_fft_cache_ctor(2048),
         ),
         Matrix{ComplexF64}(undef, output_dim, output_dim),
     )
@@ -170,7 +170,7 @@ end
 @inline function phaseb_fft_cache(ws::PhaseBModelWorkspace, n::Integer)
     n > 0 || throw(ArgumentError("grid size must be positive"))
     return get!(ws.ffts, Int(n)) do
-        PhaseBFFTCache(Int(n))
+        phaseb_fft_cache_ctor(Int(n))
     end
 end
 

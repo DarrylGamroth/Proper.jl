@@ -143,8 +143,7 @@ function _build_psd_map_unshifted(
 
     rotation = opts.rotation
     inclination = opts.inclination
-    cr = cos(-rotation)
-    sr = sin(-rotation)
+    sr, cr = sincos(-rotation)
     ci = cos(-inclination)
 
     use_tpf = opts.tpf
@@ -234,8 +233,7 @@ function _build_psd_map_shifted!(
 
     rotation = opts.rotation
     inclination = opts.inclination
-    cr = cos(-rotation)
-    sr = sin(-rotation)
+    sr, cr = sincos(-rotation)
     ci = cos(-inclination)
 
     use_tpf = opts.tpf
@@ -320,6 +318,7 @@ function _build_psd_map_shifted!(
 end
 
 @inline function _build_psd_map_default!(
+    ::CPUBackend,
     dmap::Matrix{T},
     wf::WaveFront{T},
     amp::Real,
@@ -327,10 +326,23 @@ end
     c::Real,
     opts::PSDErrorMapOptions{T},
 ) where {T<:AbstractFloat}
-    if backend_style(typeof(wf.field)) isa CPUBackend && wf.field isa StridedMatrix{Complex{T}}
+    if wf.field isa StridedMatrix{Complex{T}}
         _build_psd_map_shifted!(dmap, wf, amp, b, c, opts, wf.workspace.fft)
         return true
     end
+    copyto!(dmap, _build_psd_map_unshifted(wf, amp, b, c, opts))
+    return false
+end
+
+@inline function _build_psd_map_default!(
+    ::BackendStyle,
+    dmap::Matrix{T},
+    wf::WaveFront,
+    amp::Real,
+    b::Real,
+    c::Real,
+    opts::PSDErrorMapOptions{T},
+) where {T<:AbstractFloat}
     copyto!(dmap, _build_psd_map_unshifted(wf, amp, b, c, opts))
     return false
 end
@@ -350,7 +362,7 @@ function _prop_psd_errormap!(
     map_is_shifted::Bool = false
 
     if fpath === nothing
-        map_is_shifted = _build_psd_map_default!(dmap, wf, amp, b, c, opts)
+        map_is_shifted = _build_psd_map_default!(backend_style(typeof(wf.field)), dmap, wf, amp, b, c, opts)
     else
         copyto!(dmap, _read_psd_map(wf, fpath, T))
     end
@@ -413,9 +425,6 @@ function _prop_psd_errormap!(
     c::Real,
     opts::PSDErrorMapOptions{T},
 ) where {T<:AbstractFloat}
-    if dmap isa Matrix{T}
-        return _prop_psd_errormap!(dmap::Matrix{T}, wf, amp, b, c, opts)
-    end
     tmp = Matrix{T}(undef, size(dmap)...)
     build_opts = opts.no_apply ? opts : _with_no_apply(opts, true)
     _prop_psd_errormap!(tmp, wf, amp, b, c, build_opts)
@@ -438,7 +447,16 @@ function _prop_psd_errormap!(wf::WaveFront, amp::Real, b::Real, c::Real, opts::P
     return _prop_psd_errormap!(dmap, wf, amp, b, c, opts)
 end
 
-"""Create PSD-based surface/wavefront/amplitude error map into preallocated output."""
+"""
+    prop_psd_errormap!(dmap, wf, amp, b, c; kwargs...)
+
+Create a PSD-based surface, wavefront, or amplitude error map in `dmap`.
+
+# Notes
+- CPU outputs use the direct host implementation.
+- Non-CPU output arrays are currently synthesized through a host staging buffer
+  and copied back before optional application to the wavefront.
+"""
 function prop_psd_errormap!(
     dmap::AbstractMatrix{T},
     wf::WaveFront,
