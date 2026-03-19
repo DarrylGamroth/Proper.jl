@@ -1,5 +1,9 @@
 # Proper.jl
 
+[![CI](https://github.com/DarrylGamroth/Proper.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/DarrylGamroth/Proper.jl/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/DarrylGamroth/Proper.jl/graph/badge.svg)](https://codecov.io/gh/DarrylGamroth/Proper.jl)
+[![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
+
 Julia port of John Krist's PROPER optical propagation library.
 
 PROPER is a diffraction propagation toolkit for exploring wave-optics behavior
