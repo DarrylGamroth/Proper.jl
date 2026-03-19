@@ -475,6 +475,7 @@ end
     # Zernike map generation and application
     zmap = prop_zernikes(wf, [4, 5], [1e-9, 2e-9]; no_apply=true)
     @test size(zmap) == size(wf.field)
+    @test length(prop_fit_zernikes(@view(zmap[:, :]), ones(size(zmap)...), 32.0, 3)) == 3
 
     coeff, fitmap = prop_fit_zernikes(zmap, ones(size(zmap)...), 32.0, 6; fit=true)
     @test length(coeff) == 6

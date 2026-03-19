@@ -329,8 +329,8 @@ end
 
 @inline function reset_workspace!(ws::MaskWorkspace)
     ws.valid = false
-    resize!(ws.xverts, 0)
-    resize!(ws.yverts, 0)
+    ws.xverts = _ensure_workspace_vector(ws.xverts, 0)
+    ws.yverts = _ensure_workspace_vector(ws.yverts, 0)
     return ws
 end
 
