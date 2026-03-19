@@ -591,10 +591,10 @@ Note: mapping below guarantees file-level traceability; implementation may and s
 | `proper/.use_ffti` | `data/.use_ffti` | Compatibility marker; reassess necessity |
 | `proper/__init__.py` | `src/Proper.jl` | Package entrypoint and exports |
 | `proper/cubic_conv_c.c` | — | Historical upstream C reference; Julia runtime uses `src/libcconv.jl` |
-| `proper/cubic_conv_threaded_c.c` | — | Historical upstream C reference; Julia runtime uses `src/libcconvthread.jl` |
+| `proper/cubic_conv_threaded_c.c` | — | Historical upstream C reference; Julia runtime uses `src/libcconv.jl` |
 | `proper/influence_dm5v2_1.fits` | `data/influence_dm5v2_1.fits` | Reference data asset |
 | `proper/libcconv.py` | `src/libcconv.jl` | Direct function/module port |
-| `proper/libcconvthread.py` | `src/libcconvthread.jl` | Direct function/module port |
+| `proper/libcconvthread.py` | — | Compatibility alias removed; runtime uses `src/libcconv.jl` |
 | `proper/libszoom.py` | `src/libszoom.jl` | Direct function/module port |
 | `proper/prop_8th_order_mask.py` | `src/prop_8th_order_mask.jl` | Direct function/module port |
 | `proper/prop_add_phase.py` | `src/prop_add_phase.jl` | Direct function/module port |

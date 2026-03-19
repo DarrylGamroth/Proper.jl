@@ -57,18 +57,25 @@ end
     return ws.xcoords, ws.ycoords
 end
 
-mutable struct MaskWorkspace{T<:AbstractFloat,M<:AbstractMatrix{T}}
+mutable struct MaskWorkspace{
+    T<:AbstractFloat,
+    M<:AbstractMatrix{T},
+    VX<:AbstractVector{T},
+    VY<:AbstractVector{T},
+}
     mask::M
     valid::Bool
-    xverts::Vector{T}
-    yverts::Vector{T}
+    xverts::VX
+    yverts::VY
 end
 
 MaskWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} = MaskWorkspace(Matrix, T)
 
 function MaskWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:AbstractFloat}
     mask = workspace_matrix(A, T, 0, 0)
-    return MaskWorkspace{T,typeof(mask)}(mask, false, Vector{T}(undef, 0), Vector{T}(undef, 0))
+    xverts = Vector{T}(undef, 0)
+    yverts = Vector{T}(undef, 0)
+    return MaskWorkspace{T,typeof(mask),typeof(xverts),typeof(yverts)}(mask, false, xverts, yverts)
 end
 
 @inline function ensure_mask_buffer!(ws::MaskWorkspace{T}, ny::Integer, nx::Integer) where {T}
@@ -80,8 +87,8 @@ end
 end
 
 @inline function ensure_mask_vertices!(ws::MaskWorkspace{T}, nverts::Integer) where {T}
-    resize!(ws.xverts, nverts)
-    resize!(ws.yverts, nverts)
+    ws.xverts = _ensure_workspace_vector(ws.xverts, nverts)
+    ws.yverts = _ensure_workspace_vector(ws.yverts, nverts)
     return ws.xverts, ws.yverts
 end
 

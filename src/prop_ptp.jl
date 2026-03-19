@@ -89,13 +89,14 @@ function _prop_ptp_fft!(
     dx,
     kphase,
 )
-    f = fft_forward(wf.field, ctx) ./ length(wf.field)
+    _ = ctx
+    f = fft(wf.field) ./ length(wf.field)
     f .*= n
 
     rho2 = backend_adapt(f, ensure_rho2_map!(ws, ny, nx, dx))
     f .*= cis.(kphase .* rho2)
 
-    wf.field .= fft_inverse(f, ctx) .* length(wf.field)
+    wf.field .= ifft(f) .* length(wf.field)
     wf.field ./= n
     return wf
 end

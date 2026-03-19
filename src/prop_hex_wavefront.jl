@@ -47,6 +47,7 @@ function prop_hex_wavefront(
 
     segi = 0
     ang = deg2rad(angle)
+    s, c = sincos(ang)
 
     @inbounds for iring in 0:nrings
         x = hexsep * cospi(1 / 6) * iring
@@ -54,8 +55,8 @@ function prop_hex_wavefront(
 
         for iseg in 0:(2 * nrings - iring)
             if !(segi in omit_set)
-                xhex = x * cos(ang) - y * sin(ang) + xc
-                yhex = x * sin(ang) + y * cos(ang) + yc
+                xhex = x * c - y * s + xc
+                yhex = x * s + y * c + yc
 
                 segment = prop_polygon(wf, 6, hexrad, xhex, yhex; ROTATION=angle)
                 if !(iring == 0 && iseg == nrings && dark)
@@ -73,8 +74,8 @@ function prop_hex_wavefront(
 
             if iring != 0
                 if !(segi in omit_set)
-                    xhex = -x * cos(ang) - y * sin(ang) + xc
-                    yhex = -x * sin(ang) + y * cos(ang) + yc
+                    xhex = -x * c - y * s + xc
+                    yhex = -x * s + y * c + yc
 
                     segment = prop_polygon(wf, 6, hexrad, xhex, yhex; ROTATION=angle)
                     aperture .+= segment

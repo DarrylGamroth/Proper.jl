@@ -72,14 +72,15 @@ end
     wf::WaveFront,
     d::Real,
     n::Int,
-    ctx::RunContext,
+    ::RunContext,
     ws::FFTWorkspace,
 )
+    _ = ws
     if d >= 0
-        f = fft_forward(wf.field, ctx) ./ length(wf.field)
+        f = fft(wf.field) ./ length(wf.field)
         wf.field .= f .* n
     else
-        invf = fft_inverse(wf.field, ctx) .* length(wf.field)
+        invf = ifft(wf.field) .* length(wf.field)
         wf.field .= invf ./ n
     end
     return wf

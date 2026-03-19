@@ -454,7 +454,6 @@ end
     @test collect(Proper.coordinate_axis(5, 2.0)) == [-4.0, -2.0, 0.0, 2.0, 4.0]
     @test collect(Proper.spatial_frequency_axis(4, 0.5)) == [-1.0, -0.5, 0.0, 0.5]
     @test Proper.libcconv(rand(8, 8), 4.2, 3.7) isa Real
-    @test Proper.libcconvthread(rand(8, 8), 4.2, 3.7) isa Real
     @test size(prop_szoom(rand(8, 8), 2.0), 1) == 3
     @test size(prop_szoom(rand(8, 8), 2.0, 16), 1) == 16
     @test size(prop_szoom(rand(16, 20), 0.95; NOX=14, NOY=10)) == (10, 14)

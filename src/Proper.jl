@@ -4,7 +4,6 @@ using LinearAlgebra
 using FFTW
 using Statistics
 
-include("core/policy.jl")
 include("core/traits.jl")
 include("core/ka_kernels.jl")
 include("core/workspace.jl")
@@ -15,10 +14,8 @@ include("core/keywords.jl")
 include("core/grid.jl")
 include("core/resample.jl")
 include("core/centered_ops.jl")
-include("core/fft_dispatch.jl")
 
 include("libcconv.jl")
-include("libcconvthread.jl")
 include("prop_8th_order_mask.jl")
 include("prop_add_phase.jl")
 include("prop_add_wavefront.jl")
