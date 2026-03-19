@@ -50,14 +50,10 @@ planning/audit records from the port effort.
 ## Contributor Workflow
 - [Porting checklist](PORTING_CHECKLIST.md)
 
-## Working Notes And Historical Records
+## Maintainer Notes And Historical Records
 These documents are useful when working on backend tuning, performance
 investigation, or understanding how the port evolved. They are not the primary
 entry point for new users.
 
-- [Implementation progress](IMPLEMENTATION_PROGRESS.md)
 - [GPU implementation plan](GPU_IMPLEMENTATION_PLAN.md)
-- [Runtime optimization plan](RUNTIME_OPTIMIZATION_PLAN.md)
-- [Performance follow-up plan](PERFORMANCE_FOLLOWUP_PLAN.md)
-- [CUDA optimization plan](CUDA_OPTIMIZATION_PLAN.md)
-- [Julia implementation audit (historical)](JULIA_IMPLEMENTATION_AUDIT_2026-03-04.md)
+- [Archived maintainer notes](archive/)

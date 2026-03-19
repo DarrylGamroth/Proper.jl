@@ -87,16 +87,16 @@ primary user-facing entry point for the package.
 - [x] Document Phase 8 closure evidence (`docs/PHASE8_CLOSURE.md`).
 - [x] Perform MATLAB/manual semantic reconciliation on known disagreement hotspots.
 - [x] Publish Phase 9 reconciliation report (`docs/PHASE9_RECONCILIATION.md`) and migration guide (`docs/MIGRATION_GUIDE.md`).
-- [ ] Complete the remaining cache portion of the backend-aware FFT refactor for CUDA (`docs/CUDA_OPTIMIZATION_PLAN.md`, C3).
-- [ ] Validate and tune the in-place CUDA propagation scratch path on hardware (`docs/CUDA_OPTIMIZATION_PLAN.md`, C3).
-- [ ] Remove the remaining non-ellipse host-staged mask/map paths on CUDA (`docs/CUDA_OPTIMIZATION_PLAN.md`, C4).
-- [x] Split CUDA benchmark interpretation by precision regime (`docs/CUDA_OPTIMIZATION_PLAN.md`, C5).
-- [ ] Review interpolation profiling output on CUDA hardware before committing to any tiling/shared-memory implementation (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, F4/N3).
-- [x] Define the first prepared-simulation/core API layer on top of `RunContext`/`ProperWorkspace` while keeping `prop_*` wrappers thin (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
-- [x] Make prepared parallel execution workspace-safe by forking stored `RunContext` state per pass while preserving backend/planning configuration (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
-- [x] Add reusable prepared context pools (`PreparedBatch`) and route core run wrappers/steady-state drivers through the prepared execution surface (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
-- [x] Add `PreparedModel` as the higher-level core execution object and optional external WFIRST Phase B Python benchmark harness (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
-- [x] Add `PreparedAssetPool` and slot-scoped asset injection for `PreparedModel` to support future asset-heavy model ports (`docs/PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
+- [ ] Complete the remaining cache portion of the backend-aware FFT refactor for CUDA (`CUDA_OPTIMIZATION_PLAN.md`, C3).
+- [ ] Validate and tune the in-place CUDA propagation scratch path on hardware (`CUDA_OPTIMIZATION_PLAN.md`, C3).
+- [ ] Remove the remaining non-ellipse host-staged mask/map paths on CUDA (`CUDA_OPTIMIZATION_PLAN.md`, C4).
+- [x] Split CUDA benchmark interpretation by precision regime (`CUDA_OPTIMIZATION_PLAN.md`, C5).
+- [ ] Review interpolation profiling output on CUDA hardware before committing to any tiling/shared-memory implementation (`PERFORMANCE_FOLLOWUP_PLAN.md`, F4/N3).
+- [x] Define the first prepared-simulation/core API layer on top of `RunContext`/`ProperWorkspace` while keeping `prop_*` wrappers thin (`PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
+- [x] Make prepared parallel execution workspace-safe by forking stored `RunContext` state per pass while preserving backend/planning configuration (`PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
+- [x] Add reusable prepared context pools (`PreparedBatch`) and route core run wrappers/steady-state drivers through the prepared execution surface (`PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
+- [x] Add `PreparedModel` as the higher-level core execution object and optional external WFIRST Phase B Python benchmark harness (`PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
+- [x] Add `PreparedAssetPool` and slot-scoped asset injection for `PreparedModel` to support future asset-heavy model ports (`PERFORMANCE_FOLLOWUP_PLAN.md`, N4).
 - [ ] Validate the new `prop_end!` full-frame fast path and centered-circle specialization on CUDA hardware and retune priorities based on that data.
 
 ## Latest Pass (2026-03-04)
@@ -132,4 +132,4 @@ primary user-facing entry point for the package.
 ## Notes
 - Runtime compatibility mode flags were removed; parity behavior is anchored to the patched Python baseline (`D-0035`).
 - Benchmark policy keeps steady-state comparisons separate from TTFx (`D-0029`).
-- CUDA optimization is now tracked separately in `docs/CUDA_OPTIMIZATION_PLAN.md` to keep backend work distinct from the completed parity/refactor milestones.
+- CUDA optimization is now tracked separately in `CUDA_OPTIMIZATION_PLAN.md` to keep backend work distinct from the completed parity/refactor milestones.

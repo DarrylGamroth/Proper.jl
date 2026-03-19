@@ -145,7 +145,7 @@ Status: Completed
   - direct KA frequency-domain phase application for CUDA `prop_ptp`
   - remove unconditional synchronization from low-level KA helpers
   - restrict rectangle / rounded-rectangle KA launches to the affected bounding box
-- Keep deeper device-workspace refactors separate and tracked in `docs/CUDA_OPTIMIZATION_PLAN.md`.
+- Keep deeper device-workspace refactors separate and tracked in `CUDA_OPTIMIZATION_PLAN.md`.
 - Targets:
   - reduce CUDA launch overhead on small kernels
   - remove CPU-staged map generation from the most obvious propagation hotspots
@@ -157,7 +157,7 @@ Status: Completed
 - Make reusable mask buffers backend-aware.
 - Update `WaveFront` and `RunContext` constructors to create workspace state from the field/output backend.
 - Add typed axis-fill execution routing so CuArray interpolation axes are filled without scalar indexing.
-- Keep FFT workspace CPU-owned in this slice; full device-side FFT/cache work stays in `docs/CUDA_OPTIMIZATION_PLAN.md` C3.
+- Keep FFT workspace CPU-owned in this slice; full device-side FFT/cache work stays in `CUDA_OPTIMIZATION_PLAN.md` C3.
 - Targets:
   - remove repeated host staging for interpolation axes and aperture mask buffers
   - preserve CPU allocation/performance behavior while enabling backend-preserving scratch on CUDA-visible paths
@@ -386,7 +386,7 @@ Status: Completed
   - local validation:
     - `julia --project=. test/runtests.jl`: pass
     - `./scripts/benchmark_all.sh`: pass on non-CUDA machine, CUDA lane skipped cleanly
-  - follow-up work is tracked in `docs/CUDA_OPTIMIZATION_PLAN.md` for backend-aware workspace/device-cache refactors.
+  - follow-up work is tracked in `CUDA_OPTIMIZATION_PLAN.md` for backend-aware workspace/device-cache refactors.
 - 2026-03-13: O12 completed.
   - `InterpWorkspace` now preserves the requested backend type instead of always using `Vector`.
   - `MaskWorkspace.mask` now preserves the requested backend type instead of always using `Matrix`.

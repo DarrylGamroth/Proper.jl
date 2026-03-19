@@ -359,7 +359,7 @@ Exit criterion for Phase 0: each subsection above is marked “decided” in pro
   - Release notes clearly describe compatibility guarantees and corrected-mode behavior.
 
 ## Refactor Track (Post-Audit, Parity-Preserving)
-Context: `docs/JULIA_IMPLEMENTATION_AUDIT_2026-03-04.md` immediate checklist is complete. This track closes remaining architecture/performance findings without changing user-facing behavior.
+Context: `docs/archive/JULIA_IMPLEMENTATION_AUDIT_2026-03-04.md` immediate checklist is complete. This track closes remaining architecture/performance findings without changing user-facing behavior.
 
 ### R1: Typed Option Boundaries (Remove Dynamic Keyword Hot Paths)
 - Goals:
@@ -590,8 +590,8 @@ Note: mapping below guarantees file-level traceability; implementation may and s
 | --- | --- | --- |
 | `proper/.use_ffti` | `data/.use_ffti` | Compatibility marker; reassess necessity |
 | `proper/__init__.py` | `src/Proper.jl` | Package entrypoint and exports |
-| `proper/cubic_conv_c.c` | `deps/src/cubic_conv_c.c` | Optional native kernel (CPU fast path) |
-| `proper/cubic_conv_threaded_c.c` | `deps/src/cubic_conv_threaded_c.c` | Optional native kernel (CPU fast path) |
+| `proper/cubic_conv_c.c` | — | Historical upstream C reference; Julia runtime uses `src/libcconv.jl` |
+| `proper/cubic_conv_threaded_c.c` | — | Historical upstream C reference; Julia runtime uses `src/libcconvthread.jl` |
 | `proper/influence_dm5v2_1.fits` | `data/influence_dm5v2_1.fits` | Reference data asset |
 | `proper/libcconv.py` | `src/libcconv.jl` | Direct function/module port |
 | `proper/libcconvthread.py` | `src/libcconvthread.jl` | Direct function/module port |
@@ -671,7 +671,7 @@ Note: mapping below guarantees file-level traceability; implementation may and s
 | `proper/prop_state.py` | `src/prop_state.jl` | Direct function/module port |
 | `proper/prop_stw.py` | `src/prop_stw.jl` | Direct function/module port |
 | `proper/prop_szoom.py` | `src/prop_szoom.jl` | Direct function/module port |
-| `proper/prop_szoom_c.c` | `deps/src/prop_szoom_c.c` | Optional native kernel (CPU fast path) |
+| `proper/prop_szoom_c.c` | — | Historical upstream C reference; Julia runtime uses `src/prop_szoom.jl` |
 | `proper/prop_table.py` | `src/prop_table.jl` | Direct function/module port |
 | `proper/prop_use_ffti.py` | `src/prop_use_ffti.jl` | Direct function/module port |
 | `proper/prop_use_fftw.py` | `src/prop_use_fftw.jl` | Direct function/module port |

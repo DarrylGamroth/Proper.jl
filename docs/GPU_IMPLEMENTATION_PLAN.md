@@ -3,7 +3,7 @@
 Working implementation plan for GPU backend quality, performance, and API
 honesty across CUDA and AMDGPU. This is the active maintainer plan for
 GPU-focused work; backend-specific notes such as
-[`CUDA_OPTIMIZATION_PLAN.md`](CUDA_OPTIMIZATION_PLAN.md) remain useful as
+[`archive/CUDA_OPTIMIZATION_PLAN.md`](archive/CUDA_OPTIMIZATION_PLAN.md) remain useful as
 historical or backend-local follow-up records.
 
 Date: 2026-03-17  

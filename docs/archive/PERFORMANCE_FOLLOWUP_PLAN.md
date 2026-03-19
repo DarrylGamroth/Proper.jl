@@ -151,7 +151,7 @@ Completed in this slice:
 - added an optional external Python WFIRST Phase B benchmark harness to establish a real-world baseline before a Julia-side port exists.
 
 ## Tracking
-- This plan supplements `docs/CUDA_OPTIMIZATION_PLAN.md` and `docs/RUNTIME_OPTIMIZATION_PLAN.md`.
+- This plan supplements `CUDA_OPTIMIZATION_PLAN.md` and `RUNTIME_OPTIMIZATION_PLAN.md`.
 - Immediate work in this pass: F1-F4.
 
 ## Execution Log
