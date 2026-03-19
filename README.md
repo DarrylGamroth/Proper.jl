@@ -59,6 +59,19 @@ The summary includes both:
 - a synthetic core propagation-tail workload derived from the repeated
   lens/propagate sequence identified during hotspot analysis
 
+Representative validated batch result on CUDA hardware:
+- 4-wavelength prepared sweep, `512 x 512` grid
+- CPU FP64: `103.42 ms`
+- CUDA FP64: `7.82 ms`
+- CPU/CUDA FP64: `13.22x`
+- CPU FP32: `70.11 ms`
+- CUDA FP32: `537.67 us`
+- CPU/CUDA FP32: `130.40x`
+
+That is the clearest current example of why prepared batched execution and
+explicit `Float32` support are first-class performance features rather than
+benchmark-only details.
+
 For profiling the shared core workload directly, run:
 
 ```bash
@@ -246,6 +259,10 @@ runs = [
 
 stack, samplings = prop_run_multi(runs)
 ```
+
+This vector-of-prepared-runs form is the intended throughput surface for fixed
+wavelength sweeps. It is the same API used by the batch-throughput benchmark
+lane.
 
 ### Use `prepare_model(...)` When Assets Or Naming Matter
 Use `PreparedModel` when you want a named execution object and optional cached

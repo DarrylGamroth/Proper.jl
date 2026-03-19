@@ -192,6 +192,16 @@ Completed in slice 1:
       - current corrected row on this machine:
         - CPU: `3.70 ms`, `0 allocs`
         - AMDGPU: `571.28 us`, `386 allocs`, `10.02 KiB`
+- cross-backend prepared batch throughput and precision-split rows are now part
+  of the standard CPU/GPU benchmark lane
+- representative validated CUDA batch result on NVIDIA RTX A2000 hardware for a
+  4-wavelength `512 x 512` prepared sweep:
+  - CPU FP64: `103.42 ms`
+  - CUDA FP64: `7.82 ms`
+  - CPU/CUDA FP64: `13.22x`
+  - CPU FP32: `70.11 ms`
+  - CUDA FP32: `537.67 us`
+  - CPU/CUDA FP32: `130.40x`
 
 ### G1: Remove Hidden Host Fallback From GPU-Visible Hot Paths
 Status: Completed

@@ -181,6 +181,22 @@ This is the intended prepared surface for wavelength sweeps or mixed prepared
 execution objects. When the first output is already on a GPU backend,
 `prop_run_multi` preserves that backend for the stacked output where feasible.
 
+This vector form is also the throughput-oriented execution surface used by the
+batch benchmark lane. It is the right API when your real workload is:
+
+- fixed-shape wavelength sweeps
+- repeated prepared runs
+- GPU throughput rather than one-off interactive execution
+
+Representative validated CUDA batch result for that surface:
+
+- 4 prepared wavelengths on a `512 x 512` grid
+- FP64: `7.82 ms`
+- FP32: `537.67 us`
+
+That is why explicit prepared precision selection and vector-of-prepared-runs
+execution are documented as public capabilities rather than benchmark internals.
+
 ## Asset Injection Contract
 When a `PreparedModel` resolves assets for a slot:
 

@@ -21,6 +21,9 @@ planning/audit records from the port effort.
 - The summary also includes:
   - `Prepared Batch Throughput`
   - `Precision Split`
+- A representative validated CUDA batch result is now surfaced in the root
+  README to make the prepared batch + FP32 capability visible from the main
+  package entry point
 - Run `./scripts/profile_core_cpu_gpu.sh` to capture backend-specific text
   profiles for that shared core workload
 - The driver uses any available Julia GPU backends (`CUDA.jl` and/or
