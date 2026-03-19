@@ -268,6 +268,10 @@ lane.
 Use `PreparedModel` when you want a named execution object and optional cached
 assets layered on top of prepared contexts.
 
+For users coming from upstream PROPER, `PreparedModel` should be read as the
+Julia reusable execution object for one configured prescription, not as a
+different optical model type.
+
 ```julia
 model = prepare_model(:simple_model, simple_prescription, 0.55, 128; pool_size=2)
 psf, sampling = prop_run(model; slot=1)

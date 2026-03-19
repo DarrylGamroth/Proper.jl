@@ -131,6 +131,10 @@ Prefer explicit keywords or prepared assets when:
 - the same assets are reused across runs
 - the call surface is stable enough to type explicitly
 
+Use `precision=Float32` or `precision=Float64` on prepared execution when the
+precision choice is part of the execution contract rather than an incidental
+property of one call site.
+
 ## Use Prepared Execution Deliberately
 Do not start with prepared execution just because it exists.
 
@@ -146,6 +150,48 @@ That ordering matters because:
 - parity validation is simplest with plain `prop_run`
 - prepared execution is an ownership/performance tool
 - prepared execution should not hide prescription logic during the initial port
+
+### What `PreparedModel` Means To An Upstream PROPER User
+For someone coming from upstream PROPER, `PreparedModel` should be read as:
+
+- one named prescription configuration
+- fixed wavelength/grid contract
+- reusable per-slot execution state
+- optional cached assets that belong with that model
+
+It is not a different optical model and it is not a compatibility mode flag.
+It is the Julia execution object you reach for once the plain `prop_run(...)`
+port is already correct and you want a reusable application-layer object.
+
+Typical pattern:
+
+```julia
+model = prepare_model(
+    :ao_science_camera,
+    my_prescription,
+    0.55,
+    256;
+    pool_size=2,
+    assets=(dm=zeros(48, 48),),
+)
+
+psf, sampling = prop_run(model; slot=1, PASSVALUE=Dict("use_dm" => true))
+```
+
+If the real workload is a wavelength sweep, do not overload one model object
+with mutable wavelength state. Build one prepared run per wavelength instead:
+
+```julia
+runs = [
+    prepare_model(:λ50, my_prescription, 0.50, 256; precision=Float32, pool_size=1),
+    prepare_model(:λ55, my_prescription, 0.55, 256; precision=Float32, pool_size=1),
+    prepare_model(:λ60, my_prescription, 0.60, 256; precision=Float32, pool_size=1),
+]
+
+stack, samplings = prop_run_multi(runs)
+```
+
+That is the intended Julia model for repeated multi-wavelength execution.
 
 ## Prescription Structure Recommendations
 

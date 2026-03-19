@@ -24,6 +24,16 @@ using Proper
         @test sampling > 0
     end
 
+    @testset "prepare_prescription explicit precision example" begin
+        demo_prescription(λm, n) = prop_end(prop_begin(1.0f0, λm, n))
+
+        prepared = prepare_prescription(demo_prescription, 0.55f0, 16; precision=Float32)
+        psf, sampling = prop_run(prepared)
+        @test size(psf) == (16, 16)
+        @test eltype(psf) == Float32
+        @test sampling > 0
+    end
+
     @testset "prepare_prescription_batch example" begin
         function batch_demo(λm, n, pass)
             wf = prop_begin(1.0 + pass, λm, n)
@@ -47,5 +57,20 @@ using Proper
         psf, sampling = prop_run(model; slot=1, PASSVALUE=3.0)
         @test psf[1, 1] == 5.0
         @test sampling == 1.0e-3
+    end
+
+    @testset "vector of prepared runs example" begin
+        sweep_demo(λm, n) = prop_end(prop_begin(1.0f0, λm, n))
+
+        runs = [
+            prepare_prescription(sweep_demo, 0.50f0, 8; precision=Float32),
+            prepare_prescription(sweep_demo, 0.55f0, 8; precision=Float32),
+            prepare_prescription(sweep_demo, 0.60f0, 8; precision=Float32),
+        ]
+
+        stack, samplings = prop_run_multi(runs)
+        @test size(stack) == (8, 8, 3)
+        @test eltype(stack) == Float32
+        @test length(samplings) == 3
     end
 end

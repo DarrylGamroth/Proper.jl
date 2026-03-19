@@ -38,6 +38,21 @@ julia> size(psf), sampling > 0
 ((16, 16), true)
 ```
 
+## `prepare_prescription` with explicit precision
+
+```jldoctest
+julia> using Proper
+
+julia> demo_prescription(λm, n) = prop_end(prop_begin(1.0f0, λm, n));
+
+julia> prepared = prepare_prescription(demo_prescription, 0.55f0, 16; precision=Float32);
+
+julia> psf, sampling = prop_run(prepared);
+
+julia> eltype(psf), sampling > 0
+(Float32, true)
+```
+
 ## `prepare_prescription_batch` and `prop_run_multi`
 
 ```jldoctest
@@ -76,4 +91,23 @@ julia> psf, sampling = prop_run(model; slot=1, PASSVALUE=3.0);
 
 julia> psf[1, 1], sampling
 (5.0, 0.001)
+```
+
+## vector of prepared runs for a wavelength sweep
+
+```jldoctest
+julia> using Proper
+
+julia> sweep_demo(λm, n) = prop_end(prop_begin(1.0f0, λm, n));
+
+julia> runs = [
+           prepare_prescription(sweep_demo, 0.50f0, 8; precision=Float32),
+           prepare_prescription(sweep_demo, 0.55f0, 8; precision=Float32),
+           prepare_prescription(sweep_demo, 0.60f0, 8; precision=Float32),
+       ];
+
+julia> stack, samplings = prop_run_multi(runs);
+
+julia> size(stack), eltype(stack), length(samplings)
+((8, 8, 3), Float32, 3)
 ```

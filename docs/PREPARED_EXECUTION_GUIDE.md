@@ -30,6 +30,24 @@ Move to the prepared layer when you need one or more of:
 
 ## Layering
 
+### Upstream PROPER Translation
+For users coming from upstream PROPER, the prepared execution layer should be
+read as a progression from the familiar single-call surface:
+
+- plain upstream-style execution:
+  - `prop_run(my_prescription, 0.55, 256; PASSVALUE=...)`
+- same prescription reused:
+  - `prepare_prescription(...)`
+- same prescription reused in repeated/parallel passes:
+  - `prepare_prescription_batch(...)`
+- same prescription reused as one named application object with cached assets:
+  - `prepare_model(...)`
+- wavelength sweep:
+  - build one prepared run per wavelength and call `prop_run_multi(runs)`
+
+That is the intended Julia model. `PreparedModel` is the reusable execution
+object; it is not a separate optical model type.
+
 ### `PreparedPrescription`
 Use this when you want to normalize and retain a single prescription call shape.
 

@@ -44,6 +44,71 @@ For a fuller prescription-porting workflow, see
 - These are performance and ownership tools, not a separate compatibility mode.
 - See `docs/PREPARED_EXECUTION_GUIDE.md` for concrete usage patterns.
 
+### Upstream PROPER Mental Model
+If you already know upstream PROPER, the prepared Julia surfaces map cleanly to
+common usage patterns:
+
+- one prescription call like upstream `prop_run(...)`:
+  - stay on `prop_run(...)`
+- same prescription shape run repeatedly:
+  - use `prepare_prescription(...)`
+- same prescription run repeatedly or in parallel with different `PASSVALUE`s:
+  - use `prepare_prescription_batch(...)`
+- same prescription plus cached assets, slot-local state, or a named execution
+  object you want to hand around in application code:
+  - use `prepare_model(...)`
+- wavelength sweep or mixed collection of prepared executions:
+  - build a vector of prepared runs and call `prop_run_multi(runs)`
+
+That gives upstream users a practical rule:
+- start exactly where upstream usage starts
+- only introduce prepared execution when repeated work or cached state is the
+  actual problem
+
+### Concrete Translation
+An upstream-style single run:
+
+```julia
+psf, sampling = prop_run(my_prescription, 0.55, 256; PASSVALUE=passvalue)
+```
+
+The same prescription reused as a Julia execution object:
+
+```julia
+prepared = prepare_prescription(my_prescription, 0.55, 256)
+psf, sampling = prop_run(prepared; PASSVALUE=passvalue)
+```
+
+The same prescription reused as a named model with cached assets:
+
+```julia
+model = prepare_model(
+    :my_model,
+    my_prescription,
+    0.55,
+    256;
+    pool_size=2,
+    assets=(dm=zeros(48, 48),),
+)
+
+psf, sampling = prop_run(model; slot=1, PASSVALUE=passvalue)
+```
+
+Repeated wavelength sweep:
+
+```julia
+runs = [
+    prepare_prescription(my_prescription, 0.50, 256; precision=Float32),
+    prepare_prescription(my_prescription, 0.55, 256; precision=Float32),
+    prepare_prescription(my_prescription, 0.60, 256; precision=Float32),
+]
+
+stack, samplings = prop_run_multi(runs)
+```
+
+For GPU-oriented throughput work, that last form is the intended public sweep
+surface.
+
 ## Known Semantics Adopted In Julia
 - `prop_resamplemap`: independent `xshift`/`yshift` handling (aligned with MATLAB/manual intent).
 - `prop_end`: integer-safe centered extraction semantics.
