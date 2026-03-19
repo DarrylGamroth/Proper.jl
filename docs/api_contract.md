@@ -91,8 +91,8 @@ Notes:
   - `prop_run_multi(prepared_batch::PreparedBatch)` reuses a growable pool of those forked contexts across repeated calls.
 - For user-facing prepared execution examples and ownership guidance, see:
   - `docs/PREPARED_EXECUTION_GUIDE.md`
-- Low-level implementation helpers such as `libcconv`, `switch_set`, and
-  `DftiErrorMessage` remain available as `Proper.<name>` for
+- Low-level implementation helpers such as `libcconv` and `switch_set` remain
+  available as `Proper.<name>` for
   internal use and focused tests, but are not part of the exported top-level
   API surface.
 

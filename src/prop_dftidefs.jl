@@ -27,22 +27,3 @@ Return an MKL DFTI-compatible constant dictionary for compatibility shims.
   PROPER compatibility code.
 """
 prop_dftidefs() = copy(_DFTIDEFS)
-
-function DftiErrorMessage(code::Integer)
-    return get(
-        Dict(
-            0 => "No error",
-            1 => "Memory error",
-            2 => "Invalid configuration",
-            3 => "Inconsistent configuration",
-            4 => "Multithreaded error",
-            5 => "Bad descriptor",
-            6 => "Unimplemented",
-            7 => "MKL internal error",
-            8 => "Number of threads error",
-            9 => "1D length exceeds int32",
-        ),
-        Int(code),
-        "Unknown error code",
-    )
-end
