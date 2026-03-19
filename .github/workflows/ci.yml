@@ -10,11 +10,12 @@ concurrency:
 
 jobs:
   test:
-    name: Test (Julia ${{ matrix.julia-version }})
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }}, Julia ${{ matrix.julia-version }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
         julia-version: ['1.10', '1.12']
     steps:
       - uses: actions/checkout@v4
@@ -87,3 +88,35 @@ jobs:
           path: |
             bench/reports/*.json
             test/parity/reports/*.json
+
+  cuda-tests:
+    name: CUDA Tests
+    if: ${{ vars.ENABLE_CUDA_RUNNER == 'true' }}
+    runs-on: [self-hosted, linux, x64, cuda]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.12'
+      - uses: julia-actions/cache@v2
+      - name: Instantiate
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+      - name: Test
+        run: julia --project=. -e 'using Pkg; Pkg.test()'
+
+  amdgpu-tests:
+    name: AMDGPU Tests
+    if: ${{ vars.ENABLE_AMDGPU_RUNNER == 'true' }}
+    runs-on: [self-hosted, linux, x64, amdgpu]
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.12'
+      - uses: julia-actions/cache@v2
+      - name: Instantiate
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+      - name: Test
+        run: julia --project=. -e 'using Pkg; Pkg.test()'
