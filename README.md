@@ -42,6 +42,8 @@ Run the dedicated Julia CPU/GPU comparison lane with:
 This generates:
 - `bench/reports/julia_cpu_gpu_summary.md`
 - `bench/reports/julia_cpu_gpu_steady_state.csv`
+- `bench/reports/julia_cpu_gpu_batch_throughput.csv`
+- `bench/reports/julia_cpu_gpu_precision_split.csv`
 - `bench/reports/julia_cpu_gpu_core_propagation_tail.csv`
 - `bench/reports/julia_cpu_gpu_supported_kernels.csv`
 
@@ -52,6 +54,8 @@ that backend as skipped instead of failing the whole run.
 
 The summary includes both:
 - the standard steady-state workload
+- prepared batch throughput for repeated prepared runs
+- FP64/FP32 precision comparisons for supported backends
 - a synthetic core propagation-tail workload derived from the repeated
   lens/propagate sequence identified during hotspot analysis
 
@@ -213,6 +217,14 @@ prepared = prepare_prescription(simple_prescription, 0.55, 128)
 psf, sampling = prop_run(prepared)
 ```
 
+You can request an explicit prepared execution precision when you want the
+repeated execution surface to stay on `Float32` or `Float64`:
+
+```julia
+prepared = prepare_prescription(simple_prescription, 0.55f0, 128; precision=Float32)
+psf, sampling = prop_run(prepared)
+```
+
 ### Use `prepare_prescription_batch(...)` For Repeated Parallel Work
 Use `PreparedBatch` when you want reusable per-slot contexts for repeated or
 parallel execution.
@@ -220,6 +232,19 @@ parallel execution.
 ```julia
 batch = prepare_prescription_batch(simple_prescription, 0.55, 128; pool_size=2)
 stack, samplings = prop_run_multi(batch; PASSVALUE=[nothing, nothing])
+```
+
+For wavelength sweeps or mixed prepared execution objects, pass a vector of
+prepared runs directly:
+
+```julia
+runs = [
+    prepare_prescription(simple_prescription, 0.50f0, 128; precision=Float32),
+    prepare_prescription(simple_prescription, 0.55f0, 128; precision=Float32),
+    prepare_prescription(simple_prescription, 0.60f0, 128; precision=Float32),
+]
+
+stack, samplings = prop_run_multi(runs)
 ```
 
 ### Use `prepare_model(...)` When Assets Or Naming Matter

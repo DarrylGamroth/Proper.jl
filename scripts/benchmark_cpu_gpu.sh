@@ -17,6 +17,9 @@ run_step() {
 }
 
 run_step "Julia CPU steady-state workload" julia --project=. bench/julia/steady_state/run.jl
+run_step "Julia CPU steady-state FP32" julia --project=. bench/julia/steady_state/run_fp32.jl
+run_step "Julia CPU batch throughput FP64" julia --project=. bench/julia/steady_state/batch_throughput_fp64.jl
+run_step "Julia CPU batch throughput FP32" julia --project=. bench/julia/steady_state/batch_throughput_fp32.jl
 run_step "Julia CPU core propagation tail" julia --project=. bench/julia/steady_state/core_propagation_tail.jl
 run_step "Julia CPU supported kernels" julia --project=. bench/julia/steady_state/supported_kernels.jl
 run_cuda_benchmarks

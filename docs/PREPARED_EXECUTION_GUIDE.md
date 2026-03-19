@@ -44,6 +44,7 @@ What it stores:
 - wavelength in meters
 - grid size
 - optional prepared `RunContext`
+- optional explicit execution precision
 - fixed kwargs
 - default `PASSVALUE`
 
@@ -51,6 +52,17 @@ What it does not add:
 
 - per-slot parallel contexts
 - cached assets
+
+Precision can be requested explicitly when you want the prepared execution
+object to own a `Float32` or `Float64` runtime surface:
+
+```julia
+prepared = prepare_prescription(my_prescription, 0.55, 256; precision=Float32)
+psf, sampling = prop_run(prepared)
+```
+
+If you also pass `context=...`, the context workspace precision must match the
+requested `precision`.
 
 ### `PreparedBatch`
 Use this when you want repeated or parallel execution with reusable per-slot
@@ -81,6 +93,7 @@ Key behavior:
 - slots are 1-based
 - each slot gets an independent `RunContext`
 - output order matches input order
+- repeated runs preserve the prepared backend and precision
 
 Reset reusable contexts with:
 
@@ -151,6 +164,23 @@ Reset everything owned by the model with:
 reset_prepared_model!(model)
 ```
 
+You can also construct a vector of independently prepared runs and execute them
+through the same stacked return surface:
+
+```julia
+runs = [
+    prepare_model(:λ50, my_prescription, 0.50, 256; precision=Float32, pool_size=1),
+    prepare_model(:λ55, my_prescription, 0.55, 256; precision=Float32, pool_size=1),
+    prepare_model(:λ60, my_prescription, 0.60, 256; precision=Float32, pool_size=1),
+]
+
+stack, samplings = prop_run_multi(runs)
+```
+
+This is the intended prepared surface for wavelength sweeps or mixed prepared
+execution objects. When the first output is already on a GPU backend,
+`prop_run_multi` preserves that backend for the stacked output where feasible.
+
 ## Asset Injection Contract
 When a `PreparedModel` resolves assets for a slot:
 
@@ -202,6 +232,8 @@ They sit under the familiar `prop_run` / `prop_run_multi` execution contract:
 - plain calls are still supported
 - prepared calls preserve the same return shapes
 - prepared objects just make ownership, reuse, and batching explicit
+- explicit `precision=Float32` / `Float64` is a numerics choice, not a separate
+  execution mode
 
 ## Minimal Examples
 
@@ -241,4 +273,15 @@ stack, samplings = prop_run_multi(
     model;
     PASSVALUE=[Dict("use_dm" => false), Dict("use_dm" => true)],
 )
+```
+
+### Precision-Selected Batch Sweep
+```julia
+runs = [
+    prepare_prescription(my_prescription, 0.50, 256; precision=Float32),
+    prepare_prescription(my_prescription, 0.55, 256; precision=Float32),
+    prepare_prescription(my_prescription, 0.60, 256; precision=Float32),
+]
+
+stack, samplings = prop_run_multi(runs)
 ```

@@ -27,18 +27,18 @@ function write_cpu_report(path::AbstractString, report)
     return report
 end
 
-const RUN_TAG = "steady_state"
-const RUN_TAG_FP64 = "steady_state_fp64"
-const REPORT_PATH = joinpath(@__DIR__, "..", "..", "reports", "julia_steady_state.json")
-const REPORT_PATH_FP64 = joinpath(@__DIR__, "..", "..", "reports", "julia_steady_state_fp64.json")
+const RUN_TAG = "batch_throughput_cpu"
+const RUN_TAG_FP64 = "batch_throughput_cpu_fp64"
+const REPORT_PATH = joinpath(@__DIR__, "..", "..", "reports", "julia_batch_throughput_cpu.json")
+const REPORT_PATH_FP64 = joinpath(@__DIR__, "..", "..", "reports", "julia_batch_throughput_cpu_fp64.json")
 
-prepared = prepare_steady_state_model(Float64, PREPARED_STEADY_GRID_N, cpu_prepared_context(Float64, PREPARED_STEADY_GRID_N); name=:steady_state_cpu)
-trial = benchmark_prepared_trial(() -> run_prepared_workload(prepared))
+prepared = prepare_steady_state_sweep(Float64, cpu_prepared_context, PREPARED_BATCH_WAVELENGTHS, PREPARED_STEADY_GRID_N; name_prefix=:batch_cpu)
+trial = benchmark_prepared_trial(() -> run_prepared_sweep_workload(prepared))
 stats = trial_stats(trial)
 
 report = Dict(
-    "meta" => merge(benchmark_metadata(run_tag=RUN_TAG, backend=:cpu), Dict("grid_n" => PREPARED_STEADY_GRID_N, "precision" => "Float64")),
-    "policy" => "steady-state CPU workload timing via BenchmarkTools with evals=1; TTFx excluded",
+    "meta" => merge(benchmark_metadata(run_tag=RUN_TAG, backend=:cpu), Dict("grid_n" => PREPARED_STEADY_GRID_N, "precision" => "Float64", "batch_size" => length(PREPARED_BATCH_WAVELENGTHS))),
+    "policy" => "prepared batch throughput timing for a fixed wavelength sweep via prop_run_multi(vector_of_prepared_runs); TTFx excluded",
     "stats" => stats,
 )
 

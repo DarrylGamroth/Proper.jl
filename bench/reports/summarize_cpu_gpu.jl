@@ -154,6 +154,8 @@ end
 
 root = @__DIR__
 jl = loadjson(joinpath(root, "julia_steady_state.json"))
+jl_fp64 = loadjson(joinpath(root, "julia_steady_state_fp64.json"))
+jl_fp32 = loadjson(joinpath(root, "julia_steady_state_fp32.json"))
 cpu_supported = loadjson(joinpath(root, "julia_supported_kernels.json"))
 cuda_jl = loadjson(joinpath(root, "julia_cuda_steady_state.json"))
 cuda_jl_fp64 = loadjson(joinpath(root, "julia_cuda_steady_state_fp64.json"))
@@ -162,7 +164,18 @@ cuda_kernels = loadjson(joinpath(root, "cuda_supported_kernels.json"))
 cuda_precision = loadjson(joinpath(root, "cuda_precision_split.json"))
 cuda_isolated = loadjson(joinpath(root, "cuda_isolated_wavefront_kernels.json"))
 amdgpu_jl = loadjson(joinpath(root, "julia_amdgpu_steady_state.json"))
+amdgpu_jl_fp64 = loadjson(joinpath(root, "julia_amdgpu_steady_state_fp64.json"))
+amdgpu_jl_fp32 = loadjson(joinpath(root, "julia_amdgpu_steady_state_fp32.json"))
 amdgpu_kernels = loadjson(joinpath(root, "amdgpu_supported_kernels.json"))
+batch_cpu = loadjson(joinpath(root, "julia_batch_throughput_cpu.json"))
+batch_cpu_fp64 = loadjson(joinpath(root, "julia_batch_throughput_cpu_fp64.json"))
+batch_cpu_fp32 = loadjson(joinpath(root, "julia_batch_throughput_cpu_fp32.json"))
+batch_cuda = loadjson(joinpath(root, "julia_batch_throughput_cuda.json"))
+batch_cuda_fp64 = loadjson(joinpath(root, "julia_batch_throughput_cuda_fp64.json"))
+batch_cuda_fp32 = loadjson(joinpath(root, "julia_batch_throughput_cuda_fp32.json"))
+batch_amdgpu = loadjson(joinpath(root, "julia_batch_throughput_amdgpu.json"))
+batch_amdgpu_fp64 = loadjson(joinpath(root, "julia_batch_throughput_amdgpu_fp64.json"))
+batch_amdgpu_fp32 = loadjson(joinpath(root, "julia_batch_throughput_amdgpu_fp32.json"))
 core_cpu = loadjson(joinpath(root, "julia_core_propagation_tail_cpu.json"))
 core_cuda = loadjson(joinpath(root, "julia_core_propagation_tail_cuda.json"))
 core_amdgpu = loadjson(joinpath(root, "julia_core_propagation_tail_amdgpu.json"))
@@ -229,6 +242,76 @@ end
 append_ascii_section!(term, "Julia Steady-State CPU vs GPU", steady_headers, steady_rows; aligns=[:l, :r, :r, :r], notes=steady_notes)
 append_markdown_section!(md, "Julia Steady-State CPU vs GPU", steady_headers, steady_rows; notes=steady_notes)
 push!(generated_paths, write_csv(joinpath(root, "julia_cpu_gpu_steady_state.csv"), steady_headers, steady_rows))
+
+batch_headers = ["Backend", "Median", "Samples", "Vs CPU", "Batch Size"]
+batch_rows = Vector{Vector{String}}()
+batch_notes = String[]
+batch_cpu_med = maybe_float(getpath(batch_cpu, "stats", "median_ns"))
+if batch_cpu !== nothing
+    push!(batch_rows, [
+        "Julia CPU",
+        fmt_ns(batch_cpu_med),
+        fmt_int(getpath(batch_cpu, "stats", "samples")),
+        "1.00x",
+        fmt_int(getpath(batch_cpu, "meta", "batch_size")),
+    ])
+end
+if maybe_bool(getpath(batch_cuda, "meta", "available"))
+    batch_cuda_med = maybe_float(getpath(batch_cuda, "stats", "median_ns"))
+    push!(batch_rows, [
+        "Julia CUDA",
+        fmt_ns(batch_cuda_med),
+        fmt_int(getpath(batch_cuda, "stats", "samples")),
+        batch_cpu_med === nothing ? "-" : fmt_ratio(batch_cpu_med / batch_cuda_med),
+        fmt_int(getpath(batch_cuda, "meta", "batch_size")),
+    ])
+elseif batch_cuda !== nothing
+    push!(batch_notes, "CUDA prepared batch throughput status: skipped")
+end
+if maybe_bool(getpath(batch_amdgpu, "meta", "available"))
+    batch_amdgpu_med = maybe_float(getpath(batch_amdgpu, "stats", "median_ns"))
+    push!(batch_rows, [
+        "Julia AMDGPU",
+        fmt_ns(batch_amdgpu_med),
+        fmt_int(getpath(batch_amdgpu, "stats", "samples")),
+        batch_cpu_med === nothing ? "-" : fmt_ratio(batch_cpu_med / batch_amdgpu_med),
+        fmt_int(getpath(batch_amdgpu, "meta", "batch_size")),
+    ])
+elseif batch_amdgpu !== nothing
+    push!(batch_notes, "AMDGPU prepared batch throughput status: skipped")
+end
+if batch_cpu !== nothing
+    push!(batch_notes, "Prepared batch throughput uses `prop_run_multi(vector_of_prepared_runs)` over a fixed wavelength sweep to measure cross-backend repeated-run throughput.")
+end
+append_ascii_section!(term, "Prepared Batch Throughput", batch_headers, batch_rows; aligns=[:l, :r, :r, :r, :r], notes=batch_notes)
+append_markdown_section!(md, "Prepared Batch Throughput", batch_headers, batch_rows; notes=batch_notes)
+push!(generated_paths, write_csv(joinpath(root, "julia_cpu_gpu_batch_throughput.csv"), batch_headers, batch_rows))
+
+precision_headers = ["Workload", "Backend", "FP64", "FP32", "FP64/FP32"]
+precision_rows = Vector{Vector{String}}()
+function push_precision_row!(rows, workload, backend, fp64_report, fp32_report)
+    fp64 = maybe_float(getpath(fp64_report, "stats", "median_ns"))
+    fp32 = maybe_float(getpath(fp32_report, "stats", "median_ns"))
+    push!(rows, [
+        workload,
+        backend,
+        fmt_ns(fp64),
+        fmt_ns(fp32),
+        fp64 === nothing || fp32 === nothing ? "-" : fmt_ratio(fp64 / fp32),
+    ])
+end
+push_precision_row!(precision_rows, "Steady-State", "CPU", jl_fp64, jl_fp32)
+push_precision_row!(precision_rows, "Steady-State", "CUDA", cuda_jl_fp64, cuda_jl_fp32)
+push_precision_row!(precision_rows, "Steady-State", "AMDGPU", amdgpu_jl_fp64, amdgpu_jl_fp32)
+push_precision_row!(precision_rows, "Prepared Batch", "CPU", batch_cpu_fp64, batch_cpu_fp32)
+push_precision_row!(precision_rows, "Prepared Batch", "CUDA", batch_cuda_fp64, batch_cuda_fp32)
+push_precision_row!(precision_rows, "Prepared Batch", "AMDGPU", batch_amdgpu_fp64, batch_amdgpu_fp32)
+precision_notes = [
+    "Precision rows compare warmed FP64 and FP32 runs for the same workload shape. Ratios greater than 1.00x mean FP32 is faster.",
+]
+append_ascii_section!(term, "Precision Split", precision_headers, precision_rows; aligns=[:l, :l, :r, :r, :r], notes=precision_notes)
+append_markdown_section!(md, "Precision Split", precision_headers, precision_rows; notes=precision_notes)
+push!(generated_paths, write_csv(joinpath(root, "julia_cpu_gpu_precision_split.csv"), precision_headers, precision_rows))
 
 core_headers = ["Backend", "Median", "Samples", "Vs CPU", "Allocs", "Bytes"]
 core_rows = Vector{Vector{String}}()

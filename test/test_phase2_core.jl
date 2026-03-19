@@ -166,6 +166,12 @@ end
     @test size(out_prepared) == (16, 16)
     @test s_prepared > 0
 
+    prepared_f32 = prepare_prescription(dummy, 0.55f0, 16; precision=Float32)
+    out_prepared_f32, s_prepared_f32 = prop_run(prepared_f32)
+    @test size(out_prepared_f32) == (16, 16)
+    @test eltype(out_prepared_f32) == Float32
+    @test s_prepared_f32 > 0
+
     passvals = [1, 2, 3]
     stack, samplings = prop_run_multi(dummy, 0.55, 16; PASSVALUE=passvals)
     @test size(stack) == (16, 16, 3)
@@ -188,6 +194,11 @@ end
     stack_model, samplings_model = prop_run_multi(prepared_model; PASSVALUE=passvals)
     @test size(stack_model) == (16, 16, 3)
     @test length(samplings_model) == 3
+
+    sweep_runs = [prepare_model(dummy, λ, 16; pool_size=1) for λ in (0.50, 0.55, 0.60)]
+    sweep_stack, sweep_samplings = prop_run_multi(sweep_runs)
+    @test size(sweep_stack) == (16, 16, 3)
+    @test length(sweep_samplings) == 3
 
     dummy_pass(λm, n, pass; kwargs...) = prop_begin(1.0 + pass, λm, n)
     prepared_pass = prepare_prescription(dummy_pass, 0.55, 16; PASSVALUE=2)
@@ -213,6 +224,14 @@ end
         @test size(out_prepared_ctx) == (16, 16)
         @test eltype(out_prepared_ctx) == Float32
         @test s_prepared_ctx > 0
+
+        prepared_precision_ctx = prepare_prescription(dummy, 0.55f0, 16; precision=Float32)
+        out_precision_ctx, s_precision_ctx = prop_run(prepared_precision_ctx)
+        @test size(out_precision_ctx) == (16, 16)
+        @test eltype(out_precision_ctx) == Float32
+        @test s_precision_ctx > 0
+        @test Proper.workspace_float_type(Proper.prepared_context(prepared_precision_ctx).workspace) == Float32
+        @test_throws ArgumentError prepare_prescription(dummy, 0.55f0, 16; context=ctx, precision=Float64)
 
         prepared_ctxs = Proper.prepared_contexts(prepared_ctx, 3)
         @test length(prepared_ctxs) == 3
@@ -289,6 +308,13 @@ end
         @test eltype(stack_parallel_model) == Float32
         @test length(unique(vec(stack_parallel_model[1, 1, :]))) == 3
         @test samplings_parallel_model == fill(1.0f0, 3)
+
+        sweep_parallel = [prepare_model(dummy_prepared_parallel, 0.50f0 + 0.05f0 * i, 16; name=Symbol(:dummy_sweep_, i), context=ctx, pool_size=1) for i in 0:2]
+        sweep_parallel_stack, sweep_parallel_samplings = prop_run_multi(sweep_parallel; PASSVALUE=1:3)
+        @test size(sweep_parallel_stack) == (16, 16, 3)
+        @test eltype(sweep_parallel_stack) == Float32
+        @test length(unique(vec(sweep_parallel_stack[1, 1, :]))) == 3
+        @test sweep_parallel_samplings == fill(1.0f0, 3)
 
         wf_begin = prop_begin(1.0, 500f-9, 16; context=ctx)
         @test eltype(wf_begin.field) == ComplexF32

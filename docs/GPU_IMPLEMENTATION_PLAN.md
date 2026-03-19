@@ -165,6 +165,11 @@ Completed in slice 1:
 - helper/image-map supported-kernel lanes also now double-warm before sampling:
   - [`bench/julia/amdgpu/supported_kernels.jl`](../bench/julia/amdgpu/supported_kernels.jl)
   - [`bench/julia/cuda/supported_kernels.jl`](../bench/julia/cuda/supported_kernels.jl)
+- the AMDGPU supported-kernel lane is now allowed to degrade to a skipped
+  report when current LLVM/AMDGPU compiler crashes occur in cubic-convolution
+  helper kernels such as `prop_szoom!`; this keeps the shared steady-state and
+  batch-throughput benchmark surfaces usable while treating the helper-lane
+  instability as a toolchain issue rather than a whole-benchmark failure
 - consequence:
   - GPU benchmark rows now align better with the warmed-steady-state contract
     already used by the GPU allocation tests, instead of depending on a single

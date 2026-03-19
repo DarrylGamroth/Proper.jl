@@ -13,8 +13,14 @@ planning/audit records from the port effort.
 ## Benchmarking
 - Run `./scripts/benchmark_cpu_gpu.sh` for the Julia CPU/GPU comparison lane
 - The resulting summary is written to `bench/reports/julia_cpu_gpu_summary.md`
+- The lane also writes:
+  - `bench/reports/julia_cpu_gpu_batch_throughput.csv`
+  - `bench/reports/julia_cpu_gpu_precision_split.csv`
 - The summary includes a `Synthetic Core Propagation Tail` section for the
   shared propagation benchmark harness
+- The summary also includes:
+  - `Prepared Batch Throughput`
+  - `Precision Split`
 - Run `./scripts/profile_core_cpu_gpu.sh` to capture backend-specific text
   profiles for that shared core workload
 - The driver uses any available Julia GPU backends (`CUDA.jl` and/or

@@ -38,6 +38,29 @@ end
 @inline prepared_batch(model::PreparedModel) = model.batch
 @inline prepared_assets(model::PreparedModel) = model.assets
 
+@inline function _prepared_context_with_precision(
+    context::Union{Nothing,RunContext},
+    ::Nothing,
+)
+    return context
+end
+
+@inline function _prepared_context_with_precision(
+    ::Nothing,
+    precision::Type{T},
+) where {T<:AbstractFloat}
+    return RunContext(Matrix{T})
+end
+
+@inline function _prepared_context_with_precision(
+    context::RunContext,
+    precision::Type{T},
+) where {T<:AbstractFloat}
+    ctxT = workspace_float_type(context.workspace)
+    ctxT === T || throw(ArgumentError("context workspace precision $(ctxT) does not match requested precision $(T)"))
+    return context
+end
+
 function prepare_asset_pool(factory; pool_size::Integer=Base.Threads.nthreads())
     pool_size > 0 || throw(ArgumentError("pool_size must be positive"))
     cache = Vector{Any}(undef, pool_size)
@@ -67,9 +90,10 @@ function prepare_prescription_batch(
     lambda0_microns::Real,
     gridsize::Integer;
     pool_size::Integer=Base.Threads.nthreads(),
+    precision::Union{Nothing,Type{<:AbstractFloat}}=nothing,
     kwargs...,
 )
-    prepared = prepare_prescription(routine_name, lambda0_microns, gridsize; kwargs...)
+    prepared = prepare_prescription(routine_name, lambda0_microns, gridsize; precision=precision, kwargs...)
     return prepare_prescription_batch(prepared; pool_size=pool_size)
 end
 
@@ -154,9 +178,10 @@ function prepare_model(
     name=routine_name,
     assets=nothing,
     pool_size::Integer=Base.Threads.nthreads(),
+    precision::Union{Nothing,Type{<:AbstractFloat}}=nothing,
     kwargs...,
 )
-    prepared = prepare_prescription(routine_name, lambda0_microns, gridsize; kwargs...)
+    prepared = prepare_prescription(routine_name, lambda0_microns, gridsize; precision=precision, kwargs...)
     batch = prepare_prescription_batch(prepared; pool_size=pool_size)
     return PreparedModel(name, prepared, batch, assets)
 end
@@ -168,9 +193,10 @@ function prepare_model(
     gridsize::Integer;
     assets=nothing,
     pool_size::Integer=Base.Threads.nthreads(),
+    precision::Union{Nothing,Type{<:AbstractFloat}}=nothing,
     kwargs...,
 )
-    prepared = prepare_prescription(routine_name, lambda0_microns, gridsize; kwargs...)
+    prepared = prepare_prescription(routine_name, lambda0_microns, gridsize; precision=precision, kwargs...)
     batch = prepare_prescription_batch(prepared; pool_size=pool_size)
     return PreparedModel(name, prepared, batch, assets)
 end
@@ -197,9 +223,12 @@ function prepare_prescription(
     gridsize::Integer;
     PASSVALUE=nothing,
     context::Union{Nothing,RunContext}=nothing,
+    precision::Union{Nothing,Type{<:AbstractFloat}}=nothing,
     kwargs...,
 )
-    λm = float(lambda0_microns) * 1e-6
+    WT = isnothing(precision) ? float(typeof(lambda0_microns)) : precision
+    λm = WT(lambda0_microns) * WT(1e-6)
     fn = resolve_prescription_routine(routine_name)
-    return PreparedPrescription(fn, λm, Int(gridsize), context, (; kwargs...), PASSVALUE)
+    ctx = _prepared_context_with_precision(context, precision)
+    return PreparedPrescription(fn, λm, Int(gridsize), ctx, (; kwargs...), PASSVALUE)
 end

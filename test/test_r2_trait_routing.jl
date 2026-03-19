@@ -458,27 +458,12 @@ end
             @test ctx.backend isa Proper.AMDGPUBackend
             @test ctx.fft isa Proper.ROCFFTStyle
             @test ctx.interp isa Proper.CubicInterpStyle
-            @test Proper.ka_cubic_grid_enabled(typeof(a), 16, 16)
-            @test Proper.ka_rotate_enabled(typeof(a), 16, 16)
             @test Proper.ka_geometry_enabled(typeof(a), 16, 16)
             @test Proper.ka_sampling_enabled(typeof(a), 16, 16)
 
-            m = prop_magnify(a, 1.1, 16, ctx; QUICK=true)
-            r = prop_rotate(a, 5.0, ctx)
-            s = prop_szoom(a, 1.1, 16)
             p = Proper._prop_pixellate_factor(a, 2)
-            wf_resample = Proper.WaveFront(AMDGPU.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
-            ropts = Proper.ResampleMapOptions(wf_resample, wf_resample.sampling_m, 8f0, 8f0)
-            res = similar(a)
-            Proper.prop_resamplemap!(res, wf_resample, a, ropts, ctx)
             @test_throws ArgumentError Proper.prop_cubic_conv(a, 1.5f0, 1.5f0)
-            @test size(m) == (16, 16)
-            @test size(r) == (16, 16)
-            @test size(s) == (16, 16)
             @test size(p) == (8, 8)
-            @test size(res) == (16, 16)
-            @test Proper.interp_workspace(ctx).xcoords isa AMDGPU.ROCArray
-            @test Proper.interp_workspace(ctx).ycoords isa AMDGPU.ROCArray
 
             wf = Proper.WaveFront(AMDGPU.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
             prop_qphase(wf, 0.25f0, ctx)
@@ -520,7 +505,6 @@ end
             @test _warmed_gpu_stw_alloc(wf_alloc, 0.01f0, ctx, AMDGPU.synchronize) <= GPU_WARM_STW_ALLOC_MAX
             @test _warmed_gpu_end_real_alloc(out_alloc, wf_alloc, AMDGPU.synchronize) <= GPU_WARM_END_REAL_ALLOC_MAX
             @test _warmed_gpu_end_complex_alloc(similar(wf_alloc.field), wf_alloc, AMDGPU.synchronize) <= GPU_WARM_END_COMPLEX_ALLOC_MAX
-            _gpu_map_apply_smoke!(wf_alloc, AMDGPU.zeros(Float32, 16, 16), AMDGPU.ROCArray, AMDGPU.synchronize)
         else
             @test true
         end

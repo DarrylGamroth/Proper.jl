@@ -1,38 +1,22 @@
 using BenchmarkTools
 using Proper
+include(joinpath(@__DIR__, "prepared_execution_workloads.jl"))
 
 const CUDA_STEADY_GRID_N = 512
 const CUDA_STEADY_SAMPLES = 20
 
-function cuda_steady_state_prescription(λm, n; kwargs...)
-    wf = prop_begin(2.4, λm, n; beam_diam_fraction=0.5)
-    prop_circular_aperture(wf, 0.6)
-    prop_lens(wf, 20.0)
-    prop_propagate(wf, 20.0)
-    return wf
-end
-
 function cuda_steady_state_prepared(::Type{T}, grid_n::Integer=CUDA_STEADY_GRID_N) where {T<:AbstractFloat}
-    wf = cuda_wavefront_begin(T, 2.4, 0.55e-6, grid_n; beam_diam_fraction=T(0.5))
-    ctx = RunContext(wf)
-    return prepare_model(:steady_state_cuda, cuda_steady_state_prescription, T(0.55), grid_n; context=ctx, pool_size=1)
+    ctx = backend_prepared_context(cuda_wavefront_begin, T, grid_n)
+    return prepare_steady_state_model(T, grid_n, ctx; name=:steady_state_cuda)
 end
 
 function cuda_steady_state_workload(prepared::Union{PreparedPrescription,PreparedModel})
-    prop_run(prepared)
-    cuda_sync()
-    return nothing
+    return run_prepared_workload(prepared, cuda_sync)
 end
 
 function _run_cuda_steady_state_report(::Type{T}, run_tag::String, report_path::AbstractString; grid_n::Integer=CUDA_STEADY_GRID_N, samples::Integer=CUDA_STEADY_SAMPLES) where {T<:AbstractFloat}
     prepared = cuda_steady_state_prepared(T, grid_n)
-    cuda_steady_state_workload(prepared)
-    cuda_steady_state_workload(prepared)
-
-    trial = run(@benchmarkable begin
-        cuda_steady_state_workload($prepared)
-        cuda_sync()
-    end evals=1 samples=samples)
+    trial = benchmark_prepared_trial(() -> cuda_steady_state_workload(prepared); samples=samples)
 
     report = Dict(
         "meta" => merge(cuda_report_meta(run_tag; device=cuda_device_label()), Dict("grid_n" => grid_n, "precision" => string(T))),

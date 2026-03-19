@@ -7,6 +7,8 @@ run_cuda_benchmarks() {
     run_step "Julia CUDA steady-state workload" julia --project=. bench/julia/cuda/steady_state_fp64.jl
     run_step "Julia CUDA core propagation tail" julia --project=. bench/julia/cuda/core_propagation_tail.jl
     run_step "Julia CUDA steady-state FP32" julia --project=. bench/julia/cuda/steady_state_fp32.jl
+    run_step "Julia CUDA batch throughput FP64" julia --project=. bench/julia/cuda/batch_throughput_fp64.jl
+    run_step "Julia CUDA batch throughput FP32" julia --project=. bench/julia/cuda/batch_throughput_fp32.jl
     run_step "Julia CUDA supported kernels" julia --project=. bench/julia/cuda/supported_kernels.jl
     run_step "Julia CUDA precision split" julia --project=. bench/julia/cuda/precision_split.jl
 

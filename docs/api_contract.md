@@ -106,10 +106,20 @@ Notes:
   - `PreparedAssetPool`
   - `PreparedModel`
   - `prepare_prescription(routine_name, lambda0_microns, gridsize; context=..., PASSVALUE=..., kwargs...)`
-  - `prepare_prescription_batch(prepared_or_routine, ...; pool_size=...)`
+  - `prepare_prescription(routine_name, lambda0_microns, gridsize; precision=Float32|Float64, ...)`
+  - `prepare_prescription_batch(prepared_or_routine, ...; pool_size=..., precision=...)`
   - `prepare_asset_pool(factory; pool_size=...)`
-  - `prepare_model(prepared_or_routine, ...; pool_size=..., assets=...)`
+  - `prepare_model(prepared_or_routine, ...; pool_size=..., assets=..., precision=...)`
 - `prop_*` public APIs should consume `RunContext` (or equivalent typed config) without compatibility mode flags.
+
+Prepared precision contract:
+- default prepared execution precision follows the supplied wavelength type and
+  normal `prop_begin` / `RunContext` defaults
+- callers may request explicit prepared execution precision with
+  `precision=Float32` or `precision=Float64`
+- when both `context=...` and `precision=...` are supplied, the context
+  workspace precision must match the requested precision or the constructor
+  throws `ArgumentError`
 
 Prepared-model asset contract:
 - `PreparedModel` may carry static assets or a `PreparedAssetPool`.
@@ -123,11 +133,16 @@ Prepared-model asset contract:
 - Multi-run entry point:
   - `prop_run_multi(...) -> (stack, samplings)`
 - Prepared entry points preserve those same return shapes.
+- `prop_run_multi(runs::AbstractVector{<:Union{PreparedPrescription,PreparedBatch,PreparedModel}})`
+  is a stable prepared execution form for wavelength sweeps and mixed prepared
+  run collections.
 - Prescriptions may return either:
   - a `WaveFront`, which is finalized through `prop_end`, or
   - a `(psf, sampling)` tuple directly
 - `prop_run_multi` requires matrix-like outputs so they can be stacked along the
   third dimension.
+- when feasible, `prop_run_multi` preserves the backend of the first prepared
+  output for the stacked result instead of forcing a host `Array`
 
 ## 4. Keyword Argument Contract
 - Keyword style support:
@@ -154,6 +169,10 @@ Prepared-model asset contract:
 - `prop_run_multi(...) -> (stacked_psf, sampling_vector)` where:
   - `stacked_psf`: `AbstractArray{<:Number,3}`
   - `sampling_vector`: `Vector{Float64}`
+- prepared execution with explicit `precision=Float32` may therefore return
+  `AbstractArray{ComplexF32,3}`, `AbstractArray{Float32,3}`, or the analogous
+  `Float64` / `ComplexF64` forms depending on the called surface and `NOABS`
+  choice
 
 Additional stable return conventions:
 - `prop_rotate(image, ...) -> array same size as input`

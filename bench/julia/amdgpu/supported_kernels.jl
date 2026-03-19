@@ -21,9 +21,7 @@ function bench_amdgpu_supported_kernels()
 
     img = amdgpu_rand(Float32, nmap, nmap)
     ctx_img = RunContext(typeof(img))
-    mag_quick_opts = Proper.MagnifyOptions(true, false, false)
     rot_out = similar(img)
-    mag_out = similar(img)
     szoom_out = similar(img)
     pix_out = similar(img, nmap ÷ 2, nmap ÷ 2)
 
@@ -36,14 +34,12 @@ function bench_amdgpu_supported_kernels()
     round_out = similar(rect_out)
 
     prop_rotate!(rot_out, img, 12.0, ctx_img)
-    prop_magnify!(mag_out, img, 1.1, mag_quick_opts, ctx_img)
     prop_szoom!(szoom_out, img, 1.1, ctx_img)
     Proper._prop_pixellate_factor!(pix_out, img, 2)
     prop_resamplemap!(res_out, wf_map, dmap, res_opts, ctx_map)
     prop_rectangle!(rect_out, wf_map, 0.4, 0.2, 0.03, -0.05; ROTATION=22.0, NORM=true)
     prop_rounded_rectangle!(round_out, wf_map, 0.05, 0.3, 0.2, 0.01, -0.02)
     prop_rotate!(rot_out, img, 12.0, ctx_img)
-    prop_magnify!(mag_out, img, 1.1, mag_quick_opts, ctx_img)
     prop_szoom!(szoom_out, img, 1.1, ctx_img)
     Proper._prop_pixellate_factor!(pix_out, img, 2)
     prop_resamplemap!(res_out, wf_map, dmap, res_opts, ctx_map)
@@ -53,11 +49,6 @@ function bench_amdgpu_supported_kernels()
 
     r = run(@benchmarkable begin
         prop_rotate!($rot_out, $img, 12.0, $ctx_img)
-        amdgpu_sync()
-    end evals=1 samples=samples)
-
-    m = run(@benchmarkable begin
-        prop_magnify!($mag_out, $img, 1.1, $mag_quick_opts, $ctx_img)
         amdgpu_sync()
     end evals=1 samples=samples)
 
@@ -88,7 +79,7 @@ function bench_amdgpu_supported_kernels()
 
     return Dict(
         "meta" => merge(amdgpu_report_meta(RUN_TAG; device=amdgpu_device_label()), Dict("prop_grid_n" => nprop, "map_grid_n" => nmap)),
-        "policy" => "steady-state supported AMDGPU kernel timings with per-sample wavefront state restore; TTFx excluded; per-sample synchronization included",
+        "policy" => "steady-state supported AMDGPU kernel timings with per-sample wavefront state restore; TTFx excluded; per-sample synchronization included; prop_magnify_quick_mutating is omitted because the current AMDGPU toolchain crashes while compiling that benchmark row",
         "kernels" => Dict(
             "prop_qphase" => wavefront_stats["prop_qphase"],
             "prop_ptp" => wavefront_stats["prop_ptp"],
@@ -97,7 +88,6 @@ function bench_amdgpu_supported_kernels()
             "prop_circular_aperture" => wavefront_stats["prop_circular_aperture"],
             "prop_end_mutating" => wavefront_stats["prop_end_mutating"],
             "prop_rotate_mutating" => trial_stats(r),
-            "prop_magnify_quick_mutating" => trial_stats(m),
             "prop_szoom_mutating" => trial_stats(sz),
             "prop_pixellate_mutating" => trial_stats(px),
             "prop_resamplemap_mutating" => trial_stats(rs),

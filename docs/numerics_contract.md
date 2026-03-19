@@ -16,6 +16,13 @@ Freeze numerical conventions used by propagation, transforms, and coordinate sys
 ## 1. Precision Policy
 - Default floating precision: `Float64`
 - Default complex field precision: `ComplexF64`
+- Prepared execution precision:
+  - `prepare_prescription`, `prepare_prescription_batch`, and `prepare_model`
+    accept `precision=Float32` or `precision=Float64`
+  - when explicit precision is requested, the prepared wavelength, workspace,
+    and downstream field allocations follow that precision
+  - if `context=...` is supplied alongside `precision=...`, the context
+    workspace precision must match the requested precision
 - GPU precision policy:
   - preserve input eltype/backend where practical
   - avoid implicit downcast unless explicitly requested
