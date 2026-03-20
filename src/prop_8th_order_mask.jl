@@ -58,6 +58,51 @@ function _fill_8th_mask!(::EllipticalMaskShape, mask::AbstractMatrix{T}, x::Abst
     return mask
 end
 
+@inline function _fill_8th_mask_for_shape!(
+    ::EllipticalMaskShape,
+    mask::AbstractMatrix{T},
+    x::AbstractVector{T},
+    y::AbstractVector{T},
+    e::T,
+    ll::T,
+    mm::T,
+    plml::T,
+    y_axis::Bool,
+    elliptical::Real,
+) where {T<:AbstractFloat}
+    axis_ratio = T(float(elliptical))
+    return _fill_8th_mask!(EllipticalMaskShape(), mask, x, y, e, ll, mm, plml, y_axis, axis_ratio)
+end
+
+@inline function _fill_8th_mask_for_shape!(
+    shape::Union{LinearMaskShape,CircularMaskShape},
+    mask::AbstractMatrix{T},
+    x::AbstractVector{T},
+    y::AbstractVector{T},
+    e::T,
+    ll::T,
+    mm::T,
+    plml::T,
+    y_axis::Bool,
+    elliptical::Union{Nothing,Real},
+) where {T<:AbstractFloat}
+    _ = elliptical
+    return _fill_8th_mask!(shape, mask, x, y, e, ll, mm, plml, y_axis)
+end
+
+@inline function _apply_8th_order_mask!(::CPUBackend, wf::WaveFront, mask::AbstractMatrix{T}) where {T<:AbstractFloat}
+    ny, nx = size(mask)
+    scratch = ensure_fft_real_scratch!(wf.workspace.fft, ny, nx)
+    prop_shift_center!(scratch, mask)
+    wf.field .*= scratch
+    return wf.field
+end
+
+@inline function _apply_8th_order_mask!(::BackendStyle, wf::WaveFront, mask::AbstractMatrix)
+    wf.field .*= backend_adapt(wf.field, prop_shift_center(mask))
+    return wf.field
+end
+
 """
     prop_8th_order_mask(wf, hwhm; kwargs...)
 
@@ -118,13 +163,7 @@ function prop_8th_order_mask(
 
     mask = similar(wf.field, RT, ny, nx)
     shape = _mask_shape_style(circular, elliptical)
-
-    if shape isa EllipticalMaskShape
-        axis_ratio = RT(float(elliptical))
-        _fill_8th_mask!(shape, mask, x, y, e, ll, mm, plml, y_axis, axis_ratio)
-    else
-        _fill_8th_mask!(shape, mask, x, y, e, ll, mm, plml, y_axis)
-    end
+    _fill_8th_mask_for_shape!(shape, mask, x, y, e, ll, mm, plml, y_axis, elliptical)
 
     # Renormalize in intensity space then convert back to amplitude.
     mask .*= mask
@@ -138,12 +177,6 @@ function prop_8th_order_mask(
     mask .+= RT(float(min_transmission))
     mask .= sqrt.(mask)
 
-    if wf.field isa StridedMatrix
-        scratch = ensure_fft_real_scratch!(wf.workspace.fft, ny, nx)
-        prop_shift_center!(scratch, mask)
-        wf.field .*= scratch
-    else
-        wf.field .*= backend_adapt(wf.field, prop_shift_center(mask))
-    end
+    _apply_8th_order_mask!(backend_style(typeof(wf.field)), wf, mask)
     return mask
 end

@@ -108,6 +108,8 @@ of silently falling back to the host.
   - `prop_readmap`
   - `prop_errormap`
   - `prop_psd_errormap`
+  - `prop_readmap` still decodes FITS on the host first, then promotes the map
+    to the wavefront backend before resampling
 
 ### 4.2 Backend-Native Only For Specific Entry Points Or Options
 - `prop_rotate`

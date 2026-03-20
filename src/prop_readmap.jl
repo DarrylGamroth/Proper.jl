@@ -1,4 +1,15 @@
-"""Read a FITS map and resample to wavefront sampling."""
+"""
+    prop_readmap(wf, filename, xshift=0, yshift=0; kwargs...)
+
+Read a FITS map on the host, resample it to the wavefront sampling, and return
+the shifted map.
+
+# Notes
+- FITS decoding happens on the host via `FITSIO.jl`.
+- The decoded map is then promoted to the backend of `wf.field` before the
+  resampling/apply path continues.
+- The returned array preserves the backend of `wf.field` where feasible.
+"""
 function prop_readmap(
     wf::WaveFront,
     filename::AbstractString,
