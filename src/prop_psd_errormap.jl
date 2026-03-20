@@ -90,21 +90,6 @@ end
     return Matrix{T}(prop_readmap(wf, fpath))
 end
 
-@inline function _shift_center_copy!(out::AbstractMatrix{T}, src::AbstractMatrix{T}) where {T<:AbstractFloat}
-    ny, nx = size(src)
-    size(out) == (ny, nx) || throw(ArgumentError("shift destination size must match source"))
-    sy = ny ÷ 2
-    sx = nx ÷ 2
-    @inbounds for j in 1:nx
-        js = mod1(j + sx, nx)
-        for i in 1:ny
-            is = mod1(i + sy, ny)
-            out[is, js] = src[i, j]
-        end
-    end
-    return out
-end
-
 @inline function _shift_center_inplace!(dmap::Matrix{T}, ws::FFTWorkspace{T}) where {T<:AbstractFloat}
     ny, nx = size(dmap)
     if ws.real_scratch isa Matrix{T}
@@ -471,7 +456,15 @@ function prop_psd_errormap!(
     return _prop_psd_errormap!(dmap, wf, amp, b, c, opts)
 end
 
-"""Create and optionally apply PSD-based surface/wavefront/amplitude error map."""
+"""
+    prop_psd_errormap(wf, amp, b, c; kwargs...)
+
+Create and optionally apply a PSD-based surface, wavefront, or amplitude error map.
+
+# Returns
+- A shifted error map array. When feasible, the returned array preserves the
+  backend of `wf.field`.
+"""
 function prop_psd_errormap(
     wf::WaveFront,
     amp::Real,

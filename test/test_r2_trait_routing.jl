@@ -92,7 +92,7 @@ const GPU_WARM_END_COMPLEX_ALLOC_MAX = 16_384
 function _gpu_map_apply_smoke!(
     wf_gpu,
     gpu_real_matrix,
-    cpu_array_type,
+    expected_backend_array_type,
     sync!,
 )
     n = size(wf_gpu.field, 1)
@@ -131,7 +131,7 @@ function _gpu_map_apply_smoke!(
 
         map_read = prop_readmap(wf_gpu, f; SAMPLING=wf_gpu.sampling_m)
         sync!()
-        @test map_read isa cpu_array_type
+        @test map_read isa expected_backend_array_type
 
         wf_err_gpu = Proper.WaveFront(similar(wf_gpu.field), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
         fill!(wf_err_gpu.field, ComplexF32(1))
@@ -146,7 +146,7 @@ function _gpu_map_apply_smoke!(
     fill!(wf_psd_gpu.field, ComplexF32(1))
     dmap_gpu = prop_psd_errormap(wf_psd_gpu, 1e-18, 10.0, 3.0; no_apply=true, rng=Random.MersenneTwister(7))
     sync!()
-    @test dmap_gpu isa cpu_array_type
+    @test dmap_gpu isa expected_backend_array_type
 
     wf_psd_apply_gpu = Proper.WaveFront(similar(wf_gpu.field), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
     fill!(wf_psd_apply_gpu.field, ComplexF32(1))
