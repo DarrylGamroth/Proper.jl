@@ -136,6 +136,36 @@ function prop_zernikes(wf::WaveFront, nterms::Integer)
     return _zernike_maps(wf, Int(nterms))
 end
 
+@inline _normalize_zernike_numbers(zernike_num::Number) = [Int(zernike_num)]
+@inline _normalize_zernike_numbers(zernike_num) = Int.(zernike_num)
+
+@inline _normalize_zernike_values(zernike_val::Number) = [float(zernike_val)]
+@inline _normalize_zernike_values(zernike_val) = float.(zernike_val)
+
+@inline function _apply_zernike_amplitude_map!(::CPUBackend, wf::WaveFront, dmap::AbstractMatrix)
+    scratch = ensure_fft_real_scratch!(wf.workspace.fft, size(dmap, 1), size(dmap, 2))
+    prop_shift_center!(scratch, dmap)
+    wf.field .*= scratch
+    return wf.field
+end
+
+@inline function _apply_zernike_amplitude_map!(::BackendStyle, wf::WaveFront, dmap::AbstractMatrix)
+    wf.field .*= backend_adapt(wf.field, prop_shift_center(dmap))
+    return wf.field
+end
+
+@inline function _apply_zernike_phase_map!(::CPUBackend, wf::WaveFront, dmap::AbstractMatrix)
+    scratch = ensure_fft_real_scratch!(wf.workspace.fft, size(dmap, 1), size(dmap, 2))
+    prop_shift_center!(scratch, dmap)
+    wf.field .*= cis.((2pi / wf.wavelength_m) .* scratch)
+    return wf.field
+end
+
+@inline function _apply_zernike_phase_map!(::BackendStyle, wf::WaveFront, dmap::AbstractMatrix)
+    wf.field .*= cis.((2pi / wf.wavelength_m) .* backend_adapt(wf.field, prop_shift_center(dmap)))
+    return wf.field
+end
+
 """Apply Zernike aberrations, returning generated map (`no_apply=true` skips application)."""
 function prop_zernikes(
     wf::WaveFront,
@@ -146,8 +176,8 @@ function prop_zernikes(
     no_apply::Bool=false,
     radius::Union{Nothing,Real}=nothing,
 )
-    nums = zernike_num isa Number ? [Int(zernike_num)] : Int.(zernike_num)
-    vals = zernike_val isa Number ? [float(zernike_val)] : float.(zernike_val)
+    nums = _normalize_zernike_numbers(zernike_num)
+    vals = _normalize_zernike_values(zernike_val)
     length(nums) == length(vals) || throw(ArgumentError("zernike_num and zernike_val size mismatch"))
     eps_t = float(eps)
     if eps_t != 0 && maximum(nums) > 22
@@ -187,23 +217,9 @@ function prop_zernikes(
     end
 
     if !no_apply
-        if amplitude
-            if same_backend_style(typeof(wf.field), typeof(dmap)) && wf.field isa StridedMatrix
-                scratch = ensure_fft_real_scratch!(wf.workspace.fft, size(dmap, 1), size(dmap, 2))
-                prop_shift_center!(scratch, dmap)
-                wf.field .*= scratch
-            else
-                wf.field .*= backend_adapt(wf.field, prop_shift_center(dmap))
-            end
-        else
-            if same_backend_style(typeof(wf.field), typeof(dmap)) && wf.field isa StridedMatrix
-                scratch = ensure_fft_real_scratch!(wf.workspace.fft, size(dmap, 1), size(dmap, 2))
-                prop_shift_center!(scratch, dmap)
-                wf.field .*= cis.((2pi / wf.wavelength_m) .* scratch)
-            else
-                wf.field .*= cis.((2pi / wf.wavelength_m) .* backend_adapt(wf.field, prop_shift_center(dmap)))
-            end
-        end
+        apply_style = same_backend_style(typeof(wf.field), typeof(dmap)) ? backend_style(typeof(wf.field)) : UnknownBackend()
+        amplitude ? _apply_zernike_amplitude_map!(apply_style, wf, dmap) :
+                    _apply_zernike_phase_map!(apply_style, wf, dmap)
     end
 
     return dmap

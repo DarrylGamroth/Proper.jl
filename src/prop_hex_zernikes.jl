@@ -59,6 +59,12 @@
     end
 end
 
+@inline _normalize_hex_zernike_numbers(zindex::Number) = [Int(zindex)]
+@inline _normalize_hex_zernike_numbers(zindex) = Int.(zindex)
+
+@inline _normalize_hex_zernike_values(zcoeff::Number) = [zcoeff]
+@inline _normalize_hex_zernike_values(zcoeff) = zcoeff
+
 """Return a summed hex-Zernike aberration map (meters)."""
 function prop_hex_zernikes(
     zindex,
@@ -73,8 +79,8 @@ function prop_hex_zernikes(
 )
     ang_raw = haskey(kwargs, :ROTATION) ? kwargs[:ROTATION] : rotation
 
-    zidx = zindex isa Number ? [Int(zindex)] : Int.(zindex)
-    zc_raw = zcoeff isa Number ? [zcoeff] : zcoeff
+    zidx = _normalize_hex_zernike_numbers(zindex)
+    zc_raw = _normalize_hex_zernike_values(zcoeff)
     length(zidx) == length(zc_raw) || throw(ArgumentError("zindex and zcoeff lengths must match"))
 
     T = float(promote_type(eltype(zc_raw), typeof(dx), typeof(hexrad)))
