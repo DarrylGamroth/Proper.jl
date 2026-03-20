@@ -414,6 +414,17 @@ end
     @test_throws ArgumentError prop_set_antialiasing(4)
 end
 
+@testset "Host-only state and FITS IO contracts" begin
+    wf = prop_begin(1.0, 500e-9, 8)
+    mktempdir() do d
+        fname = joinpath(d, "map.fits")
+        @test prop_fits_write(fname, rand(8, 8)) === nothing
+        img = prop_fits_read(fname)
+        @test img isa Matrix
+        @test prop_writemap(rand(8, 8), joinpath(d, "wf_map.fits"); SAMPLING=1.0) === nothing
+    end
+end
+
 @testset "Phase 5 public helper coverage" begin
     wf = prop_begin(1.0, 500e-9, 32)
     dm = randn(32, 32) .* 1e-9

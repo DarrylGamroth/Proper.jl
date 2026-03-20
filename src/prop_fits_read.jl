@@ -29,10 +29,10 @@ end
     end
 end
 
-"""Read FITS image and return `(array, headerdict)`."""
+"""Read FITS image and return `(array, headerdict)` as host CPU arrays/metadata."""
 @inline prop_fits_read_with_header(fname::AbstractString) = _prop_fits_read_data_header(fname)
 
-"""Read FITS image. If `header=true`, return `(array, headerdict)`."""
+"""Read FITS image. If `header=true`, return `(array, headerdict)`. Returned arrays are host CPU arrays."""
 function prop_fits_read(fname::AbstractString; header::Bool=false)
     return header ? prop_fits_read_with_header(fname) : _prop_fits_read_data(fname)
 end

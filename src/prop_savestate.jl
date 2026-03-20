@@ -34,8 +34,21 @@ end
     )
 end
 
-"""Serialize wavefront state to disk."""
+@inline _savestate_backend_contract(::CPUBackend) = nothing
+@inline _savestate_backend_contract(::BackendStyle) =
+    throw(ArgumentError("prop_savestate currently supports host CPU wavefronts only"))
+
+"""
+    prop_savestate(wf, path)
+
+Serialize a wavefront state to disk.
+
+# Notes
+- This state format is currently host-only. `wf.field` must use a CPU-backed
+  array backend.
+"""
 function prop_savestate(wf::WaveFront, path::AbstractString)
+    _savestate_backend_contract(backend_style(typeof(wf.field)))
     open(path, "w") do io
         serialize(io, WaveFrontState(wf))
     end

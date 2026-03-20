@@ -1,7 +1,16 @@
 using Serialization
 
-"""Load serialized state and copy all wavefront fields into `wf`."""
+"""
+    prop_state(wf, path)
+
+Load serialized state and copy all wavefront fields into `wf`.
+
+# Notes
+- This state format is currently host-only. `wf.field` must use a CPU-backed
+  array backend.
+"""
 function prop_state(wf::WaveFront, path::AbstractString)
+    _savestate_backend_contract(backend_style(typeof(wf.field)))
     loaded = open(path, "r") do io
         deserialize(io)
     end

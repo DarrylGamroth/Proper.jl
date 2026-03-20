@@ -1,5 +1,13 @@
-"""Write map FITS with PROPER-compatible map metadata."""
+"""
+    prop_writemap(dmap, filename; kwargs...)
+
+Write a map FITS file with PROPER-compatible metadata.
+
+# Notes
+- FITS writing is currently host-only. `dmap` must be a CPU-backed array.
+"""
 function prop_writemap(dmap::AbstractMatrix, filename::AbstractString; kwargs...)
+    _host_array_io_contract(backend_style(typeof(dmap)))
     if !(haskey(kwargs, :RADIUS_PIX) || haskey(kwargs, :radius_pix) || haskey(kwargs, :SAMPLING) || haskey(kwargs, :sampling))
         throw(ArgumentError("Either RADIUS_PIX or SAMPLING keyword is required"))
     end
