@@ -73,6 +73,8 @@ MaskWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} = MaskWorkspace(Matrix
 
 function MaskWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:AbstractFloat}
     mask = workspace_matrix(A, T, 0, 0)
+    # Polygon/irregular-vertex setup still runs on the host, so these remain
+    # CPU vectors even when the reusable mask buffer itself is backend-native.
     xverts = Vector{T}(undef, 0)
     yverts = Vector{T}(undef, 0)
     return MaskWorkspace{T,typeof(mask),typeof(xverts),typeof(yverts)}(mask, false, xverts, yverts)

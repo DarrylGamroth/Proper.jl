@@ -3,6 +3,9 @@
     throw(ArgumentError("prop_pixellate currently supports host CPU arrays only"))
 end
 
+@inline _pixellate_host_image(img::StridedMatrix) = img
+@inline _pixellate_host_image(img::AbstractMatrix) = Matrix(img)
+
 """Box-average downsample by integer factor."""
 function _prop_pixellate_factor!(
     ::SamplingLoopExecStyle,
@@ -55,7 +58,7 @@ end
     return axis
 end
 
-function _pixel_mtf(img::AbstractMatrix, sampling_in::Real, sampling_out::Real)
+function _pixel_mtf(img::StridedMatrix, sampling_in::Real, sampling_out::Real)
     ny, nx = size(img)
     cy = (ny ÷ 2) + 1
     cx = (nx ÷ 2) + 1
@@ -73,13 +76,17 @@ function _pixel_mtf(img::AbstractMatrix, sampling_in::Real, sampling_out::Real)
     return pmtf, mag
 end
 
-function _prop_pixellate_resample(img::AbstractMatrix, sampling_in::Real, sampling_out::Real, n_out::Integer)
+function _prop_pixellate_resample(img::StridedMatrix, sampling_in::Real, sampling_out::Real, n_out::Integer)
     pmtf, mag = _pixel_mtf(img, sampling_in, sampling_out)
     shifted = FFTW.ifftshift(img)
     amtf = pmtf .* fft(shifted)
     cimc = FFTW.fftshift(abs.(ifft(amtf)) ./ (mag * mag))
     out_n = n_out > 0 ? Int(n_out) : floor(Int, size(img, 2) * mag)
     return prop_magnify(cimc, mag, out_n)
+end
+
+@inline function _prop_pixellate_resample(img::AbstractMatrix, sampling_in::Real, sampling_out::Real, n_out::Integer)
+    return _prop_pixellate_resample(_pixellate_host_image(img), sampling_in, sampling_out, n_out)
 end
 
 function _prop_pixellate_factor!(
@@ -132,6 +139,8 @@ The integrated image is then resampled to detector-pixel spacing.
 - This matches the upstream PROPER public API rather than the older internal
   integer-factor helper that remains private in Julia.
 - This public resampling path currently supports host CPU arrays only.
+- Non-strided host views are staged to a strided host matrix for the FFT-based
+  resampling step.
 """
 function prop_pixellate(
     img::AbstractMatrix,
@@ -160,6 +169,8 @@ Integrate a sampled PSF onto detector pixels and write the result into `out`.
 - `out` must match the size implied by the requested detector sampling and the
   chosen output dimensions.
 - This public resampling path currently supports host CPU arrays only.
+- Non-strided host views are staged to a strided host matrix for the FFT-based
+  resampling step.
 """
 function prop_pixellate!(
     out::AbstractMatrix,

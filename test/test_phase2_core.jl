@@ -443,6 +443,8 @@ end
     @test Proper._prop_pixellate_factor!(pix_out, rand(32, 32), 2) === pix_out
     psf = prop_pixellate(rand(32, 32), 0.5, 1.0, 16)
     @test size(psf) == (16, 16)
+    psf_view = prop_pixellate(@view(rand(33, 33)[1:32, 1:32]), 0.5, 1.0, 16)
+    @test size(psf_view) == (16, 16)
     psf_out = similar(psf)
     @test prop_pixellate!(psf_out, rand(32, 32), 0.5, 1.0) === psf_out
 
