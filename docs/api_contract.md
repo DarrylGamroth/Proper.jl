@@ -27,8 +27,6 @@ Define the user-facing API guarantees for `Proper.jl` so ports remain familiar t
 - Export policy:
   - Export public `prop_*` routines intended for end users.
   - Export core public types (`WaveFront`, config/runtime types).
-  - Keep a small compatibility-only export surface for upstream-adjacent helper
-    names that remain useful at the public boundary.
   - Do not export low-level implementation helpers or specialized model
     submodules from the top-level namespace.
 
@@ -56,13 +54,7 @@ Stable entry points:
 - `prop_errormap`
 - `prop_psd_errormap`
 
-Compatibility-only exported helpers:
-- `prop_execute_multi`
-- `prop_table`
-- `prop_fftw`
-- `prop_ffti`
-- `prop_use_fftw`
-- `prop_use_ffti`
+Compatibility-oriented helper still exported:
 - `prop_dftidefs`
 
 Namespaced-only specialized modules:

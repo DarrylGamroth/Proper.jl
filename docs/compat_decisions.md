@@ -625,3 +625,26 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   - The backend support matrix becomes more honest and easier to benchmark.
   - Callers that need CPU materialization from a GPU result must request it
     explicitly at the call site.
+
+## D-0053: Remove Inert Compatibility-Only Helper Exports
+- Date: 2026-03-19
+- Status: Accepted
+- Context:
+  - The package preserves familiar PROPER `prop_*` names for real optical and
+    execution entry points.
+  - A small set of upstream-shaped helper names remained only as inert wrappers
+    or constant-return stubs: `prop_execute_multi`, `prop_table`, `prop_fftw`,
+    `prop_ffti`, `prop_use_fftw`, and `prop_use_ffti`.
+  - Keeping those names in the public surface makes the API broader than the
+    Julia package actually supports and implies a compatibility layer that is
+    not part of the intended design.
+- Decision:
+  - Remove those inert compatibility-only helper names from `Proper`.
+  - Keep the real operational `prop_*` API and the still-useful
+    compatibility-oriented constant table helper `prop_dftidefs`.
+- Consequences:
+  - The public package surface is smaller and more honest.
+  - Upstream users still get familiar PROPER routine names for actual work, but
+    not no-op stub exports.
+  - API contract docs and tests should treat those names as absent, not as part
+    of a supported compatibility layer.

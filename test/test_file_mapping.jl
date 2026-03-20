@@ -6,7 +6,17 @@ using Test
 
     py_files = sort(filter(f -> endswith(f, ".py"), readdir(py_root)))
     jl_files = Set(filter(f -> endswith(f, ".jl"), readdir(joinpath(@__DIR__, "..", "src"))))
-    intentionally_unmapped = Set(["libcconvthread.jl", "libszoom.jl", "prop_compile_c.jl"])
+    intentionally_unmapped = Set([
+        "libcconvthread.jl",
+        "libszoom.jl",
+        "prop_compile_c.jl",
+        "prop_execute_multi.jl",
+        "prop_ffti.jl",
+        "prop_fftw.jl",
+        "prop_table.jl",
+        "prop_use_ffti.jl",
+        "prop_use_fftw.jl",
+    ])
 
     for py in py_files
         py == "__init__.py" && continue

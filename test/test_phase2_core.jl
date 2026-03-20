@@ -410,8 +410,6 @@ end
         @test size(out) == (16, 16)
     end
 
-    @test prop_use_fftw() == true
-    @test prop_use_ffti() == false
     @test prop_set_antialiasing(3) == 3
     @test_throws ArgumentError prop_set_antialiasing(4)
 end
@@ -446,8 +444,6 @@ end
     @test size(m2) == size(wf.field)
     @test size(m3) == size(wf.field)
 
-    @test prop_fftw() == true
-    @test prop_ffti() == false
     defs = prop_dftidefs()
     @test defs[:DFTI_FORWARD_SCALE] == 4
     @test defs[:DFTI_BACKWARD_SCALE] == 5

@@ -33,9 +33,6 @@ include("prop_elliptical_obscuration.jl")
 include("prop_end.jl")
 include("prop_end_savestate.jl")
 include("prop_errormap.jl")
-include("prop_execute_multi.jl")
-include("prop_ffti.jl")
-include("prop_fftw.jl")
 include("prop_fftw_wisdom.jl")
 include("prop_fit_dm.jl")
 include("prop_fit_zernikes.jl")
@@ -90,9 +87,6 @@ include("prop_sinc.jl")
 include("prop_state.jl")
 include("prop_stw.jl")
 include("prop_szoom.jl")
-include("prop_table.jl")
-include("prop_use_ffti.jl")
-include("prop_use_fftw.jl")
 include("prop_wavefront.jl")
 include("prop_writemap.jl")
 include("prop_wts.jl")
@@ -118,13 +112,13 @@ export prop_magnify!, prop_rotate!, prop_resamplemap!, prop_cubic_conv_grid!, pr
 export prop_fits_read, prop_fits_write, prop_readmap, prop_writemap
 export prop_errormap, prop_psd_errormap, prop_psd_errormap!
 export prop_savestate, prop_state, prop_is_statesaved, prop_init_savestate, prop_end_savestate
-export prop_execute_multi, prop_use_fftw, prop_use_ffti, prop_fftw_wisdom, prop_load_fftw_wisdom
-export prop_set_antialiasing, prop_table
+export prop_fftw_wisdom, prop_load_fftw_wisdom
+export prop_set_antialiasing
 export prop_dm, prop_sinc, prop_noll_zernikes, prop_zernikes, prop_fit_zernikes
 export prop_fit_dm, prop_pixellate, prop_polygon, prop_irregular_polygon, prop_rounded_rectangle
 export prop_pixellate!, prop_szoom!
 export prop_polygon!, prop_irregular_polygon!, prop_ellipse!, prop_rectangle!, prop_rounded_rectangle!
-export prop_dftidefs, prop_ffti, prop_fftw, prop_szoom
+export prop_dftidefs, prop_szoom
 export prop_cubic_conv, prop_define_entrance
 export prop_hex_wavefront, prop_hex_zernikes, prop_8th_order_mask
 export prop_get_wavefront, prop_get_amplitude, prop_get_phase

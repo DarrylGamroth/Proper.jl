@@ -614,9 +614,9 @@ Note: mapping below guarantees file-level traceability; implementation may and s
 | `proper/prop_end.py` | `src/prop_end.jl` | Direct function/module port |
 | `proper/prop_end_savestate.py` | `src/prop_end_savestate.jl` | Direct function/module port |
 | `proper/prop_errormap.py` | `src/prop_errormap.jl` | Direct function/module port |
-| `proper/prop_execute_multi.py` | `src/prop_execute_multi.jl` | Direct function/module port |
-| `proper/prop_ffti.py` | `src/prop_ffti.jl` | Direct function/module port |
-| `proper/prop_fftw.py` | `src/prop_fftw.jl` | Direct function/module port |
+| `proper/prop_execute_multi.py` | — | Removed inert compatibility shim; Julia uses `src/prop_run_multi.jl` |
+| `proper/prop_ffti.py` | — | Removed inert compatibility shim |
+| `proper/prop_fftw.py` | — | Removed inert compatibility shim |
 | `proper/prop_fftw_wisdom.py` | `src/prop_fftw_wisdom.jl` | Direct function/module port |
 | `proper/prop_fit_dm.py` | `src/prop_fit_dm.jl` | Direct function/module port |
 | `proper/prop_fit_zernikes.py` | `src/prop_fit_zernikes.jl` | Direct function/module port |
@@ -672,9 +672,9 @@ Note: mapping below guarantees file-level traceability; implementation may and s
 | `proper/prop_stw.py` | `src/prop_stw.jl` | Direct function/module port |
 | `proper/prop_szoom.py` | `src/prop_szoom.jl` | Direct function/module port |
 | `proper/prop_szoom_c.c` | — | Historical upstream C reference; Julia runtime uses `src/prop_szoom.jl` |
-| `proper/prop_table.py` | `src/prop_table.jl` | Direct function/module port |
-| `proper/prop_use_ffti.py` | `src/prop_use_ffti.jl` | Direct function/module port |
-| `proper/prop_use_fftw.py` | `src/prop_use_fftw.jl` | Direct function/module port |
+| `proper/prop_table.py` | — | Removed inert compatibility shim |
+| `proper/prop_use_ffti.py` | — | Removed inert compatibility shim |
+| `proper/prop_use_fftw.py` | — | Removed inert compatibility shim |
 | `proper/prop_wavefront.py` | `src/prop_wavefront.jl` | Direct function/module port |
 | `proper/prop_writemap.py` | `src/prop_writemap.jl` | Direct function/module port |
 | `proper/prop_wts.py` | `src/prop_wts.jl` | Direct function/module port |
