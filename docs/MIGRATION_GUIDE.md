@@ -27,15 +27,14 @@ Supporting documents after this one:
 
 ## Upstream PROPER Cheat Sheet
 
-| Upstream concept | Proper.jl equivalent | When to use it |
+| MATLAB / manual mental model | Python PROPER usage | Julia usage |
 | --- | --- | --- |
-| `prop_run(prescription, λ, n, PASSVALUE=...)` | `prop_run(prescription, λ, n; PASSVALUE=...)` | default migration path |
-| repeated single prescription runs | `prepare_prescription(...)` | reuse one normalized call shape |
-| repeated or parallel runs with varying `PASSVALUE` | `prepare_prescription_batch(...)` | slot-local context reuse |
-| one named reusable configured model | `prepare_model(...)` | application-facing execution object |
-| wavelength sweep | `prop_run_multi(runs)` where `runs` is a vector of prepared runs | fixed-shape throughput path |
-| uppercase compatibility keywords | still accepted | migration and parity |
-| lowercase Julia keywords | also accepted | Julia-native code |
+| `prop_run(prescription, λ, n, optval)` | `prop_run(prescription, λ, n, PASSVALUE=...)` | `prop_run(prescription, λ, n; PASSVALUE=...)` |
+| same prescription called repeatedly | same prescription called repeatedly | `prepare_prescription(...)` |
+| repeated runs with varying optional inputs | repeated runs with varying `PASSVALUE`s | `prepare_prescription_batch(...)` |
+| one configured reusable model object | ad hoc application wrapper around one prescription | `prepare_model(...)` |
+| wavelength sweep | wavelength sweep loop | `prop_run_multi(runs)` where `runs` is a vector of prepared runs |
+| uppercase compatibility keywords | uppercase compatibility keywords | uppercase and lowercase keywords both accepted |
 
 The practical rule is:
 - start exactly where upstream usage starts
@@ -46,81 +45,20 @@ The practical rule is:
 
 The most common upstream prescription shapes map to Julia like this.
 
-### Plain prescription
+| MATLAB | Python | Julia |
+| --- | --- | --- |
+| `function [psf, sampling] = p(lam, n)` | `def p(lam, n):` | `function p(λm, n)` |
+| `function [psf, sampling] = p(lam, n, optval)` | `def p(lam, n, PASSVALUE=None):` | `function p(λm, n; PASSVALUE=nothing)` |
+| positional optional input is common | positional third argument is common | positional third argument also works, but keyword `PASSVALUE` is the preferred migration shape |
 
-```julia
-function my_prescription(λm, n)
-    wf = prop_begin(1.0, λm, n)
-    return prop_end(wf)
-end
-```
-
-### Upstream-style `PASSVALUE`
-
-```julia
-function my_prescription(λm, n; PASSVALUE=nothing)
-    wf = prop_begin(1.0, λm, n)
-    return prop_end(wf)
-end
-```
-
-### Positional pass value
-
-`prop_run` also accepts the common upstream calling shape where the
-prescription takes a positional third argument:
-
-```julia
-function my_prescription(λm, n, passvalue)
-    wf = prop_begin(1.0, λm, n)
-    return prop_end(wf)
-end
-```
-
-`prop_run` normalizes both forms at the API boundary.
+`prop_run` normalizes both the positional third-argument form and the keyword
+`PASSVALUE=...` form at the API boundary.
 
 ## Side-By-Side Example
 
-### Python
-
-```python
-def simple_prescription(lam, n, PASSVALUE=None):
-    wf = proper.prop_begin(1.0, lam, n)
-    proper.prop_circular_aperture(wf, 0.5)
-    proper.prop_define_entrance(wf)
-    proper.prop_lens(wf, 10.0)
-    proper.prop_propagate(wf, 10.0)
-    return proper.prop_end(wf)
-```
-
-### MATLAB
-
-```matlab
-function [psf, sampling] = simple_prescription(lam, n, optval)
-    wf = prop_begin(1.0, lam, n);
-    wf = prop_circular_aperture(wf, 0.5);
-    wf = prop_define_entrance(wf);
-    wf = prop_lens(wf, 10.0);
-    wf = prop_propagate(wf, 10.0);
-    [psf, sampling] = prop_end(wf);
-end
-```
-
-### Julia
-
-```julia
-using Proper
-
-function simple_prescription(λm, n; PASSVALUE=nothing)
-    wf = prop_begin(1.0, λm, n)
-    prop_circular_aperture(wf, 0.5)
-    prop_define_entrance(wf)
-    prop_lens(wf, 10.0)
-    prop_propagate(wf, 10.0)
-    return prop_end(wf)
-end
-
-psf, sampling = prop_run(simple_prescription, 0.55, 256)
-```
+| MATLAB | Python | Julia |
+| --- | --- | --- |
+| ```matlab\nfunction [psf, sampling] = simple_prescription(lam, n, optval)\n    wf = prop_begin(1.0, lam, n);\n    wf = prop_circular_aperture(wf, 0.5);\n    wf = prop_define_entrance(wf);\n    wf = prop_lens(wf, 10.0);\n    wf = prop_propagate(wf, 10.0);\n    [psf, sampling] = prop_end(wf);\nend\n``` | ```python\ndef simple_prescription(lam, n, PASSVALUE=None):\n    wf = proper.prop_begin(1.0, lam, n)\n    proper.prop_circular_aperture(wf, 0.5)\n    proper.prop_define_entrance(wf)\n    proper.prop_lens(wf, 10.0)\n    proper.prop_propagate(wf, 10.0)\n    return proper.prop_end(wf)\n``` | ```julia\nusing Proper\n\nfunction simple_prescription(λm, n; PASSVALUE=nothing)\n    wf = prop_begin(1.0, λm, n)\n    prop_circular_aperture(wf, 0.5)\n    prop_define_entrance(wf)\n    prop_lens(wf, 10.0)\n    prop_propagate(wf, 10.0)\n    return prop_end(wf)\nend\n\npsf, sampling = prop_run(simple_prescription, 0.55, 256)\n``` |
 
 What changes:
 - Julia uses normal function definitions instead of Python module-level state.
@@ -137,6 +75,12 @@ What does not change:
 
 This is the common nontrivial migration shape many upstream users care about.
 
+| MATLAB / upstream-style idea | Python-style idea | Julia |
+| --- | --- | --- |
+| read FITS map, apply error map, optionally apply DM, propagate, end | read FITS map, apply error map, optionally apply DM, propagate, end | `migration_dm_fits_prescription` in [`examples/migration_dm_fits.jl`](../examples/migration_dm_fits.jl) |
+
+The Julia version is:
+
 ```julia
 using Proper
 
@@ -148,7 +92,7 @@ function dm_map_prescription(λm, n; PASSVALUE=nothing)
     prop_define_entrance(wf)
 
     if haskey(pass, :errormap_path)
-        prop_errormap(wf, pass[:errormap_path], WAVEFRONT=true)
+        prop_errormap(wf, pass[:errormap_path], WAVEFRONT=true, SAMPLING=prop_get_sampling(wf))
     end
 
     if haskey(pass, :dm_map)
@@ -178,6 +122,8 @@ psf, sampling = prop_run(
 Important behavior:
 - FITS files are read on the host, then promoted to the wavefront backend where
   feasible.
+- if the FITS header does not carry pixel scale metadata, pass
+  `SAMPLING=prop_get_sampling(wf)` or the appropriate map sampling explicitly
 - `prop_dm(wf, dm_map)` expects a map already sampled on the wavefront grid.
 - Use `prop_dm` with the full upstream-compatible actuator-space form only when
   you are intentionally modeling actuator geometry and influence functions.
@@ -188,17 +134,11 @@ Important behavior:
 - Lowercase Julia aliases are also accepted at the public boundary.
 - If you are writing new Julia-native code, prefer ordinary Julia keywords.
 
-Examples:
-
-```julia
-rot = prop_rotate(img, 15.0; METH="cubic")
-rot = prop_rotate(img, 15.0; meth="cubic")
-```
-
-```julia
-mag = prop_magnify(img, 1.5; QUICK=true)
-mag = prop_magnify(img, 1.5; quick=true)
-```
+| MATLAB / manual style | Python style | Julia |
+| --- | --- | --- |
+| `prop_rotate(img, ang, 'METH', 'cubic')` | `proper.prop_rotate(img, ang, METH='cubic')` | `prop_rotate(img, ang; METH="cubic")` or `prop_rotate(img, ang; meth="cubic")` |
+| `prop_magnify(img, mag, ..., 'QUICK')` | `proper.prop_magnify(img, mag, QUICK=True)` | `prop_magnify(img, mag; QUICK=true)` or `prop_magnify(img, mag; quick=true)` |
+| `prop_errormap(..., 'WAVEFRONT')` | `proper.prop_errormap(..., WAVEFRONT=True)` | `prop_errormap(...; WAVEFRONT=true)` or `prop_errormap(...; wavefront=true)` |
 
 ## `PASSVALUE` Guidance
 
@@ -231,24 +171,11 @@ move to after the plain prescription is already correct.
 
 Concrete translation:
 
-```julia
-psf, sampling = prop_run(my_prescription, 0.55, 256; PASSVALUE=passvalue)
-```
-
-```julia
-prepared = prepare_prescription(my_prescription, 0.55, 256)
-psf, sampling = prop_run(prepared; PASSVALUE=passvalue)
-```
-
-```julia
-runs = [
-    prepare_prescription(my_prescription, 0.50, 256; precision=Float32),
-    prepare_prescription(my_prescription, 0.55, 256; precision=Float32),
-    prepare_prescription(my_prescription, 0.60, 256; precision=Float32),
-]
-
-stack, samplings = prop_run_multi(runs)
-```
+| MATLAB / Python intent | Julia |
+| --- | --- |
+| one run | `psf, sampling = prop_run(my_prescription, 0.55, 256; PASSVALUE=passvalue)` |
+| one fixed prescription reused | `prepared = prepare_prescription(my_prescription, 0.55, 256)` then `prop_run(prepared; PASSVALUE=passvalue)` |
+| wavelength sweep | `runs = [prepare_prescription(...), ...]` then `stack, samplings = prop_run_multi(runs)` |
 
 For GPU-oriented throughput work, that last form is the intended public sweep
 surface.

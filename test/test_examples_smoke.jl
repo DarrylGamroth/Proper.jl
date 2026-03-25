@@ -14,6 +14,7 @@ using Test
         ("talbot_correct.jl", :talbot_correct),
         ("psdtest.jl", :psdtest),
         ("multi_example.jl", :multi_example),
+        ("migration_dm_fits.jl", :migration_dm_fits_demo),
         ("wfirst_phaseb_reference.jl", :wfirst_phaseb_reference_demo),
     )
 
@@ -21,4 +22,12 @@ using Test
         mod = load_example_module(joinpath(exdir, file))
         @test isdefined(mod, sym)
     end
+end
+
+@testset "Migration DM/FITS example executes" begin
+    mod = load_example_module(joinpath(@__DIR__, "..", "examples", "migration_dm_fits.jl"))
+    psf, sampling = mod.migration_dm_fits_demo(; gridsize=32)
+    @test size(psf) == (32, 32)
+    @test sampling > 0
+    @test maximum(psf) > 0
 end

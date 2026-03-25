@@ -187,6 +187,9 @@ Important current examples:
 
 ## Examples And Reference Workloads
 - `examples/` contains ported example prescriptions and smoke examples
+- [`examples/migration_dm_fits.jl`](examples/migration_dm_fits.jl) is the
+  concrete migration example for a `PASSVALUE` + FITS errormap + DM map
+  workflow
 - the WFIRST Phase B reference port is included as a broad correctness and
   benchmarking workload
 - the WFIRST reference model lives under `reference_models/wfirst_phaseb_proper`
