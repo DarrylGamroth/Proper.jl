@@ -23,6 +23,26 @@ julia> size(psf), sampling > 0
 ((32, 32), true)
 ```
 
+## upstream-style `PASSVALUE`
+
+```jldoctest
+julia> using Proper
+
+julia> function pass_demo(λm, n; PASSVALUE=nothing)
+           radius = PASSVALUE === nothing ? 0.5 : PASSVALUE[:radius]
+           wf = prop_begin(1.0, λm, n)
+           prop_circular_aperture(wf, radius)
+           prop_define_entrance(wf)
+           return prop_end(wf)
+       end
+pass_demo (generic function with 1 method)
+
+julia> psf, sampling = prop_run(pass_demo, 0.55, 16; PASSVALUE=Dict(:radius => 0.25));
+
+julia> size(psf), sampling > 0
+((16, 16), true)
+```
+
 ## `prepare_prescription`
 
 ```jldoctest

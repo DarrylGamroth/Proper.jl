@@ -12,6 +12,25 @@ replace detailed optical design tools. `Proper.jl` keeps the familiar public
 `prop_*` API while using Julia-native internals, explicit runtime state, and a
 prepared execution layer for repeated runs.
 
+## Start Here If You Already Know PROPER
+
+If you are coming from PROPER for Python or MATLAB, the intended on-ramp is:
+
+1. write the prescription in Julia with the familiar `prop_*` calls
+2. run it with `prop_run(...)`
+3. keep `PASSVALUE` only when you actually need upstream-style compatibility
+4. move to prepared execution only after the plain prescription is correct
+
+The one primary migration document is:
+- [docs/MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)
+
+The minimum supporting docs after that are:
+- [docs/API_EXAMPLES.md](docs/API_EXAMPLES.md)
+- [docs/PREPARED_EXECUTION_GUIDE.md](docs/PREPARED_EXECUTION_GUIDE.md)
+
+You should not need to search the repository to figure out how to port a normal
+upstream prescription.
+
 ## Project Status
 - public `prop_*` routine naming preserved for migration familiarity
 - Python PROPER 3.3.4 is the executable parity baseline
@@ -21,6 +40,156 @@ prepared execution layer for repeated runs.
   workloads
 - prepared execution (`PreparedPrescription`, `PreparedBatch`,
   `PreparedModel`) is available for repeated and parallel runs
+
+## Quick Migration Example
+
+Upstream Python PROPER users usually start from a prescription like this:
+
+```python
+def simple_prescription(lam, n, PASSVALUE=None):
+    wf = proper.prop_begin(1.0, lam, n)
+    proper.prop_circular_aperture(wf, 0.5)
+    proper.prop_define_entrance(wf)
+    return proper.prop_end(wf)
+```
+
+The direct Julia shape is:
+
+```julia
+using Proper
+
+function simple_prescription(λm, n; PASSVALUE=nothing)
+    wf = prop_begin(1.0, λm, n)
+    prop_circular_aperture(wf, 0.5)
+    prop_define_entrance(wf)
+    return prop_end(wf)
+end
+
+psf, sampling = prop_run(simple_prescription, 0.55, 128)
+```
+
+That is the default migration path. Start there before introducing prepared
+execution, explicit contexts, or GPU backends.
+
+## Running A Prescription
+
+The familiar execution contract is preserved:
+
+```julia
+(psf, sampling) = prop_run(prescription, wavelength_microns, grid_size; kwargs...)
+```
+
+where:
+- `prescription` is a function or globally resolvable name
+- `wavelength_microns` is the wavelength in microns at the public boundary
+- `grid_size` is the computational grid dimension
+
+### Minimal Example
+```julia
+using Proper
+
+function simple_prescription(λm, n)
+    wf = prop_begin(1.0, λm, n)
+    prop_circular_aperture(wf, 0.5)
+    prop_define_entrance(wf)
+    return prop_end(wf)
+end
+
+psf, sampling = prop_run(simple_prescription, 0.55, 128)
+```
+
+## Choose The Right Execution Surface
+
+### Use `prop_run(...)` First
+Use plain `prop_run` when:
+- porting or validating a prescription
+- comparing behavior against upstream Python or MATLAB references
+- running a prescription occasionally
+
+```julia
+psf, sampling = prop_run(simple_prescription, 0.55, 128)
+```
+
+### Use `prepare_prescription(...)` When Runs Repeat
+Use `PreparedPrescription` when the prescription shape stays fixed and you want
+to reuse normalized execution state.
+
+```julia
+prepared = prepare_prescription(simple_prescription, 0.55, 128)
+psf, sampling = prop_run(prepared)
+```
+
+You can request an explicit prepared execution precision when you want the
+repeated execution surface to stay on `Float32` or `Float64`:
+
+```julia
+prepared = prepare_prescription(simple_prescription, 0.55f0, 128; precision=Float32)
+psf, sampling = prop_run(prepared)
+```
+
+### Use `prepare_prescription_batch(...)` For Repeated Parallel Work
+Use `PreparedBatch` when you want reusable per-slot contexts for repeated or
+parallel execution.
+
+```julia
+batch = prepare_prescription_batch(simple_prescription, 0.55, 128; pool_size=2)
+stack, samplings = prop_run_multi(batch; PASSVALUE=[nothing, nothing])
+```
+
+For wavelength sweeps or mixed prepared execution objects, pass a vector of
+prepared runs directly:
+
+```julia
+runs = [
+    prepare_prescription(simple_prescription, 0.50f0, 128; precision=Float32),
+    prepare_prescription(simple_prescription, 0.55f0, 128; precision=Float32),
+    prepare_prescription(simple_prescription, 0.60f0, 128; precision=Float32),
+]
+
+stack, samplings = prop_run_multi(runs)
+```
+
+This vector-of-prepared-runs form is the intended throughput surface for fixed
+wavelength sweeps. It is the same API used by the batch-throughput benchmark
+lane.
+
+### Use `prepare_model(...)` When Assets Or Naming Matter
+Use `PreparedModel` when you want a named execution object and optional cached
+assets layered on top of prepared contexts.
+
+For users coming from upstream PROPER, `PreparedModel` should be read as the
+Julia reusable execution object for one configured prescription, not as a
+different optical model type.
+
+```julia
+model = prepare_model(:simple_model, simple_prescription, 0.55, 128; pool_size=2)
+psf, sampling = prop_run(model; slot=1)
+```
+
+For a fuller explanation of prepared execution, see
+`docs/PREPARED_EXECUTION_GUIDE.md`.
+
+## Compatibility Notes
+- Python PROPER 3.3.4 is the executable parity baseline
+- MATLAB PROPER 3.3.1 remains the semantic reference when investigating likely
+  translation defects
+- accepted behavior choices are recorded in `docs/compat_decisions.md`
+- no runtime compatibility-mode flags are exposed; behavior decisions are
+  documented and tested directly
+
+Important current examples:
+- `prop_rotate` defaults to linear interpolation; request cubic explicitly with
+  `METH="cubic"` or `CUBIC=true`
+- `prop_magnify` defaults to the damped-sinc `prop_szoom` path; `QUICK=true`
+  selects cubic interpolation
+- `prop_pixellate` follows the upstream PROPER detector-integration API:
+  `prop_pixellate(image, sampling_in, sampling_out, n_out=0)`
+
+## Examples And Reference Workloads
+- `examples/` contains ported example prescriptions and smoke examples
+- the WFIRST Phase B reference port is included as a broad correctness and
+  benchmarking workload
+- the WFIRST reference model lives under `reference_models/wfirst_phaseb_proper`
 
 ## Benchmark And Parity Summary
 - Parity closure is complete against the patched Python 3.3.4 baseline:
@@ -147,50 +316,6 @@ Then in Julia:
 using Proper
 ```
 
-## Running A Prescription
-
-The familiar execution contract is preserved:
-
-```julia
-(psf, sampling) = prop_run(prescription, wavelength_microns, grid_size; kwargs...)
-```
-
-where:
-- `prescription` is a function or globally resolvable name
-- `wavelength_microns` is the wavelength in microns at the public boundary
-- `grid_size` is the computational grid dimension
-
-### Minimal Example
-```julia
-using Proper
-
-function simple_prescription(λm, n)
-    wf = prop_begin(1.0, λm, n)
-    prop_circular_aperture(wf, 0.5)
-    prop_define_entrance(wf)
-    return prop_end(wf)
-end
-
-psf, sampling = prop_run(simple_prescription, 0.55, 128)
-```
-
-## Interactive Use
-
-The usual migration path is:
-
-1. write or port a prescription using the familiar `prop_*` calls
-2. run it with `prop_run(...)`
-3. compare against the Python baseline if parity matters
-
-You can also run multiple cases:
-
-```julia
-stack, samplings = prop_run_multi(simple_prescription, 0.55, 128; PASSVALUE=[nothing, nothing])
-```
-
-`prop_run_multi` preserves input order and returns a 3-D output stack plus a
-vector of samplings.
-
 ## Plotting Output
 
 Example plotting uses `Plots.jl` by default:
@@ -208,99 +333,6 @@ prop_fits_write("example.fits", psf)
 
 Map-oriented output can be written with PROPER-compatible metadata using
 `prop_writemap`.
-
-## Choose The Right Execution Surface
-
-### Use `prop_run(...)` First
-Use plain `prop_run` when:
-- porting or validating a prescription
-- comparing behavior against upstream Python
-- running a prescription occasionally
-
-```julia
-psf, sampling = prop_run(simple_prescription, 0.55, 128)
-```
-
-### Use `prepare_prescription(...)` When Runs Repeat
-Use `PreparedPrescription` when the prescription shape stays fixed and you want
-to reuse normalized execution state.
-
-```julia
-prepared = prepare_prescription(simple_prescription, 0.55, 128)
-psf, sampling = prop_run(prepared)
-```
-
-You can request an explicit prepared execution precision when you want the
-repeated execution surface to stay on `Float32` or `Float64`:
-
-```julia
-prepared = prepare_prescription(simple_prescription, 0.55f0, 128; precision=Float32)
-psf, sampling = prop_run(prepared)
-```
-
-### Use `prepare_prescription_batch(...)` For Repeated Parallel Work
-Use `PreparedBatch` when you want reusable per-slot contexts for repeated or
-parallel execution.
-
-```julia
-batch = prepare_prescription_batch(simple_prescription, 0.55, 128; pool_size=2)
-stack, samplings = prop_run_multi(batch; PASSVALUE=[nothing, nothing])
-```
-
-For wavelength sweeps or mixed prepared execution objects, pass a vector of
-prepared runs directly:
-
-```julia
-runs = [
-    prepare_prescription(simple_prescription, 0.50f0, 128; precision=Float32),
-    prepare_prescription(simple_prescription, 0.55f0, 128; precision=Float32),
-    prepare_prescription(simple_prescription, 0.60f0, 128; precision=Float32),
-]
-
-stack, samplings = prop_run_multi(runs)
-```
-
-This vector-of-prepared-runs form is the intended throughput surface for fixed
-wavelength sweeps. It is the same API used by the batch-throughput benchmark
-lane.
-
-### Use `prepare_model(...)` When Assets Or Naming Matter
-Use `PreparedModel` when you want a named execution object and optional cached
-assets layered on top of prepared contexts.
-
-For users coming from upstream PROPER, `PreparedModel` should be read as the
-Julia reusable execution object for one configured prescription, not as a
-different optical model type.
-
-```julia
-model = prepare_model(:simple_model, simple_prescription, 0.55, 128; pool_size=2)
-psf, sampling = prop_run(model; slot=1)
-```
-
-For a fuller explanation of prepared execution, see
-`docs/PREPARED_EXECUTION_GUIDE.md`.
-
-## Compatibility Notes
-- Python PROPER 3.3.4 is the executable parity baseline
-- MATLAB PROPER 3.3.1 remains the semantic reference when investigating likely
-  translation defects
-- accepted behavior choices are recorded in `docs/compat_decisions.md`
-- no runtime compatibility-mode flags are exposed; behavior decisions are
-  documented and tested directly
-
-Important current examples:
-- `prop_rotate` defaults to linear interpolation; request cubic explicitly with
-  `METH="cubic"` or `CUBIC=true`
-- `prop_magnify` defaults to the damped-sinc `prop_szoom` path; `QUICK=true`
-  selects cubic interpolation
-- `prop_pixellate` follows the upstream PROPER detector-integration API:
-  `prop_pixellate(image, sampling_in, sampling_out, n_out=0)`
-
-## Examples And Reference Workloads
-- `examples/` contains ported example prescriptions and smoke examples
-- the WFIRST Phase B reference port is included as a broad correctness and
-  benchmarking workload
-- the WFIRST reference model lives under `reference_models/wfirst_phaseb_proper`
 
 ## Documentation
 - [Documentation index](docs/README.md)

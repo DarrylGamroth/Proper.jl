@@ -15,6 +15,20 @@ using Proper
         @test sampling > 0
     end
 
+    @testset "upstream-style PASSVALUE example" begin
+        function pass_demo(λm, n; PASSVALUE=nothing)
+            radius = PASSVALUE === nothing ? 0.5 : PASSVALUE[:radius]
+            wf = prop_begin(1.0, λm, n)
+            prop_circular_aperture(wf, radius)
+            prop_define_entrance(wf)
+            return prop_end(wf)
+        end
+
+        psf, sampling = prop_run(pass_demo, 0.55, 16; PASSVALUE=Dict(:radius => 0.25))
+        @test size(psf) == (16, 16)
+        @test sampling > 0
+    end
+
     @testset "prepare_prescription example" begin
         demo_prescription(λm, n) = prop_end(prop_begin(1.0, λm, n))
 

@@ -14,6 +14,11 @@ It complements:
 - `docs/api_contract.md` for the stable public API contract
 - `docs/PORTING_CHECKLIST.md` for contributor-facing port workflow
 
+If you are coming directly from Python PROPER or MATLAB PROPER and primarily
+need to know how to use `Proper.jl`, start with `docs/MIGRATION_GUIDE.md`
+first. This guide is the next layer: how to structure and maintain Julia
+prescriptions cleanly after the migration path is already clear.
+
 ## Recommended Starting Point
 Start with the familiar PROPER shape:
 

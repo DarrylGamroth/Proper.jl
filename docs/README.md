@@ -4,11 +4,15 @@ This directory contains both current user-facing documentation and historical
 planning/audit records from the port effort.
 
 ## Start Here
-- [API contract](api_contract.md)
-- [Migration guide](MIGRATION_GUIDE.md)
-- [Prescription authoring guide](PRESCRIPTION_AUTHORING_GUIDE.md)
-- [Prepared execution guide](PREPARED_EXECUTION_GUIDE.md)
-- [Runnable API examples](API_EXAMPLES.md)
+- If you already know upstream PROPER:
+  1. [Migration guide](MIGRATION_GUIDE.md)
+  2. [Runnable API examples](API_EXAMPLES.md)
+  3. [Prepared execution guide](PREPARED_EXECUTION_GUIDE.md)
+- If you are writing or restructuring prescriptions in Julia after the initial
+  port:
+  - [Prescription authoring guide](PRESCRIPTION_AUTHORING_GUIDE.md)
+- For the precise stable public surface:
+  - [API contract](api_contract.md)
 
 ## Benchmarking
 - Run `./scripts/benchmark_cpu_gpu.sh` for the Julia CPU/GPU comparison lane
