@@ -39,21 +39,21 @@ end
     dm = zeros(32, 32)
     @test prop_dm(wf2, dm, 16.0, 16.0, 0.05; NO_APPLY=true) isa AbstractMatrix
 
-    img = rand(32, 32)
+    img = rand(TEST_RNG, 32, 32)
     @test size(prop_rotate(img, 0.0)) == size(img)
     @test size(prop_magnify(img, 0.5)) == (16, 16)
-    @test size(prop_resamplemap(wf2, rand(16, 16), wf2.sampling_m, 8.0, 8.0)) == size(wf2.field)
+    @test size(prop_resamplemap(wf2, rand(TEST_RNG, 16, 16), wf2.sampling_m, 8.0, 8.0)) == size(wf2.field)
     @test size(prop_pixellate(img, 0.5, 1.0, 16)) == (16, 16)
     @test size(prop_8th_order_mask(wf2, 3.0)) == size(wf2.field)
 
     mktempdir() do d
-        map = rand(32, 32) .* 1e-9
+        map = rand(TEST_RNG, 32, 32) .* 1e-9
         mapfile = joinpath(d, "contract_map.fits")
         prop_writemap(map, mapfile; SAMPLING=wf2.sampling_m)
         @test prop_errormap(wf2, mapfile) === wf2
 
-        Random.seed!(1234)
-        dmap = prop_psd_errormap(wf2, 1e-18, 10.0, 3.0; NO_APPLY=true, RNG=MersenneTwister(1234))
+        rng = MersenneTwister(1234)
+        dmap = prop_psd_errormap(wf2, 1e-18, 10.0, 3.0; NO_APPLY=true, RNG=rng)
         @test dmap isa AbstractMatrix
         @test size(dmap) == size(wf2.field)
     end
@@ -103,7 +103,7 @@ end
           prop_magnify(img, 1.0; quick=true)
 
     wf = prop_begin(1.0, 550e-9, 16)
-    map = rand(8, 8)
+    map = rand(TEST_RNG, 8, 8)
     @test prop_resamplemap(wf, map, wf.sampling_m, 4.0, 4.0, 0.25, -0.5) ==
           prop_resamplemap(wf, map, wf.sampling_m, 4.0, 4.0, 0.25, -0.5)
 end

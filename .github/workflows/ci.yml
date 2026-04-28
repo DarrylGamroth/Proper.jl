@@ -85,6 +85,8 @@ jobs:
             exit 0
           fi
           ./scripts/setup_python_baseline.sh
+      - name: Instantiate
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
       - name: Julia CPU/GPU benchmarks
         run: ./scripts/benchmark_cpu_gpu.sh
       - name: Install Python parity deps

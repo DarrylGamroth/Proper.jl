@@ -1,5 +1,6 @@
 using Random
-using Base.ScopedValues: ScopedValue, with
+
+const ACTIVE_RUN_CONTEXT_KEY = :Proper_ACTIVE_RUN_CONTEXT
 
 @inline function _seed_child_rng!(rng, token::Integer)
     return xor(rand(rng, UInt64), UInt64(token) * 0x9e3779b97f4a7c15)
@@ -26,8 +27,6 @@ struct RunContext{RNGT,B<:BackendStyle,FS<:FFTStyle,IS<:InterpStyle,PS<:FFTPlann
     workspace::WS
     verbose::Bool
 end
-
-const ACTIVE_RUN_CONTEXT = ScopedValue{Any}(nothing)
 
 function RunContext(; rng=Random.default_rng(), verbose::Bool=false, fft_planning::FFTPlanningStyle=FFTEstimateStyle())
     return RunContext(Matrix; rng=rng, verbose=verbose, fft_planning=fft_planning)
@@ -73,7 +72,7 @@ end
     return RunContext(typeof(wf.field), wf.workspace; rng=rng, verbose=verbose, fft_planning=fft_planning)
 end
 
-@inline active_run_context() = getindex(ACTIVE_RUN_CONTEXT)
+@inline active_run_context() = get(task_local_storage(), ACTIVE_RUN_CONTEXT_KEY, nothing)
 @inline active_run_workspace() = active_run_workspace(active_run_context())
 @inline active_run_workspace(::Nothing) = nothing
 @inline active_run_workspace(ctx::RunContext) = ctx.workspace
@@ -90,7 +89,7 @@ end
 @inline with_run_context(f::F, ::Nothing) where {F<:Function} = f()
 
 @inline function with_run_context(f::F, ctx::RunContext) where {F<:Function}
-    return with(ACTIVE_RUN_CONTEXT => ctx) do
+    return task_local_storage(ACTIVE_RUN_CONTEXT_KEY, ctx) do
         f()
     end
 end

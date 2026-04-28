@@ -1,9 +1,14 @@
 using Test
 using Proper
+using Random
+
+const TEST_RNG = MersenneTwister(20260428)
+Random.seed!(TEST_RNG, 20260428)
 
 include("example_loader.jl")
 include("test_phase1_foundation.jl")
 include("test_file_mapping.jl")
+include("test_ka_cpu_kernels.jl")
 include("test_phase2_core.jl")
 include("test_inference_allocations.jl")
 include("test_r2_trait_routing.jl")

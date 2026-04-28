@@ -170,7 +170,7 @@ end
 
     @testset "Context-routed interpolation kernels" begin
         wf = prop_begin(1.0, 500e-9, 16)
-        dmap = rand(Float32, 16, 16)
+        dmap = rand(TEST_RNG, Float32, 16, 16)
         opts = Proper.ResampleMapOptions(wf, wf.sampling_m, 8.0, 8.0)
         ctx = RunContext(typeof(dmap))
 
@@ -180,7 +180,7 @@ end
         Proper.prop_resamplemap!(out_def, wf, dmap, opts)
         @test isapprox(out_ctx, out_def; atol=0, rtol=0)
 
-        img = rand(Float32, 16, 16)
+        img = rand(TEST_RNG, Float32, 16, 16)
         r_ctx = prop_rotate(img, 12.0, ctx)
         r_def = prop_rotate(img, 12.0)
         @test isapprox(r_ctx, r_def; atol=0, rtol=0)
@@ -293,7 +293,7 @@ end
         Proper.ka_rounded_rectangle_mask!(round_ka, dx, RT(0.01), RT(-0.02), RT(0.05), RT(0.3) / RT(2), RT(0.2) / RT(2))
         @test isapprox(round_ka, round_loop; atol=1e-12, rtol=1e-12)
 
-        img = rand(Float32, n, n)
+        img = rand(TEST_RNG, Float32, n, n)
         pix_loop = Proper._prop_pixellate_factor(img, 2)
         pix_ka = similar(pix_loop)
         Proper.ka_pixellate!(pix_ka, img, 2)
@@ -311,7 +311,7 @@ end
         Proper.ka_szoom_apply!(szoom_ka, img, table_ka, mag)
         @test isapprox(szoom_ka, szoom_loop; atol=1e-6, rtol=1e-6)
 
-        rect_img = rand(Float32, n, n + 16)
+        rect_img = rand(TEST_RNG, Float32, n, n + 16)
         rect_loop = prop_szoom(rect_img, mag; NOX=120, NOY=96)
         rect_ka = similar(rect_loop)
         tablex_loop = Matrix{Float32}(undef, 120, Proper.SZOOM_K)

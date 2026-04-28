@@ -39,7 +39,7 @@ using FFTW
     @test prop_rotate(a, 0.0; XSHIFT=1.0, MISSING=-1.0) == [-1.0 1.0 5.0 9.0; -1.0 2.0 6.0 10.0; -1.0 3.0 7.0 11.0; -1.0 4.0 8.0 12.0]
     a5 = reshape(collect(1.0:25.0), 5, 5)
     @test prop_rotate(a5, 0.0; METH="cubic") == [13.0 13.0 13.0 14.0 14.0; 13.0 13.0 13.0 14.0 14.0; 13.0 13.0 13.0 14.0 14.0; 18.0 18.0 18.0 19.0 19.0; 18.0 18.0 18.0 19.0 19.0]
-    img32 = rand(Float32, 32, 32)
+    img32 = rand(TEST_RNG, Float32, 32, 32)
     out32 = similar(img32)
     ctx32 = RunContext(typeof(img32))
     @test prop_szoom!(out32, img32, 1.1, ctx32) === out32
@@ -326,10 +326,10 @@ end
     end
 
     @testset "prop_dm application parity" begin
-        Random.seed!(1234)
+        rng = MersenneTwister(1234)
         wf_apply = prop_begin(1.0, 550e-9, 64)
         wf_manual = prop_begin(1.0, 550e-9, 64)
-        dm = randn(6, 6) .* 1e-9
+        dm = randn(rng, 6, 6) .* 1e-9
 
         dmap_apply = prop_dm(wf_apply, dm, 2.5, 2.5, 1.0e-3)
         dmap_manual = prop_dm(wf_manual, dm, 2.5, 2.5, 1.0e-3; NO_APPLY=true)
@@ -362,7 +362,7 @@ end
 
 @testset "Phase 3 FITS/map basics" begin
     wf = prop_begin(1.0, 500e-9, 16)
-    dmap = randn(16, 16)
+    dmap = randn(TEST_RNG, 16, 16)
 
     mktempdir() do d
         f = joinpath(d, "map.fits")
@@ -376,7 +376,7 @@ end
         @test size(r2) == size(dmap)
         @test r2 == dmap
 
-        odd = randn(5, 7)
+        odd = randn(TEST_RNG, 5, 7)
         f3 = joinpath(d, "odd_map.fits")
         prop_writemap(odd, f3; SAMPLING=wf.sampling_m)
         _, hdr3 = Proper.prop_fits_read_with_header(f3)
@@ -418,16 +418,16 @@ end
     wf = prop_begin(1.0, 500e-9, 8)
     mktempdir() do d
         fname = joinpath(d, "map.fits")
-        @test prop_fits_write(fname, rand(8, 8)) === nothing
+        @test prop_fits_write(fname, rand(TEST_RNG, 8, 8)) === nothing
         img = prop_fits_read(fname)
         @test img isa Matrix
-        @test prop_writemap(rand(8, 8), joinpath(d, "wf_map.fits"); SAMPLING=1.0) === nothing
+        @test prop_writemap(rand(TEST_RNG, 8, 8), joinpath(d, "wf_map.fits"); SAMPLING=1.0) === nothing
     end
 end
 
 @testset "Phase 5 public helper coverage" begin
     wf = prop_begin(1.0, 500e-9, 32)
-    dm = randn(32, 32) .* 1e-9
+    dm = randn(TEST_RNG, 32, 32) .* 1e-9
     @test prop_dm(wf, dm) === wf
     @test prop_dm(wf, dm; mirror=true) === wf
     @test_throws MethodError prop_dm(wf, dm; MIRROR=1)
@@ -437,16 +437,16 @@ end
     @test size(prop_zernikes(wf, 3)) == (32, 32, 3)
     @test length(prop_fit_zernikes(wf, 3)) == 3
 
-    pix = Proper._prop_pixellate_factor(rand(32, 32), 2)
+    pix = Proper._prop_pixellate_factor(rand(TEST_RNG, 32, 32), 2)
     @test size(pix) == (16, 16)
     pix_out = similar(pix)
-    @test Proper._prop_pixellate_factor!(pix_out, rand(32, 32), 2) === pix_out
-    psf = prop_pixellate(rand(32, 32), 0.5, 1.0, 16)
+    @test Proper._prop_pixellate_factor!(pix_out, rand(TEST_RNG, 32, 32), 2) === pix_out
+    psf = prop_pixellate(rand(TEST_RNG, 32, 32), 0.5, 1.0, 16)
     @test size(psf) == (16, 16)
-    psf_view = prop_pixellate(@view(rand(33, 33)[1:32, 1:32]), 0.5, 1.0, 16)
+    psf_view = prop_pixellate(@view(rand(TEST_RNG, 33, 33)[1:32, 1:32]), 0.5, 1.0, 16)
     @test size(psf_view) == (16, 16)
     psf_out = similar(psf)
-    @test prop_pixellate!(psf_out, rand(32, 32), 0.5, 1.0) === psf_out
+    @test prop_pixellate!(psf_out, rand(TEST_RNG, 32, 32), 0.5, 1.0) === psf_out
 
     m1 = prop_polygon(wf, 6, 0.2)
     m2 = prop_irregular_polygon(wf, [-0.1, 0.1, 0.1, -0.1], [-0.1, -0.1, 0.1, 0.1])
@@ -462,14 +462,14 @@ end
     @test defs[:DFTI_BACKWARD_SCALE] == 5
     @test collect(Proper.coordinate_axis(5, 2.0)) == [-4.0, -2.0, 0.0, 2.0, 4.0]
     @test collect(Proper.spatial_frequency_axis(4, 0.5)) == [-1.0, -0.5, 0.0, 0.5]
-    @test Proper.libcconv(rand(8, 8), 4.2, 3.7) isa Real
-    @test size(prop_szoom(rand(8, 8), 2.0), 1) == 3
-    @test size(prop_szoom(rand(8, 8), 2.0, 16), 1) == 16
-    @test size(prop_szoom(rand(16, 20), 0.95; NOX=14, NOY=10)) == (10, 14)
+    @test Proper.libcconv(rand(TEST_RNG, 8, 8), 4.2, 3.7) isa Real
+    @test size(prop_szoom(rand(TEST_RNG, 8, 8), 2.0), 1) == 3
+    @test size(prop_szoom(rand(TEST_RNG, 8, 8), 2.0, 16), 1) == 16
+    @test size(prop_szoom(rand(TEST_RNG, 16, 20), 0.95; NOX=14, NOY=10)) == (10, 14)
     szoom_out = zeros(16, 16)
-    @test prop_szoom!(szoom_out, rand(8, 8), 2.0) === szoom_out
+    @test prop_szoom!(szoom_out, rand(TEST_RNG, 8, 8), 2.0) === szoom_out
     rect_out = zeros(10, 14)
-    @test prop_szoom!(rect_out, rand(16, 20), 0.95) === rect_out
+    @test prop_szoom!(rect_out, rand(TEST_RNG, 16, 20), 0.95) === rect_out
 end
 
 @testset "Phase 8 geometry and zernike parity groundwork" begin
@@ -534,6 +534,6 @@ end
     out = prop_cubic_conv(a, [1.0, 2.0, 3.0], [1.0, 2.0]; grid=true)
     @test size(out) == (2, 3)
     @test size(prop_szoom(a, 2.0, 8), 1) == 8
-    @test size(prop_magnify(rand(16, 20), 0.95), 1) == 15
-    @test size(prop_magnify(rand(16, 20), 0.95), 2) == 19
+    @test size(prop_magnify(rand(TEST_RNG, 16, 20), 0.95), 1) == 15
+    @test size(prop_magnify(rand(TEST_RNG, 16, 20), 0.95), 2) == 19
 end
