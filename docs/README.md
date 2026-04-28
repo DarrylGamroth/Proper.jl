@@ -38,6 +38,16 @@ planning/audit records from the port effort.
   backend as skipped rather than failing the whole benchmark lane
 - Active GPU implementation tracking lives in
   [GPU implementation plan](GPU_IMPLEMENTATION_PLAN.md)
+- Python-baseline parity and Python-vs-Julia benchmarks use PROPER 3.3.4 from
+  SourceForge; run `./scripts/setup_python_baseline.sh` or set
+  `PYPROPER_ROOT=/path/to/proper_v3.3.4_python` before running
+  `./scripts/benchmark_all.sh`
+
+## Coverage
+- Run `./scripts/coverage_lcov.sh` to execute the full package test suite with
+  Julia coverage enabled and write `lcov.info`
+- CI uploads `lcov.info` to Codecov using GitHub OIDC (`id-token: write` and
+  `use_oidc: true`) instead of a shared `CODECOV_TOKEN`
 
 ## Core Contracts
 - [Numerics contract](numerics_contract.md)
@@ -47,8 +57,8 @@ planning/audit records from the port effort.
 - [Compatibility decisions](compat_decisions.md)
 
 ## Reference Validation And Coverage
-- [Parity closure report](PHASE8_CLOSURE.md)
-- [Semantic reconciliation report](PHASE9_RECONCILIATION.md)
+- [Parity closure report](PARITY_CLOSURE.md)
+- [Semantic reconciliation report](SEMANTIC_RECONCILIATION.md)
 - [WFIRST Phase B config matrix](WFIRST_PHASEB_CONFIG_MATRIX.md)
 
 ## Contributor Workflow

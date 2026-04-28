@@ -306,11 +306,11 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Consequences:
   - Replaced by single baseline policy in D-0035.
 
-## D-0033: Phase 9 Hotspot Reconciliation Outcomes
+## D-0033: Semantic Hotspot Reconciliation Outcomes
 - Date: 2026-03-04
 - Status: Accepted
 - Context:
-  - Phase 9 requires explicit reconciliation of known Python translation defects using MATLAB/manual semantics where justified.
+  - Final parity closure requires explicit reconciliation of known Python translation defects using MATLAB/manual semantics where justified.
 - Decision:
   - `prop_resamplemap`: keep independent `xshift`/`yshift` semantics.
   - `prop_end`: keep integer-safe centered extraction semantics (do not preserve Python float-slice defect).

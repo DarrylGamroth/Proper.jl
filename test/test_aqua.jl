@@ -7,8 +7,8 @@ using Proper
         Proper;
         ambiguities=false,
         persistent_tasks=false,
-        project_extras=false,
+        project_extras=true,
         stale_deps=false,
-        deps_compat=false,
+        deps_compat=true,
     )
 end

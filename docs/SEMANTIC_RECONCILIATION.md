@@ -1,4 +1,4 @@
-# Phase 9 Semantic Reconciliation And Final Validation
+# Semantic Reconciliation And Final Validation
 
 Date: 2026-03-04
 
@@ -42,7 +42,7 @@ Reconcile known Python translation defects using MATLAB/manual semantics where a
 ## Final Validation Evidence
 - Unit + integration suite: `Pkg.test()` passes.
 - Example parity threshold gate: `test/parity/compare_examples.jl` passes.
-- Phase 8 closure evidence retained in `docs/PHASE8_CLOSURE.md`.
+- parity closure evidence retained in `docs/PARITY_CLOSURE.md`.
 
 ## Outcome
-Phase 9 reconciliation is complete with hotspot behavior decisions documented and covered by executable tests.
+Semantic reconciliation is complete with hotspot behavior decisions documented and covered by executable tests.

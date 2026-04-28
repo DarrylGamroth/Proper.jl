@@ -12,10 +12,13 @@ Define how Julia outputs are compared against Python 3.3.4 baselines and how art
 ## Status
 - [x] Draft pre-filled from proposed defaults
 - [x] Baseline workflow accepted
-- [ ] CI jobs wired
+- [x] CI jobs wired
 
 ## 1. Baseline Source
-- Executable baseline: Python `../proper_v3.3.4_python`
+- Executable baseline: Python PROPER 3.3.4 from SourceForge:
+  `https://sourceforge.net/projects/proper-library/files/proper_v3.3.4_python.zip`
+- Local default path: `../proper_v3.3.4_python`
+- Override path: `PYPROPER_ROOT=/path/to/proper_v3.3.4_python`
 - Semantic tie-breakers: MATLAB 3.3.1 + PROPER manual
 
 ## 2. Artifact Layout
@@ -64,14 +67,15 @@ Minimum coverage:
 
 ## 7. CI Contract
 Required jobs:
-- Linux + Julia 1.10 CPU unit tests
-- Linux + Julia 1.10 parity smoke
+- CPU unit tests on Linux, macOS, and Windows for supported Julia versions
+- Linux coverage job
+- Linux parity and benchmark job using the cached SourceForge Python PROPER
+  baseline
 Scheduled/extended jobs:
-- Linux + Julia 1.10 full CPU parity
+- full CPU parity and benchmark artifacts from the Linux parity job
 Optional jobs:
-- additional Julia version CPU smoke
-- macOS CPU smoke
-- nightly GPU parity
+- self-hosted CUDA tests
+- self-hosted AMDGPU tests
 
 ## 8. Contract Tests
 - [ ] Baseline generation reproducibility test (seeded)

@@ -33,6 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
@@ -41,10 +42,8 @@ jobs:
       - uses: julia-actions/cache@v2
       - name: Instantiate
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
-      - name: Test with coverage
-        run: julia --project=. --code-coverage=user -e 'using Pkg; Pkg.test(coverage=true)'
-      - name: Process coverage
-        uses: julia-actions/julia-processcoverage@v1
+      - name: Generate coverage
+        run: ./scripts/coverage_lcov.sh
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
@@ -54,12 +53,16 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           files: lcov.info
-          fail_ci_if_error: false
+          disable_search: true
+          fail_ci_if_error: true
+          use_oidc: true
           verbose: true
 
   benchmark-and-parity:
     name: Benchmark And Parity
     runs-on: ubuntu-latest
+    env:
+      PYPROPER_ROOT: ${{ github.workspace }}/.ci-cache/proper_v3.3.4_python
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
@@ -69,6 +72,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - name: Cache Python PROPER baseline
+        uses: actions/cache@v4
+        with:
+          path: .ci-cache/proper_v3.3.4_python
+          key: proper-python-v3.3.4-sourceforge
+      - name: Download Python PROPER baseline
+        shell: bash
+        run: |
+          if [[ -d "${PYPROPER_ROOT}/proper" ]]; then
+            echo "Using cached Python PROPER baseline at ${PYPROPER_ROOT}"
+            exit 0
+          fi
+          ./scripts/setup_python_baseline.sh
+      - name: Julia CPU/GPU benchmarks
+        run: ./scripts/benchmark_cpu_gpu.sh
       - name: Install Python parity deps
         run: python3 -m pip install --upgrade pip numpy scipy astropy matplotlib
       - name: Python baseline
@@ -79,14 +97,17 @@ jobs:
         run: python3 test/parity/generate_python_example_metrics.py
       - name: Example parity compare + thresholds
         run: julia --project=. test/parity/compare_examples.jl
-      - name: Benchmarks
+      - name: Full Python/Julia benchmark suite
         run: ./scripts/benchmark_all.sh
       - name: Upload benchmark/parity artifacts
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-parity-artifacts
           path: |
             bench/reports/*.json
+            bench/reports/*.md
+            bench/reports/*.csv
             test/parity/reports/*.json
 
   cuda-tests:

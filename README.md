@@ -196,13 +196,24 @@ Important current examples:
 
 ## Benchmark And Parity Summary
 - Parity closure is complete against the patched Python 3.3.4 baseline:
-  see [docs/PHASE8_CLOSURE.md](docs/PHASE8_CLOSURE.md)
+  see [docs/PARITY_CLOSURE.md](docs/PARITY_CLOSURE.md)
 - MATLAB/manual semantic reconciliation is complete for the identified hotspot
-  semantics: see [docs/PHASE9_RECONCILIATION.md](docs/PHASE9_RECONCILIATION.md)
+  semantics: see [docs/SEMANTIC_RECONCILIATION.md](docs/SEMANTIC_RECONCILIATION.md)
 - The WFIRST Phase B reference port is used as a broad correctness and
   benchmarking workload, not as a separate optimized execution path
 - Current benchmark policy separates steady-state runtime from Julia cold-start /
   TTFx (`D-0029`)
+
+## Coverage
+Run the local coverage lane with:
+
+```bash
+./scripts/coverage_lcov.sh
+```
+
+This runs the package tests with Julia coverage enabled and writes `lcov.info`.
+CI uploads the same report to Codecov using GitHub OIDC, not a shared upload
+secret.
 
 ### Julia CPU vs GPU Benchmarks
 Run the dedicated Julia CPU/GPU comparison lane with:
@@ -253,6 +264,18 @@ For profiling the shared core workload directly, run:
 This writes backend-specific text profiles under `bench/reports/` and keeps GPU
 optimization work tied to shared propagation code rather than model-specific
 wrappers.
+
+For Python-baseline parity and Python-vs-Julia benchmark runs, install the
+official Python PROPER 3.3.4 source tree first:
+
+```bash
+./scripts/setup_python_baseline.sh
+./scripts/setup_parity_venv.sh
+PYTHON_BIN=.venv-parity/bin/python ./scripts/benchmark_all.sh
+```
+
+Set `PYPROPER_ROOT=/path/to/proper_v3.3.4_python` if the baseline lives outside
+the default sibling checkout path.
 
 ### GPU Usage Contract
 - The intended GPU performance surface is:

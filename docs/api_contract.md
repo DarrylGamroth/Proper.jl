@@ -203,5 +203,5 @@ Notes:
 - API-shape and keyword compatibility checks live in `test/test_api_contract.jl`.
 - Python-baseline parity behavior remains covered by the dedicated parity suites
   and closure reports:
-  - `docs/PHASE8_CLOSURE.md`
-  - `docs/PHASE9_RECONCILIATION.md`
+  - `docs/PARITY_CLOSURE.md`
+  - `docs/SEMANTIC_RECONCILIATION.md`

@@ -1,9 +1,9 @@
-# Phase 8 Closure Report
+# Parity Closure Report
 
 Date: 2026-03-04
 
 ## Scope
-Phase 8 target from `PORTING_PLAN.md`:
+Porting-plan parity target:
 - eliminate placeholder/fallback behavior in physics-critical modules
 - achieve Python 3.3.4 parity across the example parity suite
 - document accepted residual divergences
@@ -28,7 +28,7 @@ Phase 8 target from `PORTING_PLAN.md`:
 - Patched Python 3.3.4 remains the executable parity baseline.
 - Runtime compatibility mode flags were removed; divergences are documented directly in `docs/compat_decisions.md`.
 
-## Phase 8 Exit Criteria Evaluation
+## Exit Criteria Evaluation
 - All example parity thresholds met against patched Python baseline: `Yes`.
 - Any remaining intentional deltas documented: `Yes`.
 - No unresolved high-severity parity gaps: `Yes` (threshold-gated parity is green).

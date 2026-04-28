@@ -12,7 +12,7 @@ N_SAMPLES = 20
 
 def load_proper():
     project_root = Path(__file__).resolve().parents[2]
-    proper_root = (project_root / ".." / "proper_v3.3.4_python").resolve()
+    proper_root = Path(os.environ.get("PYPROPER_ROOT", project_root / ".." / "proper_v3.3.4_python")).resolve()
     if not proper_root.is_dir():
         raise RuntimeError(f"Missing Python baseline source tree: {proper_root}")
 

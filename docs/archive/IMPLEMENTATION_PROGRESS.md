@@ -84,9 +84,9 @@ primary user-facing entry point for the package.
 - [x] Replace fallback PSD/Zernike/polygon/segmented-optics implementations with parity implementations (threshold-gated parity validated against patched Python baseline).
 - [x] Replace interpolation and zoom placeholders with cubic-convolution implementations (`libcconv`, `libcconvthread`, `libszoom`, `prop_cubic_conv`).
 - [x] Run full example parity report and close threshold gaps against patched Python baseline (combined abs/rel threshold policy and CI gating are green; residual deep-null coronagraph deltas are documented and accepted).
-- [x] Document Phase 8 closure evidence (`docs/PHASE8_CLOSURE.md`).
+- [x] Document Phase 8 closure evidence (`docs/PARITY_CLOSURE.md`).
 - [x] Perform MATLAB/manual semantic reconciliation on known disagreement hotspots.
-- [x] Publish Phase 9 reconciliation report (`docs/PHASE9_RECONCILIATION.md`) and migration guide (`docs/MIGRATION_GUIDE.md`).
+- [x] Publish Phase 9 reconciliation report (`docs/SEMANTIC_RECONCILIATION.md`) and migration guide (`docs/MIGRATION_GUIDE.md`).
 - [ ] Complete the remaining cache portion of the backend-aware FFT refactor for CUDA (`CUDA_OPTIMIZATION_PLAN.md`, C3).
 - [ ] Validate and tune the in-place CUDA propagation scratch path on hardware (`CUDA_OPTIMIZATION_PLAN.md`, C3).
 - [ ] Remove the remaining non-ellipse host-staged mask/map paths on CUDA (`CUDA_OPTIMIZATION_PLAN.md`, C4).

@@ -34,6 +34,7 @@ Required packages:
   numpy scipy astropy matplotlib
 
 Recommended fix:
+  ./scripts/setup_python_baseline.sh
   ./scripts/setup_parity_venv.sh
 
 Alternative:

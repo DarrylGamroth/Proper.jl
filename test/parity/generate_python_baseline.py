@@ -17,7 +17,12 @@ def run_simple_case(proper):
 
 def main():
     project = Path(__file__).resolve().parents[2]
-    pyproper_root = (project / ".." / "proper_v3.3.4_python").resolve()
+    pyproper_root = Path(os.environ.get("PYPROPER_ROOT", project / ".." / "proper_v3.3.4_python")).resolve()
+    if not (pyproper_root / "proper").is_dir():
+        raise RuntimeError(
+            f"Missing Python PROPER baseline source tree: {pyproper_root}. "
+            "Set PYPROPER_ROOT or place proper_v3.3.4_python next to this repository."
+        )
     sys.path.insert(0, str(pyproper_root))
 
     import proper  # noqa: WPS433
