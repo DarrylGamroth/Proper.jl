@@ -125,6 +125,7 @@ using .WFIRSTPhaseBProper
     cfg_none = WFIRSTPhaseBProper._phaseb_config("none", 0.575e-6, "/tmp"; compact=false, use_fpm=0)
     @test cfg_none.branch == :none
     @test cfg_none.lyot_stop_file === nothing
+    @test !hasproperty(cfg_none, :pupil_mask_file)
 
     ws = WFIRSTPhaseBProper.PhaseBModelWorkspace(8)
     @test size(WFIRSTPhaseBProper.phaseb_field(ws, 1400)) == (1400, 1400)

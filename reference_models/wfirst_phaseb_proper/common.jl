@@ -42,6 +42,11 @@ struct PhaseBSPCPreparedAssets
     workspace::PhaseBModelWorkspace
 end
 
+struct PhaseBPupilPreparedAssets
+    pupil::Matrix{Float64}
+    workspace::PhaseBModelWorkspace
+end
+
 mutable struct PhaseBStageTimer
     totals_ns::Dict{Symbol,Int64}
     counts::Dict{Symbol,Int}
@@ -297,6 +302,11 @@ function prepare_phaseb_spc_assets(cfg::NamedTuple, λm::Real, output_dim::Integ
     inverse_diam = compact ? pupil_diam_pix / 2 : pupil_diam_pix
     inverse_mft = prepare_phaseb_mft_plan(nfpm, fpm_sampling_lam, inverse_diam, inverse_out, +1)
     return PhaseBSPCPreparedAssets(pupil, pupil_mask, lyot, fpm, forward_mft, inverse_mft, PhaseBModelWorkspace(output_dim))
+end
+
+function prepare_phaseb_pupil_assets(cfg::NamedTuple, output_dim::Integer)
+    pupil = phaseb_prepare_static(Float64.(_phaseb_python_fits(cfg.pupil_file)), cfg.n_default, Float64)
+    return PhaseBPupilPreparedAssets(pupil, PhaseBModelWorkspace(output_dim))
 end
 
 @inline function _nearest_occ_key(dict::AbstractDict{<:Real}, λm::Real)
@@ -819,6 +829,13 @@ function prepare_phaseb_models(case::NamedTuple; data_root::AbstractString=phase
         ctx = Proper.RunContext()
         if shared === nothing
             cfg = _phaseb_config(cor_type, λm, data_root; compact=is_compact, use_fpm=Int(passget(case.passvalue, :use_fpm, 1)))
+            asset_factory = if cfg.branch == :spc
+                () -> prepare_phaseb_spc_assets(cfg, λm, case.output_dim; compact=is_compact)
+            elseif cfg.branch == :none
+                () -> prepare_phaseb_pupil_assets(cfg, case.output_dim)
+            else
+                throw(ArgumentError("unsupported WFIRST Phase B asset branch: $(cfg.branch)"))
+            end
             return prepare_model(
                 Symbol("wfirst_" * string(i)),
                 case.func,
@@ -826,7 +843,7 @@ function prepare_phaseb_models(case::NamedTuple; data_root::AbstractString=phase
                 case.output_dim;
                 context=ctx,
                 PASSVALUE=passvalue,
-                assets=prepare_asset_pool(() -> prepare_phaseb_spc_assets(cfg, λm, case.output_dim; compact=is_compact); pool_size=1),
+                assets=prepare_asset_pool(asset_factory; pool_size=1),
                 pool_size=1,
             )
         end
