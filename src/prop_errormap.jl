@@ -10,7 +10,38 @@ struct ErrorMapOptions{T<:AbstractFloat}
     amplitude::Bool
     wavefront::Bool
     mirror_surface::Bool
+
+    function ErrorMapOptions{T}(
+        sampling,
+        xc_map,
+        yc_map,
+        rotatemap,
+        magnify,
+        multiply,
+        nm::Bool,
+        microns::Bool,
+        amplitude::Bool,
+        wavefront::Bool,
+        mirror_surface::Bool,
+    ) where {T<:AbstractFloat}
+        return new{T}(
+            _nothing_or(T, sampling),
+            _nothing_or(T, xc_map),
+            _nothing_or(T, yc_map),
+            _nothing_or(T, rotatemap),
+            _nothing_or(T, magnify),
+            _nothing_or(T, multiply),
+            nm,
+            microns,
+            amplitude,
+            wavefront,
+            mirror_surface,
+        )
+    end
 end
+
+@inline _nothing_or(::Type{T}, x::Nothing) where {T<:AbstractFloat} = nothing
+@inline _nothing_or(::Type{T}, x::Real) where {T<:AbstractFloat} = T(x)
 
 @inline function ErrorMapOptions(kwargs::Base.Iterators.Pairs)
     T = Float64
