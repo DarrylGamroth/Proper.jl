@@ -2,14 +2,17 @@
 import argparse
 import html
 import json
+import os
 import re
 import shutil
+import subprocess
 from pathlib import Path
 from urllib.request import Request, urlopen
 from zipfile import ZipFile
 
 ARCHIVE_NAME = "roman_preflight_proper_public_v2.0.2_python.zip"
 DOWNLOAD_PAGE = f"https://sourceforge.net/projects/cgisim/files/{ARCHIVE_NAME}/download"
+DIRECT_DOWNLOAD = f"https://downloads.sourceforge.net/project/cgisim/{ARCHIVE_NAME}"
 CACHE_DIRNAME = ".cache/wfirst"
 OUTPUT_DIRNAME = "data_phaseb_from_roman_preflight"
 OLD_LAM_OCCS = [
@@ -96,17 +99,74 @@ def resolve_download_url() -> str:
     return html.unescape(match.group(1))
 
 
+def archive_size_valid(path: Path) -> bool:
+    return path.is_file() and path.stat().st_size > 10_000_000
+
+
+def download_with_curl(url: str, path: Path) -> bool:
+    if shutil.which("curl") is None:
+        return False
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.unlink(missing_ok=True)
+    try:
+        subprocess.run(
+            [
+                "curl",
+                "-L",
+                "--fail",
+                "--retry",
+                "3",
+                "--connect-timeout",
+                "30",
+                "--max-time",
+                "900",
+                "-o",
+                str(tmp),
+                url,
+            ],
+            check=True,
+        )
+        if archive_size_valid(tmp):
+            tmp.replace(path)
+            return True
+    except subprocess.CalledProcessError:
+        pass
+    finally:
+        tmp.unlink(missing_ok=True)
+    return False
+
+
+def download_with_urllib(url: str, path: Path) -> bool:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.unlink(missing_ok=True)
+    try:
+        request = Request(url, headers={"user-agent": "Mozilla/5.0"})
+        with urlopen(request, timeout=120) as response, tmp.open("wb") as handle:
+            shutil.copyfileobj(response, handle, length=1024 * 1024)
+        if archive_size_valid(tmp):
+            tmp.replace(path)
+            return True
+    finally:
+        tmp.unlink(missing_ok=True)
+    return False
+
+
 def ensure_archive() -> Path:
     path = archive_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    if path.is_file() and path.stat().st_size > 10_000_000:
+    if archive_size_valid(path):
         return path
 
-    url = resolve_download_url()
-    request = Request(url, headers={"user-agent": "Mozilla/5.0"})
-    with urlopen(request, timeout=120) as response, path.open("wb") as handle:
-        shutil.copyfileobj(response, handle, length=1024 * 1024)
-    return path
+    urls = [os.environ.get("WFIRST_PREFLIGHT_ARCHIVE_URL"), DOWNLOAD_PAGE, DIRECT_DOWNLOAD]
+    for url in (u for u in urls if u):
+        if download_with_curl(url, path):
+            return path
+
+    resolved_url = resolve_download_url()
+    if download_with_urllib(resolved_url, path):
+        return path
+
+    raise RuntimeError("Unable to download Roman preflight archive")
 
 
 def extract_bytes(zf: ZipFile, src: str, dst: Path) -> None:
