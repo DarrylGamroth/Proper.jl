@@ -266,16 +266,23 @@ optimization work tied to shared propagation code rather than model-specific
 wrappers.
 
 For Python-baseline parity and Python-vs-Julia benchmark runs, install the
-official Python PROPER 3.3.4 source tree first:
+official Python PROPER 3.3.4 source tree first. For WFIRST/Roman Phase B
+Python-vs-Julia comparisons, also install the upstream `proper-models` source
+tree:
 
 ```bash
 ./scripts/setup_python_baseline.sh
+./scripts/setup_wfirst_models_baseline.sh
 ./scripts/setup_parity_venv.sh
 PYTHON_BIN=.venv-parity/bin/python ./scripts/benchmark_all.sh
 ```
 
 Set `PYPROPER_ROOT=/path/to/proper_v3.3.4_python` if the baseline lives outside
-the default sibling checkout path.
+the default sibling checkout path. Set `WFIRST_MODELS_ROOT=/path/to/proper-models`
+if the WFIRST/Roman model checkout lives outside the default sibling path. The
+WFIRST Phase B Python source does not require Git LFS assets; for a full
+`proper-models` checkout with LFS assets, run
+`WFIRST_MODELS_LFS=1 ./scripts/setup_wfirst_models_baseline.sh`.
 
 ### GPU Usage Contract
 - The intended GPU performance surface is:

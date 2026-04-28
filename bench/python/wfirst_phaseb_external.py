@@ -36,16 +36,23 @@ def write_skipped_report(case_name: str, reason: str) -> None:
 
 def resolve_roots() -> tuple[Path, Path, Path | None]:
     root = project_root()
-    proper_root = (root / ".." / "proper_v3.3.4_python").resolve()
-    models_python_root = (root / ".." / "proper-models" / "wfirst_cgi" / "models_phaseb" / "python").resolve()
+    proper_root = Path(os.environ.get("PYPROPER_ROOT", root / ".." / "proper_v3.3.4_python")).expanduser().resolve()
+    if "WFIRST_MODELS_PYTHON_ROOT" in os.environ:
+        models_python_root = Path(os.environ["WFIRST_MODELS_PYTHON_ROOT"]).expanduser().resolve()
+    else:
+        models_root = Path(os.environ.get("WFIRST_MODELS_ROOT", root / ".." / "proper-models")).expanduser().resolve()
+        models_python_root = models_root / "wfirst_cgi" / "models_phaseb" / "python"
     env_data_root = os.environ.get("WFIRST_PHASEB_DATA_ROOT")
     candidate_data_roots = []
     if env_data_root:
         candidate_data_roots.append(Path(env_data_root).expanduser().resolve())
-    candidate_data_roots.extend([
-        (root / ".." / "proper-models" / "wfirst_cgi" / "data_phaseb").resolve(),
-        (root / ".." / "proper-models" / "wfirst_cgi" / "models_phaseb" / "data_phaseb").resolve(),
-    ])
+    models_root_for_data = models_python_root.parents[1]
+    candidate_data_roots.extend(
+        [
+            (models_root_for_data / "data_phaseb").resolve(),
+            (models_root_for_data / "models_phaseb" / "data_phaseb").resolve(),
+        ]
+    )
     data_root = next((path for path in candidate_data_roots if path.is_dir()), None)
 
     if not proper_root.is_dir():

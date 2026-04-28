@@ -19,6 +19,14 @@ Define how Julia outputs are compared against Python 3.3.4 baselines and how art
   `https://sourceforge.net/projects/proper-library/files/proper_v3.3.4_python.zip`
 - Local default path: `../proper_v3.3.4_python`
 - Override path: `PYPROPER_ROOT=/path/to/proper_v3.3.4_python`
+- External WFIRST/Roman Phase B Python model baseline:
+  `https://github.com/ajeldorado/proper-models.git`
+- Local default path: `../proper-models`
+- Override path: `WFIRST_MODELS_ROOT=/path/to/proper-models` or
+  `WFIRST_MODELS_PYTHON_ROOT=/path/to/wfirst_cgi/models_phaseb/python`
+- CI uses a code-only `proper-models` checkout because the WFIRST Phase B Python
+  model code does not require the repository's Git LFS assets. Set
+  `WFIRST_MODELS_LFS=1` for a full local checkout when needed.
 - Semantic tie-breakers: MATLAB 3.3.1 + PROPER manual
 
 ## 2. Artifact Layout
@@ -70,7 +78,8 @@ Required jobs:
 - CPU unit tests on Linux, macOS, and Windows for supported Julia versions
 - Linux coverage job
 - Linux parity and benchmark job using the cached SourceForge Python PROPER
-  baseline
+  baseline, cached WFIRST `proper-models` checkout, and cached public Roman
+  preflight compatibility data
 Scheduled/extended jobs:
 - full CPU parity and benchmark artifacts from the Linux parity job
 Optional jobs:

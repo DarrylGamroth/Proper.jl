@@ -30,6 +30,8 @@ Python parity environment is not ready for the WFIRST Phase B CPU benchmark.
 Selected interpreter: ${PYTHON_BIN}
 
 Recommended fix:
+  ./scripts/setup_python_baseline.sh
+  ./scripts/setup_wfirst_models_baseline.sh
   ./scripts/setup_parity_venv.sh
 EOF
   exit 1

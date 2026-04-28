@@ -561,7 +561,7 @@ end
 if !isempty(wfirst_phaseb_reports)
     ext_headers = ["Case", "Median", "Samples", "Output", "Sampling", "Peak |field|", "Mean |field|"]
     ext_rows = Vector{Vector{String}}()
-    ext_notes = ["Optional external benchmark from ../proper-models/wfirst_cgi/models_phaseb/python."]
+    ext_notes = ["Optional external benchmark from the upstream proper-models WFIRST Phase B Python tree; override with WFIRST_MODELS_ROOT or WFIRST_MODELS_PYTHON_ROOT."]
     for report in wfirst_phaseb_reports
         report === nothing && continue
         case_name = String(getpath(report, "meta", "case"))

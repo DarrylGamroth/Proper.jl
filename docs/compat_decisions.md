@@ -648,3 +648,29 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     not no-op stub exports.
   - API contract docs and tests should treat those names as absent, not as part
     of a supported compatibility layer.
+
+## D-0054: WFIRST Phase B Python Baseline Comes From Upstream `proper-models`
+- Date: 2026-04-28
+- Status: Accepted
+- Context:
+  - The WFIRST Phase B reference model is a comprehensive external test case
+    for the PROPER port, not core library code.
+  - Local sibling checkouts are convenient for development but are not a stable
+    CI provenance source.
+  - The upstream Python WFIRST/Roman model source is hosted at
+    `https://github.com/ajeldorado/proper-models.git`.
+- Decision:
+  - CI and benchmark/parity harnesses fetch and cache the WFIRST Phase B Python
+    model source from `proper-models`.
+  - The model source path is configurable with `WFIRST_MODELS_ROOT` or
+    `WFIRST_MODELS_PYTHON_ROOT`.
+  - CI uses a code-only checkout because the Phase B Python source does not
+    require the repository's Git LFS assets; full local LFS checkout is
+    available with `WFIRST_MODELS_LFS=1`.
+- Consequences:
+  - WFIRST Python-vs-Julia parity no longer depends on a developer-specific
+    `../proper-models` checkout.
+  - Benchmark reports retain source-root provenance for both Python PROPER and
+    WFIRST model code.
+  - Public Roman preflight compatibility data remains cached separately from
+    model source.

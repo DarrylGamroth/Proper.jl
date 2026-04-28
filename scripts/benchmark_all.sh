@@ -35,6 +35,7 @@ Required packages:
 
 Recommended fix:
   ./scripts/setup_python_baseline.sh
+  ./scripts/setup_wfirst_models_baseline.sh
   ./scripts/setup_parity_venv.sh
 
 Alternative:
