@@ -48,6 +48,8 @@ function bench_ka_geometry_sampling_kernels()
     pix_ka = similar(pix_loop)
     szoom_loop = similar(img, 96, 96)
     szoom_ka = similar(szoom_loop)
+    szoom_loop_ws = Proper.SamplingWorkspace(typeof(szoom_loop), Float32)
+    szoom_ka_ws = Proper.SamplingWorkspace(typeof(szoom_ka), Float32)
 
     Proper._prop_ellipse!(Proper.GeometryLoopExecStyle(), ellipse_loop, wf, 0.35, 0.25, 0.05, -0.03, Proper.EllipseOptions(pairs((; ROTATION=13.0, DARK=true, NORM=true))))
     Proper._prop_ellipse!(Proper.GeometryKAExecStyle(), ellipse_ka, wf, 0.35, 0.25, 0.05, -0.03, Proper.EllipseOptions(pairs((; ROTATION=13.0, DARK=true, NORM=true))))
@@ -57,10 +59,10 @@ function bench_ka_geometry_sampling_kernels()
     Proper._prop_irregular_polygon(Proper.GeometryKAExecStyle(), ipoly_ka, wf, xverts, yverts, Proper.IrregularPolygonOptions(pairs((; NORM=true))))
     Proper._prop_rounded_rectangle!(Proper.GeometryLoopExecStyle(), round_loop, wf, 0.05, 0.3, 0.2, 0.01, -0.02)
     Proper._prop_rounded_rectangle!(Proper.GeometryKAExecStyle(), round_ka, wf, 0.05, 0.3, 0.2, 0.01, -0.02)
-    Proper._prop_pixellate!(Proper.SamplingLoopExecStyle(), pix_loop, img, 2)
-    Proper._prop_pixellate!(Proper.SamplingKAExecStyle(), pix_ka, img, 2)
-    Proper._prop_szoom!(Proper.SamplingLoopExecStyle(), szoom_loop, img, Float32(1.35))
-    Proper._prop_szoom!(Proper.SamplingKAExecStyle(), szoom_ka, img, Float32(1.35))
+    Proper._prop_pixellate_factor!(Proper.SamplingLoopExecStyle(), pix_loop, img, 2)
+    Proper._prop_pixellate_factor!(Proper.SamplingKAExecStyle(), pix_ka, img, 2)
+    Proper._prop_szoom!(Proper.SamplingLoopExecStyle(), szoom_loop, img, Float32(1.35), szoom_loop_ws)
+    Proper._prop_szoom!(Proper.SamplingKAExecStyle(), szoom_ka, img, Float32(1.35), szoom_ka_ws)
 
     ellipse_pair = pair_stats(
         run(@benchmarkable Proper._prop_ellipse!(Proper.GeometryLoopExecStyle(), $ellipse_loop, $wf, 0.35, 0.25, 0.05, -0.03, $(Proper.EllipseOptions(pairs((; ROTATION=13.0, DARK=true, NORM=true))))) evals=1 samples=samples),
@@ -79,12 +81,12 @@ function bench_ka_geometry_sampling_kernels()
         run(@benchmarkable Proper._prop_rounded_rectangle!(Proper.GeometryKAExecStyle(), $round_ka, $wf, 0.05, 0.3, 0.2, 0.01, -0.02) evals=1 samples=samples),
     )
     pix_pair = pair_stats(
-        run(@benchmarkable Proper._prop_pixellate!(Proper.SamplingLoopExecStyle(), $pix_loop, $img, 2) evals=1 samples=samples),
-        run(@benchmarkable Proper._prop_pixellate!(Proper.SamplingKAExecStyle(), $pix_ka, $img, 2) evals=1 samples=samples),
+        run(@benchmarkable Proper._prop_pixellate_factor!(Proper.SamplingLoopExecStyle(), $pix_loop, $img, 2) evals=1 samples=samples),
+        run(@benchmarkable Proper._prop_pixellate_factor!(Proper.SamplingKAExecStyle(), $pix_ka, $img, 2) evals=1 samples=samples),
     )
     szoom_pair = pair_stats(
-        run(@benchmarkable Proper._prop_szoom!(Proper.SamplingLoopExecStyle(), $szoom_loop, $img, Float32(1.35)) evals=1 samples=samples),
-        run(@benchmarkable Proper._prop_szoom!(Proper.SamplingKAExecStyle(), $szoom_ka, $img, Float32(1.35)) evals=1 samples=samples),
+        run(@benchmarkable Proper._prop_szoom!(Proper.SamplingLoopExecStyle(), $szoom_loop, $img, Float32(1.35), $szoom_loop_ws) evals=1 samples=samples),
+        run(@benchmarkable Proper._prop_szoom!(Proper.SamplingKAExecStyle(), $szoom_ka, $img, Float32(1.35), $szoom_ka_ws) evals=1 samples=samples),
     )
 
     return Dict(
