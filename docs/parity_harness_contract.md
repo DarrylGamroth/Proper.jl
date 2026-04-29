@@ -77,11 +77,15 @@ Minimum coverage:
 Required jobs:
 - CPU unit tests on Linux, macOS, and Windows for supported Julia versions
 - Linux coverage job
-- Linux parity and benchmark job using the cached SourceForge Python PROPER
-  baseline, cached WFIRST `proper-models` checkout, and cached public Roman
-  preflight compatibility data
+- Linux Python-baseline parity job using the cached SourceForge Python PROPER
+  baseline
 Scheduled/extended jobs:
-- full CPU parity and benchmark artifacts from the Linux parity job
+- benchmark artifact generation from the full benchmark suite
+- WFIRST Phase B Python/Julia parity matrix using the cached SourceForge Python
+  PROPER baseline, cached upstream `proper-models` checkout, and cached public
+  Roman preflight compatibility data
+- the extended validation workflow runs on pushes to `main`, weekly schedule,
+  and manual `workflow_dispatch`; manual runs can target selected WFIRST cases
 Optional jobs:
 - self-hosted CUDA tests
 - self-hosted AMDGPU tests

@@ -1,6 +1,7 @@
 # Proper.jl
 
 [![CI](https://github.com/DarrylGamroth/Proper.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/DarrylGamroth/Proper.jl/actions/workflows/ci.yml)
+[![Validation](https://github.com/DarrylGamroth/Proper.jl/actions/workflows/validation.yml/badge.svg)](https://github.com/DarrylGamroth/Proper.jl/actions/workflows/validation.yml)
 [![codecov](https://codecov.io/gh/DarrylGamroth/Proper.jl/graph/badge.svg)](https://codecov.io/gh/DarrylGamroth/Proper.jl)
 [![Aqua QA](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
@@ -204,6 +205,23 @@ Important current examples:
 - Current benchmark policy separates steady-state runtime from Julia cold-start /
   TTFx (`D-0029`)
 
+## CI And Validation Layout
+Benchmarking and WFIRST validation stay in this repository for traceability,
+but they are separated from the always-on package CI:
+
+- `CI` runs package tests, coverage, Codecov upload, and lightweight
+  Python-baseline parity on pushes and pull requests
+- `Validation` runs benchmark reports and the heavy WFIRST Phase B parity matrix
+  on pushes to `main`, weekly schedule, or manual `workflow_dispatch`
+- manual `Validation` runs can disable either benchmark reports or WFIRST
+  parity, and can override `wfirst_cases` for a targeted WFIRST subset
+- external baselines are fetched into CI caches rather than vendored into the
+  repository
+
+This keeps normal pull request feedback focused on regressions while preserving
+the full benchmark/WFIRST validation surface in the same commit history as the
+implementation.
+
 ## Coverage
 Run the local coverage lane with:
 
@@ -214,6 +232,31 @@ Run the local coverage lane with:
 This runs the package tests with Julia coverage enabled and writes `lcov.info`.
 CI uploads the same report to Codecov using GitHub OIDC, not a shared upload
 secret.
+
+## Validation Workflows
+The full benchmark and WFIRST lanes are intentionally not required for every
+pull request. To run them locally:
+
+```bash
+./scripts/setup_python_baseline.sh
+./scripts/setup_wfirst_models_baseline.sh
+./scripts/setup_parity_venv.sh
+
+# Benchmark reports without WFIRST.
+PYTHON_BIN=.venv-parity/bin/python BENCH_INCLUDE_WFIRST_CPU=0 ./scripts/benchmark_all.sh
+
+# Heavy WFIRST parity matrix.
+PYTHON_BIN=.venv-parity/bin/python WFIRST_PARITY_ONLY=1 ./scripts/benchmark_wfirst_phaseb_cpu.sh --parity-only
+```
+
+For a targeted WFIRST check:
+
+```bash
+PYTHON_BIN=.venv-parity/bin/python \
+WFIRST_PARITY_ONLY=1 \
+WFIRST_CASES=full_none,full_hlc \
+./scripts/benchmark_wfirst_phaseb_cpu.sh --parity-only
+```
 
 ### Julia CPU vs GPU Benchmarks
 Run the dedicated Julia CPU/GPU comparison lane with:

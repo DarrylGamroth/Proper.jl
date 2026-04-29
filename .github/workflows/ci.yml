@@ -58,25 +58,14 @@ jobs:
           use_oidc: true
           verbose: true
 
-  benchmark-and-parity:
-    name: Benchmark And Parity
+  python-parity:
+    name: Python Parity
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 30
     env:
       PYPROPER_ROOT: ${{ github.workspace }}/.ci-cache/proper_v3.3.4_python
-      WFIRST_MODELS_ROOT: ${{ github.workspace }}/.ci-cache/proper-models
-      BENCH_INCLUDE_WFIRST_CPU: '1'
-      WFIRST_PARITY_ONLY: '1'
-      WFIRST_CASES: compact_hlc,full_hlc,full_hlc_errors,compact_hlc_erkin,full_hlc_erkin,compact_hlc_source_offset,full_hlc_source_offset,compact_hlc_dm_pair,full_hlc_dm_pair,compact_spc_spec_short,full_spc_spec_short,compact_spc_ifs_short,full_spc_ifs_short,compact_spc_spec_long,full_spc_spec_long,full_spc_spec_long_errors,compact_spc_ifs_long,full_spc_ifs_long,compact_spc_wide,full_spc_wide,full_hlc_no_field_stop,full_spc_spec_long_no_pupil_mask,full_none
     steps:
       - uses: actions/checkout@v4
-      - name: Resolve WFIRST proper-models ref
-        id: wfirst-models-ref
-        shell: bash
-        run: |
-          sha="$(git ls-remote https://github.com/ajeldorado/proper-models.git refs/heads/master | awk '{print $1}')"
-          test -n "${sha}"
-          echo "sha=${sha}" >> "${GITHUB_OUTPUT}"
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1.12'
@@ -89,16 +78,6 @@ jobs:
         with:
           path: .ci-cache/proper_v3.3.4_python
           key: proper-python-v3.3.4-sourceforge
-      - name: Cache WFIRST proper-models baseline
-        uses: actions/cache@v4
-        with:
-          path: .ci-cache/proper-models
-          key: wfirst-proper-models-${{ steps.wfirst-models-ref.outputs.sha }}
-      - name: Cache WFIRST public data compatibility root
-        uses: actions/cache@v4
-        with:
-          path: .cache/wfirst
-          key: wfirst-roman-preflight-${{ hashFiles('bench/python/setup_wfirst_phaseb_compat_data.py') }}
       - name: Download Python PROPER baseline
         shell: bash
         run: |
@@ -107,22 +86,10 @@ jobs:
             exit 0
           fi
           ./scripts/setup_python_baseline.sh
-      - name: Download WFIRST proper-models baseline
-        shell: bash
-        env:
-          WFIRST_MODELS_REF: ${{ steps.wfirst-models-ref.outputs.sha }}
-        run: |
-          if [[ -d "${WFIRST_MODELS_ROOT}/wfirst_cgi/models_phaseb/python/wfirst_phaseb_proper" ]]; then
-            echo "Using cached WFIRST proper-models baseline at ${WFIRST_MODELS_ROOT}"
-            exit 0
-          fi
-          ./scripts/setup_wfirst_models_baseline.sh
-      - name: Instantiate
-        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
-      - name: Julia CPU/GPU benchmarks
-        run: ./scripts/benchmark_cpu_gpu.sh
       - name: Install Python parity deps
         run: python3 -m pip install --upgrade pip numpy scipy astropy matplotlib
+      - name: Instantiate
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
       - name: Python baseline
         run: python3 test/parity/generate_python_baseline.py
       - name: Parity compare
@@ -131,18 +98,12 @@ jobs:
         run: python3 test/parity/generate_python_example_metrics.py
       - name: Example parity compare + thresholds
         run: julia --project=. test/parity/compare_examples.jl
-      - name: Full Python/Julia benchmark suite
-        run: ./scripts/benchmark_all.sh
-      - name: Upload benchmark/parity artifacts
+      - name: Upload parity artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-parity-artifacts
-          path: |
-            bench/reports/*.json
-            bench/reports/*.md
-            bench/reports/*.csv
-            test/parity/reports/*.json
+          name: python-parity-artifacts
+          path: test/parity/reports/*.json
 
   cuda-tests:
     name: CUDA Tests

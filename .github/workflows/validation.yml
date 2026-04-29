@@ -1,0 +1,154 @@
+name: Validation
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_benchmarks:
+        description: Run the full benchmark reporting lane
+        type: boolean
+        default: true
+      run_wfirst:
+        description: Run the heavy WFIRST Phase B parity matrix
+        type: boolean
+        default: true
+      wfirst_cases:
+        description: Comma-separated WFIRST cases for manual runs; leave empty for the full matrix
+        type: string
+        required: false
+  schedule:
+    - cron: '23 10 * * 3'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYPROPER_ROOT: ${{ github.workspace }}/.ci-cache/proper_v3.3.4_python
+  WFIRST_MODELS_ROOT: ${{ github.workspace }}/.ci-cache/proper-models
+  DEFAULT_WFIRST_CASES: compact_hlc,full_hlc,full_hlc_errors,compact_hlc_erkin,full_hlc_erkin,compact_hlc_source_offset,full_hlc_source_offset,compact_hlc_dm_pair,full_hlc_dm_pair,compact_spc_spec_short,full_spc_spec_short,compact_spc_ifs_short,full_spc_ifs_short,compact_spc_spec_long,full_spc_spec_long,full_spc_spec_long_errors,compact_spc_ifs_long,full_spc_ifs_long,compact_spc_wide,full_spc_wide,full_hlc_no_field_stop,full_spc_spec_long_no_pupil_mask,full_none
+
+jobs:
+  benchmarks:
+    name: Benchmark Reports
+    if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || inputs.run_benchmarks }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.12'
+      - uses: julia-actions/cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Cache Python PROPER baseline
+        uses: actions/cache@v4
+        with:
+          path: .ci-cache/proper_v3.3.4_python
+          key: proper-python-v3.3.4-sourceforge
+      - name: Download Python PROPER baseline
+        shell: bash
+        run: |
+          if [[ -d "${PYPROPER_ROOT}/proper" ]]; then
+            echo "Using cached Python PROPER baseline at ${PYPROPER_ROOT}"
+            exit 0
+          fi
+          ./scripts/setup_python_baseline.sh
+      - name: Install Python benchmark deps
+        run: python3 -m pip install --upgrade pip numpy scipy astropy matplotlib
+      - name: Instantiate
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+      - name: Full benchmark suite without WFIRST
+        env:
+          BENCH_INCLUDE_WFIRST_CPU: '0'
+        run: ./scripts/benchmark_all.sh
+      - name: Upload benchmark artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-artifacts
+          path: |
+            bench/reports/*.json
+            bench/reports/*.md
+            bench/reports/*.csv
+
+  wfirst-phaseb-parity:
+    name: WFIRST Phase B Parity
+    if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || inputs.run_wfirst }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve WFIRST proper-models ref
+        id: wfirst-models-ref
+        shell: bash
+        run: |
+          sha="$(git ls-remote https://github.com/ajeldorado/proper-models.git refs/heads/master | awk '{print $1}')"
+          test -n "${sha}"
+          echo "sha=${sha}" >> "${GITHUB_OUTPUT}"
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.12'
+      - uses: julia-actions/cache@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Cache Python PROPER baseline
+        uses: actions/cache@v4
+        with:
+          path: .ci-cache/proper_v3.3.4_python
+          key: proper-python-v3.3.4-sourceforge
+      - name: Cache WFIRST proper-models baseline
+        uses: actions/cache@v4
+        with:
+          path: .ci-cache/proper-models
+          key: wfirst-proper-models-${{ steps.wfirst-models-ref.outputs.sha }}
+      - name: Cache WFIRST public data compatibility root
+        uses: actions/cache@v4
+        with:
+          path: .cache/wfirst
+          key: wfirst-roman-preflight-${{ hashFiles('bench/python/setup_wfirst_phaseb_compat_data.py') }}
+      - name: Download Python PROPER baseline
+        shell: bash
+        run: |
+          if [[ -d "${PYPROPER_ROOT}/proper" ]]; then
+            echo "Using cached Python PROPER baseline at ${PYPROPER_ROOT}"
+            exit 0
+          fi
+          ./scripts/setup_python_baseline.sh
+      - name: Download WFIRST proper-models baseline
+        shell: bash
+        env:
+          WFIRST_MODELS_REF: ${{ steps.wfirst-models-ref.outputs.sha }}
+        run: |
+          if [[ -d "${WFIRST_MODELS_ROOT}/wfirst_cgi/models_phaseb/python/wfirst_phaseb_proper" ]]; then
+            echo "Using cached WFIRST proper-models baseline at ${WFIRST_MODELS_ROOT}"
+            exit 0
+          fi
+          ./scripts/setup_wfirst_models_baseline.sh
+      - name: Install Python parity deps
+        run: python3 -m pip install --upgrade pip numpy scipy astropy matplotlib
+      - name: Instantiate
+        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+      - name: WFIRST Python/Julia parity matrix
+        env:
+          WFIRST_PARITY_ONLY: '1'
+          WFIRST_CASES: ${{ inputs.wfirst_cases }}
+        run: |
+          if [[ -z "${WFIRST_CASES}" ]]; then
+            export WFIRST_CASES="${DEFAULT_WFIRST_CASES}"
+          fi
+          ./scripts/benchmark_wfirst_phaseb_cpu.sh --parity-only
+      - name: Upload WFIRST parity artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: wfirst-phaseb-parity-artifacts
+          path: |
+            bench/reports/python_wfirst_phaseb_*.json
+            bench/reports/julia_wfirst_phaseb_*.json
+            bench/reports/wfirst_phaseb_cpu_comparison.csv
+            bench/reports/wfirst_phaseb_cpu_comparison.md

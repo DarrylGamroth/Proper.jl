@@ -43,6 +43,21 @@ planning/audit records from the port effort.
   `PYPROPER_ROOT=/path/to/proper_v3.3.4_python` before running
   `./scripts/benchmark_all.sh`
 
+## CI And Validation Workflows
+- `.github/workflows/ci.yml` is the always-on regression workflow for pushes
+  and pull requests
+- `CI` runs unit tests across supported platforms, coverage/Codecov, and
+  lightweight Python-baseline parity
+- `.github/workflows/validation.yml` owns heavier validation surfaces:
+  benchmark reports and the WFIRST Phase B Python/Julia parity matrix
+- `Validation` runs on pushes to `main`, on a weekly schedule, and manually via
+  `workflow_dispatch`
+- Manual `Validation` runs can disable benchmark reports or WFIRST parity and
+  can limit WFIRST with the `wfirst_cases` input
+- The external Python PROPER baseline, upstream `proper-models` checkout, and
+  WFIRST public data compatibility root are fetched into CI caches rather than
+  committed to the repository
+
 ## Coverage
 - Run `./scripts/coverage_lcov.sh` to execute the full package test suite with
   Julia coverage enabled and write `lcov.info`
