@@ -2,7 +2,7 @@
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROPER_REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
-PROPER_BENCH_PROJECT="${PROPER_REPO_ROOT}/bench"
+PROPER_BENCH_PROJECT="${PROPER_BENCH_PROJECT:-${PROPER_REPO_ROOT}/bench}"
 
 ensure_bench_env() {
   if [[ "${PROPER_BENCH_ENV_READY:-0}" == "1" ]]; then

@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source "$(dirname "$0")/bench_env.sh"
-source "$(dirname "$0")/benchmark_cuda_lib.sh"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROPER_REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+export PROPER_BENCH_PROJECT="${PROPER_BENCH_PROJECT:-${PROPER_REPO_ROOT}/bench/cuda}"
+
+source "${SCRIPT_DIR}/bench_env.sh"
+source "${SCRIPT_DIR}/benchmark_cuda_lib.sh"
 
 run_step() {
   local label="$1"

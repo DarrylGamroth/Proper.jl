@@ -119,9 +119,9 @@ jobs:
           version: '1.12'
       - uses: julia-actions/cache@v3
       - name: Instantiate
-        run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+        run: julia --project=test/cuda -e 'using Pkg; Pkg.develop(Pkg.PackageSpec(path=pwd())); Pkg.instantiate()'
       - name: Test
-        run: julia --project=. -e 'using Pkg; Pkg.test()'
+        run: julia --project=test/cuda test/runtests.jl
 
   amdgpu-tests:
     name: AMDGPU Tests
