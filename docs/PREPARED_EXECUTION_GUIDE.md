@@ -17,7 +17,7 @@ Use the plain compatibility surface first when you are porting or validating a
 prescription:
 
 ```julia
-psf, sampling = prop_run(my_prescription, 0.55, 256; PASSVALUE=Dict("dm" => zeros(256, 256)))
+psf, sampling = prop_run(my_prescription, 0.55, 256; dm=zeros(256, 256))
 ```
 
 Move to the prepared layer when you need one or more of:
@@ -35,7 +35,7 @@ For users coming from upstream PROPER, the prepared execution layer should be
 read as a progression from the familiar single-call surface:
 
 - plain upstream-style execution:
-  - `prop_run(my_prescription, 0.55, 256; PASSVALUE=...)`
+  - `prop_run(my_prescription, 0.55, 256; use_dm=true)`
 - same prescription reused:
   - `prepare_prescription(...)`
 - same prescription reused in repeated/parallel passes:
@@ -52,7 +52,7 @@ object; it is not a separate optical model type.
 Use this when you want to normalize and retain a single prescription call shape.
 
 ```julia
-prepared = prepare_prescription(my_prescription, 0.55, 256; PASSVALUE=Dict("use_dm" => false))
+prepared = prepare_prescription(my_prescription, 0.55, 256; use_dm=false)
 psf, sampling = prop_run(prepared)
 ```
 
@@ -64,7 +64,7 @@ What it stores:
 - optional prepared `RunContext`
 - optional explicit execution precision
 - fixed kwargs
-- default `PASSVALUE`
+- default compatibility `PASSVALUE`
 
 What it does not add:
 
@@ -90,8 +90,8 @@ contexts.
 prepared = prepare_prescription(my_prescription, 0.55, 256)
 batch = prepare_prescription_batch(prepared; pool_size=4)
 
-psf1, sampling1 = prop_run(batch; slot=1, PASSVALUE=Dict("use_dm" => false))
-psf2, sampling2 = prop_run(batch; slot=2, PASSVALUE=Dict("use_dm" => true, "dm" => zeros(256, 256)))
+psf1, sampling1 = prop_run(batch; slot=1, use_dm=false)
+psf2, sampling2 = prop_run(batch; slot=2, use_dm=true, dm=zeros(256, 256))
 ```
 
 For parallel runs:
@@ -100,11 +100,14 @@ For parallel runs:
 stack, samplings = prop_run_multi(
     batch;
     PASSVALUE=[
-        Dict("use_dm" => false),
-        Dict("use_dm" => true, "dm" => zeros(256, 256)),
+        (; use_dm=false),
+        (; use_dm=true, dm=zeros(256, 256)),
     ],
 )
 ```
+
+`prop_run_multi` uses `PASSVALUE` for per-run variation. Map-like entries are
+still normalized into native keywords before each prescription call.
 
 Key behavior:
 
@@ -161,7 +164,7 @@ model = prepare_model(
 Single-slot execution:
 
 ```julia
-psf, sampling = prop_run(model; slot=1, PASSVALUE=Dict("use_dm" => true))
+psf, sampling = prop_run(model; slot=1, use_dm=true)
 ```
 
 Parallel execution:
@@ -170,8 +173,8 @@ Parallel execution:
 stack, samplings = prop_run_multi(
     model;
     PASSVALUE=[
-        Dict("use_dm" => false),
-        Dict("use_dm" => true),
+        (; use_dm=false),
+        (; use_dm=true),
     ],
 )
 ```
@@ -284,7 +287,7 @@ batch = prepare_prescription_batch(prepared; pool_size=2)
 
 stack, samplings = prop_run_multi(
     batch;
-    PASSVALUE=[Dict("a" => 1), Dict("a" => 2)],
+    PASSVALUE=[(; a=1), (; a=2)],
 )
 ```
 
@@ -305,7 +308,7 @@ model = prepare_model(
 
 stack, samplings = prop_run_multi(
     model;
-    PASSVALUE=[Dict("use_dm" => false), Dict("use_dm" => true)],
+    PASSVALUE=[(; use_dm=false), (; use_dm=true)],
 )
 ```
 

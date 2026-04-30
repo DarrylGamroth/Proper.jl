@@ -102,6 +102,30 @@ end
     return hasproperty(pass, key) ? getproperty(pass, key) : default
 end
 
+@inline _phaseb_passkey(key) = Symbol(lowercase(String(key)))
+
+function _phaseb_passvalue_kwargs(passvalue, kwargs::NamedTuple=NamedTuple())
+    dict = Dict{Symbol,Any}()
+    if passvalue !== nothing
+        passvalue isa Union{NamedTuple,AbstractDict} ||
+            throw(ArgumentError("WFIRST PASSVALUE must be a NamedTuple, dictionary, or nothing; got $(typeof(passvalue))"))
+        for (key, value) in pairs(passvalue)
+            dict[_phaseb_passkey(key)] = value
+        end
+    end
+    for (key, value) in pairs(kwargs)
+        kw = _phaseb_passkey(key)
+        if haskey(dict, kw) && !isequal(dict[kw], value)
+            throw(ArgumentError("WFIRST PASSVALUE and explicit keyword arguments both define $(kw) with different values"))
+        end
+        dict[kw] = value
+    end
+    pairs_vec = collect(pairs(dict))
+    keys_tuple = Tuple(first(pair) for pair in pairs_vec)
+    values_tuple = Tuple(last(pair) for pair in pairs_vec)
+    return NamedTuple{keys_tuple}(values_tuple)
+end
+
 @inline function phaseb_trim(input_image::AbstractMatrix, output_dim::Integer)
     input_dim = size(input_image, 2)
     if input_dim == output_dim

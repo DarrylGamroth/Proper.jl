@@ -674,3 +674,31 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     WFIRST model code.
   - Public Roman preflight compatibility data remains cached separately from
     model source.
+
+## D-0055: Julia-Native Prescriptions Prefer Keywords And Typed Selectors
+- Date: 2026-04-30
+- Status: Accepted
+- Context:
+  - Upstream MATLAB and Python prescriptions commonly accept a positional
+    `passvalue` / `PASSVALUE` structure or dictionary.
+  - That shape is useful for direct migration and parity harnesses, but it is
+    less idiomatic and less type-friendly than Julia keyword arguments.
+  - Some example selectors were represented as strings, such as
+    `"GAUSSIAN"`, `"SOLID"`, and `"8TH_ORDER"`.
+- Decision:
+  - Julia-native prescriptions should expose explicit keyword arguments for
+    stable model options.
+  - `PASSVALUE` remains a compatibility adapter for upstream-style calls and
+    parity workflows.
+  - At the `prop_run` boundary, dictionary and `NamedTuple` `PASSVALUE` values
+    are normalized into keyword arguments before calling the prescription.
+  - Semantic selectors should normalize strings/symbols at API boundaries and
+    use concrete singleton selector types internally when dispatch improves
+    clarity.
+- Consequences:
+  - Native examples should show calls such as `occulter=:gaussian` while still
+    accepting `PASSVALUE=Dict("occulter_type" => "GAUSSIAN")`.
+  - Dynamic dictionaries and strings may allocate during compatibility
+    normalization, but that work belongs outside hot propagation kernels.
+  - Prepared and benchmark paths should avoid repeated dictionary lookup or
+    string comparison inside the steady-state propagation path.

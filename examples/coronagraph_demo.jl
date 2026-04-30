@@ -8,9 +8,9 @@ function coronagraph_demo()
     lambda_um = 0.55
     model = prepare_model(:run_coronagraph_dm, run_coronagraph_dm, lambda_um, n; pool_size=1)
 
-    no_errors, _ = prop_run(model; PASSVALUE=Dict("use_errors" => false, "use_dm" => false, "occulter_type" => "8TH_ORDER"))
-    with_errors, _ = prop_run(model; PASSVALUE=Dict("use_errors" => true, "use_dm" => false, "occulter_type" => "8TH_ORDER"))
-    with_dm, _ = prop_run(model; PASSVALUE=Dict("use_errors" => true, "use_dm" => true, "occulter_type" => "8TH_ORDER"))
+    no_errors, _ = prop_run(model; use_errors=false, use_dm=false, occulter=:eighth_order)
+    with_errors, _ = prop_run(model; use_errors=true, use_dm=false, occulter=:eighth_order)
+    with_dm, _ = prop_run(model; use_errors=true, use_dm=true, occulter=:eighth_order)
 
     nd = 256
     p1 = heatmap(center_crop(no_errors, nd) .^ 0.25; aspect_ratio=:equal, colorbar=false, title="No errors")

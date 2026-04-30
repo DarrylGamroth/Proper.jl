@@ -110,10 +110,12 @@ function _wfirst_phaseb_compact_impl(lambda_m, output_dim0, passvalue; assets=no
     end
 end
 
-function wfirst_phaseb_compact(lambda_m, output_dim0, passvalue; assets=nothing)
-    return _wfirst_phaseb_compact_impl(lambda_m, output_dim0, passvalue; assets=assets)
+function wfirst_phaseb_compact(lambda_m, output_dim0, passvalue; assets=nothing, kwargs...)
+    native_passvalue = _phaseb_passvalue_kwargs(passvalue, (; kwargs...))
+    return _wfirst_phaseb_compact_impl(lambda_m, output_dim0, native_passvalue; assets=assets)
 end
 
-function wfirst_phaseb_compact(lambda_m, output_dim0; PASSVALUE=nothing, assets=nothing)
-    return _wfirst_phaseb_compact_impl(lambda_m, output_dim0, PASSVALUE; assets=assets)
+function wfirst_phaseb_compact(lambda_m, output_dim0; PASSVALUE=nothing, assets=nothing, kwargs...)
+    native_passvalue = _phaseb_passvalue_kwargs(PASSVALUE, (; kwargs...))
+    return _wfirst_phaseb_compact_impl(lambda_m, output_dim0, native_passvalue; assets=assets)
 end

@@ -1,8 +1,13 @@
 using Proper
 using Plots
 include(joinpath(@__DIR__, "_shared.jl"))
+include(joinpath(@__DIR__, "_passvalue.jl"))
 
-function psdtest(wavelength::Real, gridsize::Integer, passvalue=Dict("usepsdmap" => true))
+function psdtest(wavelength::Real, gridsize::Integer, passvalue; kwargs...)
+    return psdtest(wavelength, gridsize; passvalue_kwargs(passvalue)..., kwargs...)
+end
+
+function psdtest(wavelength::Real, gridsize::Integer; usepsdmap::Bool=true)
     lens_diam = 0.212
     lens_fl = 24 * lens_diam
     beam_width_ratio = 0.5
@@ -11,7 +16,7 @@ function psdtest(wavelength::Real, gridsize::Integer, passvalue=Dict("usepsdmap"
     prop_circular_aperture(wfo, lens_diam / 2)
     prop_define_entrance(wfo)
 
-    if get(passvalue, "usepsdmap", get(passvalue, :usepsdmap, true))
+    if usepsdmap
         a = 3.29e-23
         b = 212.26
         c = 7.8

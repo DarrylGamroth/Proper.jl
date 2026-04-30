@@ -22,6 +22,13 @@ function _contract_passvalue_prescription(λm, n, passvalue; scale=1.0)
     return prop_end(wf)
 end
 
+function _contract_keyword_passvalue_prescription(λm, n; radius=0.4, scale=1.0)
+    wf = prop_begin(1.0, λm, n)
+    prop_circular_aperture(wf, radius * scale)
+    prop_define_entrance(wf)
+    return prop_end(wf)
+end
+
 @testset "API contract smoke tests" begin
     wf = prop_begin(1.0, 550e-9, 32)
     @test wf isa WaveFront
@@ -92,6 +99,23 @@ end
     @test size(stack) == (16, 16, 3)
     @test samplings isa Vector{Float64}
     @test length(samplings) == 3
+
+    kpsf, ksampling = prop_run(
+        _contract_keyword_passvalue_prescription,
+        0.55,
+        16;
+        PASSVALUE=Dict("RADIUS" => 0.25),
+        scale=1.0,
+    )
+    @test size(kpsf) == (16, 16)
+    @test ksampling isa Float64
+    @test_throws ArgumentError prop_run(
+        _contract_keyword_passvalue_prescription,
+        0.55,
+        16;
+        PASSVALUE=Dict(:radius => 0.25),
+        radius=0.30,
+    )
 end
 
 @testset "API contract keyword compatibility" begin

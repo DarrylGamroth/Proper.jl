@@ -48,22 +48,22 @@ The most common upstream prescription shapes map to Julia like this.
 | MATLAB | Python | Julia |
 | --- | --- | --- |
 | `function [psf, sampling] = p(lam, n)` | `def p(lam, n):` | `function p(λm, n)` |
-| `function [psf, sampling] = p(lam, n, optval)` | `def p(lam, n, PASSVALUE=None):` | `function p(λm, n; PASSVALUE=nothing)` |
-| positional optional input is common | positional third argument is common | positional third argument also works, but keyword `PASSVALUE` is the preferred migration shape |
+| `function [psf, sampling] = p(lam, n, optval)` | `def p(lam, n, PASSVALUE=None):` | `function p(λm, n; radius=0.5, use_dm=false)` |
+| positional optional input is common | positional third argument is common | prefer explicit Julia keywords; `PASSVALUE` remains an adapter for upstream-style calls |
 
-`prop_run` normalizes both the positional third-argument form and the keyword
-`PASSVALUE=...` form at the API boundary.
+`prop_run` normalizes map-like `PASSVALUE=...` values into ordinary Julia
+keywords before calling the prescription. Non-map values still use the legacy
+positional/`PASSVALUE` compatibility path.
 
 ## Side-By-Side Example
 
 | MATLAB | Python | Julia |
 | --- | --- | --- |
-| ```matlab\nfunction [psf, sampling] = simple_prescription(lam, n, optval)\n    wf = prop_begin(1.0, lam, n);\n    wf = prop_circular_aperture(wf, 0.5);\n    wf = prop_define_entrance(wf);\n    wf = prop_lens(wf, 10.0);\n    wf = prop_propagate(wf, 10.0);\n    [psf, sampling] = prop_end(wf);\nend\n``` | ```python\ndef simple_prescription(lam, n, PASSVALUE=None):\n    wf = proper.prop_begin(1.0, lam, n)\n    proper.prop_circular_aperture(wf, 0.5)\n    proper.prop_define_entrance(wf)\n    proper.prop_lens(wf, 10.0)\n    proper.prop_propagate(wf, 10.0)\n    return proper.prop_end(wf)\n``` | ```julia\nusing Proper\n\nfunction simple_prescription(λm, n; PASSVALUE=nothing)\n    wf = prop_begin(1.0, λm, n)\n    prop_circular_aperture(wf, 0.5)\n    prop_define_entrance(wf)\n    prop_lens(wf, 10.0)\n    prop_propagate(wf, 10.0)\n    return prop_end(wf)\nend\n\npsf, sampling = prop_run(simple_prescription, 0.55, 256)\n``` |
+| ```matlab\nfunction [psf, sampling] = simple_prescription(lam, n, optval)\n    wf = prop_begin(1.0, lam, n);\n    wf = prop_circular_aperture(wf, 0.5);\n    wf = prop_define_entrance(wf);\n    wf = prop_lens(wf, 10.0);\n    wf = prop_propagate(wf, 10.0);\n    [psf, sampling] = prop_end(wf);\nend\n``` | ```python\ndef simple_prescription(lam, n, PASSVALUE=None):\n    wf = proper.prop_begin(1.0, lam, n)\n    proper.prop_circular_aperture(wf, 0.5)\n    proper.prop_define_entrance(wf)\n    proper.prop_lens(wf, 10.0)\n    proper.prop_propagate(wf, 10.0)\n    return proper.prop_end(wf)\n``` | ```julia\nusing Proper\n\nfunction simple_prescription(λm, n)\n    wf = prop_begin(1.0, λm, n)\n    prop_circular_aperture(wf, 0.5)\n    prop_define_entrance(wf)\n    prop_lens(wf, 10.0)\n    prop_propagate(wf, 10.0)\n    return prop_end(wf)\nend\n\npsf, sampling = prop_run(simple_prescription, 0.55, 256)\n``` |
 
 What changes:
 - Julia uses normal function definitions instead of Python module-level state.
-- `PASSVALUE` is a keyword by convention, though positional third-argument
-  prescriptions also work.
+- map-like `PASSVALUE` values are compatibility input and become Julia keywords.
 - The optical sequence stays almost identical.
 
 What does not change:
@@ -84,19 +84,17 @@ The Julia version is:
 ```julia
 using Proper
 
-function dm_map_prescription(λm, n; PASSVALUE=nothing)
-    pass = PASSVALUE === nothing ? NamedTuple() : PASSVALUE
-
+function dm_map_prescription(λm, n; errormap_path=nothing, dm_map=nothing)
     wf = prop_begin(1.0, λm, n)
     prop_circular_aperture(wf, 0.5)
     prop_define_entrance(wf)
 
-    if haskey(pass, :errormap_path)
-        prop_errormap(wf, pass[:errormap_path], WAVEFRONT=true, SAMPLING=prop_get_sampling(wf))
+    if errormap_path !== nothing
+        prop_errormap(wf, errormap_path, WAVEFRONT=true, SAMPLING=prop_get_sampling(wf))
     end
 
-    if haskey(pass, :dm_map)
-        prop_dm(wf, pass[:dm_map])
+    if dm_map !== nothing
+        prop_dm(wf, dm_map)
     end
 
     prop_lens(wf, 10.0)
@@ -112,10 +110,20 @@ psf, sampling = prop_run(
     dm_map_prescription,
     0.55,
     256;
-    PASSVALUE=Dict(
-        :errormap_path => "phase_map.fits",
-        :dm_map => zeros(256, 256),
-    ),
+    errormap_path="phase_map.fits",
+    dm_map=zeros(256, 256),
+)
+```
+
+The same prescription still accepts upstream-style map input through the
+adapter:
+
+```julia
+psf, sampling = prop_run(
+    dm_map_prescription,
+    0.55,
+    256;
+    PASSVALUE=Dict("errormap_path" => "phase_map.fits", "dm_map" => zeros(256, 256)),
 )
 ```
 
@@ -151,6 +159,21 @@ Prefer explicit Julia keywords or prepared assets when:
 - the model is now Julia-native
 - the same assets are reused across runs
 - the call surface is stable enough to type explicitly
+
+For new Julia-native prescriptions, prefer:
+
+```julia
+function run_coronagraph(λm, n; use_errors=false, occulter=:gaussian)
+    # ...
+end
+```
+
+over a dictionary-only signature. A compatibility wrapper may still translate
+`PASSVALUE=Dict("use_errors" => true, "occulter_type" => "GAUSSIAN")` into
+those keywords at the `prop_run` boundary.
+
+Use symbols for user-facing selectors (`:gaussian`, `:solid`) and normalize to
+typed singleton values internally when dispatch clarifies the implementation.
 
 ## Prepared Execution Mental Model
 

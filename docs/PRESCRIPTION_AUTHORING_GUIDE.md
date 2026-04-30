@@ -108,7 +108,7 @@ prefer ordinary keyword arguments where practical.
 Typical translation pattern:
 
 ```julia
-function my_prescription(λm, n; PASSVALUE=nothing, use_dm=false)
+function my_prescription(λm, n; use_dm=false)
     wf = prop_begin(1.0, λm, n)
     if use_dm
         # ...
@@ -120,9 +120,25 @@ end
 Use `PASSVALUE` when you need upstream-style compatibility or parity harness
 alignment. Prefer explicit Julia keywords for new code.
 
+For stable semantic selectors, prefer symbols at the user-facing boundary and
+typed singleton values internally:
+
+```julia
+abstract type AbstractStop end
+struct GaussianStop <: AbstractStop end
+
+normalize_stop(::Symbol) = GaussianStop()
+apply_stop!(wf, ::GaussianStop) = prop_multiply(wf, prop_radius(wf))
+```
+
+Compatibility adapters can still accept upstream strings such as `"GAUSSIAN"`
+and normalize them once before the propagation path.
+
 ## `PASSVALUE` Guidance
 `PASSVALUE` is useful as a compatibility adapter, not as the ideal long-term
-shape for all Julia code.
+shape for all Julia code. In `prop_run`, dictionary and `NamedTuple`
+`PASSVALUE` values are normalized into ordinary keyword arguments before the
+prescription is called.
 
 Use it when:
 
@@ -184,6 +200,12 @@ model = prepare_model(
 )
 
 psf, sampling = prop_run(model; slot=1, PASSVALUE=Dict("use_dm" => true))
+```
+
+Prefer the equivalent native call when the model API is under your control:
+
+```julia
+psf, sampling = prop_run(model; slot=1, use_dm=true)
 ```
 
 If the real workload is a wavelength sweep, do not overload one model object

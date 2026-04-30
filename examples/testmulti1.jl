@@ -12,7 +12,7 @@ function testmulti1()
 
     wavelength = collect(range(lambda_min, lambda_max; length=nlambda))
 
-    optval = Dict("use_dm" => true, "dm" => zeros(gridsize, gridsize))
+    optval = (; use_dm=true, dm=zeros(gridsize, gridsize))
     optval["dm"][21, 21] = 0.2e-6
     optval["dm"][16, 26] = 0.2e-6
 

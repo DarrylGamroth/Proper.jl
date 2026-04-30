@@ -1,8 +1,13 @@
 using Proper
 using Plots
 include(joinpath(@__DIR__, "_shared.jl"))
+include(joinpath(@__DIR__, "_passvalue.jl"))
 
-function microscope(wavelength::Real, gridsize::Integer, passvalue=Dict("focus_offset" => 0.0))
+function microscope(wavelength::Real, gridsize::Integer, passvalue; kwargs...)
+    return microscope(wavelength, gridsize; passvalue_kwargs(passvalue)..., kwargs...)
+end
+
+function microscope(wavelength::Real, gridsize::Integer; focus_offset::Real=0.0)
     d_objective = 0.005
     fl_objective = 0.010
     fl_eyepiece = 0.020
@@ -18,7 +23,6 @@ function microscope(wavelength::Real, gridsize::Integer, passvalue=Dict("focus_o
     prop_circular_aperture(wfo, d_objective / 2)
     prop_define_entrance(wfo)
 
-    focus_offset = get(passvalue, "focus_offset", get(passvalue, :focus_offset, 0.0))
     prop_lens(wfo, -(d_object + focus_offset))
     prop_lens(wfo, fl_objective, "objective")
 

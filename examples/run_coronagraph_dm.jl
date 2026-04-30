@@ -1,8 +1,21 @@
 using Proper
+include(joinpath(@__DIR__, "_passvalue.jl"))
 include(joinpath(@__DIR__, "telescope_dm.jl"))
 include(joinpath(@__DIR__, "coronagraph.jl"))
 
-function run_coronagraph_dm(wavelength::Real, grid_size::Integer, passvalue=Dict("use_errors" => false, "use_dm" => false, "occulter_type" => "GAUSSIAN"))
+function run_coronagraph_dm(wavelength::Real, grid_size::Integer, passvalue; kwargs...)
+    return run_coronagraph_dm(wavelength, grid_size; passvalue_kwargs(passvalue)..., kwargs...)
+end
+
+function run_coronagraph_dm(
+    wavelength::Real,
+    grid_size::Integer;
+    use_errors::Bool=false,
+    use_dm::Bool=false,
+    occulter=:gaussian,
+    occulter_type=nothing,
+    plot::Bool=false,
+)
     diam = 0.1
     f_lens = 24 * diam
     beam_ratio = 0.3
@@ -14,15 +27,15 @@ function run_coronagraph_dm(wavelength::Real, grid_size::Integer, passvalue=Dict
     telescope_dm(
         wfo,
         f_lens,
-        get(passvalue, "use_errors", get(passvalue, :use_errors, false)),
-        get(passvalue, "use_dm", get(passvalue, :use_dm, false)),
+        use_errors,
+        use_dm,
     )
     coronagraph(
         wfo,
         f_lens,
-        get(passvalue, "occulter_type", get(passvalue, :occulter_type, "GAUSSIAN")),
+        occulter_type === nothing ? occulter : occulter_type,
         diam;
-        PLOT=get(passvalue, "plot", get(passvalue, :plot, false)),
+        plot=plot,
     )
 
     return prop_end(wfo)

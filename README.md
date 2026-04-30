@@ -19,8 +19,9 @@ If you are coming from PROPER for Python or MATLAB, the intended on-ramp is:
 
 1. write the prescription in Julia with the familiar `prop_*` calls
 2. run it with `prop_run(...)`
-3. keep `PASSVALUE` only when you actually need upstream-style compatibility
-4. move to prepared execution only after the plain prescription is correct
+3. prefer explicit Julia keywords for stable model options
+4. keep `PASSVALUE` only when you actually need upstream-style compatibility
+5. move to prepared execution only after the plain prescription is correct
 
 The one primary migration document is:
 - [docs/MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)
@@ -59,18 +60,22 @@ The direct Julia shape is:
 ```julia
 using Proper
 
-function simple_prescription(λm, n; PASSVALUE=nothing)
+function simple_prescription(λm, n; aperture_radius=0.5)
     wf = prop_begin(1.0, λm, n)
-    prop_circular_aperture(wf, 0.5)
+    prop_circular_aperture(wf, aperture_radius)
     prop_define_entrance(wf)
     return prop_end(wf)
 end
 
-psf, sampling = prop_run(simple_prescription, 0.55, 128)
+psf, sampling = prop_run(simple_prescription, 0.55, 128; aperture_radius=0.5)
 ```
 
 That is the default migration path. Start there before introducing prepared
 execution, explicit contexts, or GPU backends.
+
+`PASSVALUE` is still accepted for upstream-style ports and parity workflows,
+but Julia-native prescriptions should prefer ordinary keywords and symbols such
+as `occulter=:gaussian` over string selector dictionaries.
 
 ## Running A Prescription
 

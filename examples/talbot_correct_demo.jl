@@ -18,7 +18,7 @@ function talbot_correct_demo()
     z = 0.0
     plots = Any[]
     for _ in 1:nseg
-        wavefront, _ = prop_run(model; PASSVALUE=Dict("diam" => diam, "period" => period, "dist" => z))
+        wavefront, _ = prop_run(model; diam=diam, period=period, dist=z)
         line = wavefront[:, n ÷ 2 + 1]
         amp = abs.(line) .- mean(abs.(line))
         phase = angle.(line) .- mean(angle.(line))

@@ -1,7 +1,12 @@
 using Proper
+include(joinpath(@__DIR__, "_passvalue.jl"))
 include(joinpath(@__DIR__, "coronagraph.jl"))
 
-function run_occulter(wavelength::Real, grid_size::Integer, passvalue=Dict("occulter_type" => "GAUSSIAN"))
+function run_occulter(wavelength::Real, grid_size::Integer, passvalue; kwargs...)
+    return run_occulter(wavelength, grid_size; passvalue_kwargs(passvalue)..., kwargs...)
+end
+
+function run_occulter(wavelength::Real, grid_size::Integer; occulter=:gaussian, occulter_type=nothing, plot::Bool=false)
     diam = 0.1
     f_lens = 24 * diam
     beam_ratio = 0.3
@@ -13,9 +18,9 @@ function run_occulter(wavelength::Real, grid_size::Integer, passvalue=Dict("occu
     coronagraph(
         wfo,
         f_lens,
-        get(passvalue, "occulter_type", get(passvalue, :occulter_type, "GAUSSIAN")),
+        occulter_type === nothing ? occulter : occulter_type,
         diam;
-        PLOT=get(passvalue, "plot", get(passvalue, :plot, false)),
+        plot=plot,
     )
     return prop_end(wfo)
 end

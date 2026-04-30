@@ -1,7 +1,12 @@
 using Proper
 using Plots
+include(joinpath(@__DIR__, "_passvalue.jl"))
 
-function multi_example(lambda_m::Real, n::Integer, passvalue=Dict("use_dm" => false); kwargs...)
+function multi_example(lambda_m::Real, n::Integer, passvalue; kwargs...)
+    return multi_example(lambda_m, n; passvalue_kwargs(passvalue)..., kwargs...)
+end
+
+function multi_example(lambda_m::Real, n::Integer; use_dm::Bool=false, dm=nothing)
     diam = 0.048
     pupil_ratio = 0.25
     fl_lens = 0.48
@@ -10,9 +15,8 @@ function multi_example(lambda_m::Real, n::Integer, passvalue=Dict("use_dm" => fa
     prop_circular_aperture(wfo, diam / 2)
     prop_define_entrance(wfo)
 
-    if get(passvalue, "use_dm", get(passvalue, :use_dm, false))
-        dm = get(passvalue, "dm", get(passvalue, :dm, zeros(n, n)))
-        prop_dm(wfo, dm; mirror=false)
+    if use_dm
+        prop_dm(wfo, dm === nothing ? zeros(n, n) : dm; mirror=false)
     end
 
     prop_lens(wfo, fl_lens)
@@ -26,7 +30,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         0.55,
         256;
         name=:multi_example,
-        PASSVALUE=[Dict("use_dm" => false), Dict("use_dm" => true, "dm" => zeros(256, 256))],
+        PASSVALUE=[(; use_dm=false), (; use_dm=true, dm=zeros(256, 256))],
         pool_size=2,
     )
     stack, samplings = prop_run_multi(model)

@@ -1,16 +1,19 @@
 using Proper
 using Plots
 include(joinpath(@__DIR__, "_shared.jl"))
+include(joinpath(@__DIR__, "_passvalue.jl"))
 
-function hubble_simple(wavelength::Real, gridsize::Integer, passvalue=Dict("delta_sec" => 0.0))
+function hubble_simple(wavelength::Real, gridsize::Integer, passvalue; kwargs...)
+    return hubble_simple(wavelength, gridsize; passvalue_kwargs(passvalue)..., kwargs...)
+end
+
+function hubble_simple(wavelength::Real, gridsize::Integer; delta_sec::Real=0.0)
     diam = 2.4
     fl_pri = 5.52085
     d_pri_sec = 4.907028205
     fl_sec = -0.6790325
     d_sec_to_focus = 6.3919974
     beam_ratio = 0.5
-
-    delta_sec = get(passvalue, "delta_sec", get(passvalue, :delta_sec, 0.0))
 
     wfo = prop_begin(diam, wavelength, gridsize; beam_diam_fraction=beam_ratio)
     prop_circular_aperture(wfo, diam / 2)

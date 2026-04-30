@@ -6,9 +6,9 @@ function occulter_demo()
     lambda_um = 0.55
     model = prepare_model(:run_occulter, run_occulter, lambda_um, n; pool_size=1)
 
-    solid, _ = prop_run(model; PASSVALUE=Dict("occulter_type" => "SOLID"))
-    gaussian, _ = prop_run(model; PASSVALUE=Dict("occulter_type" => "GAUSSIAN"))
-    eighth_order, _ = prop_run(model; PASSVALUE=Dict("occulter_type" => "8TH_ORDER"))
+    solid, _ = prop_run(model; occulter=:solid)
+    gaussian, _ = prop_run(model; occulter=:gaussian)
+    eighth_order, _ = prop_run(model; occulter=:eighth_order)
 
     return solid, gaussian, eighth_order
 end

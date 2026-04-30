@@ -15,9 +15,8 @@ using Proper
         @test sampling > 0
     end
 
-    @testset "upstream-style PASSVALUE example" begin
-        function pass_demo(λm, n; PASSVALUE=nothing)
-            radius = PASSVALUE === nothing ? 0.5 : PASSVALUE[:radius]
+    @testset "PASSVALUE compatibility shim example" begin
+        function pass_demo(λm, n; radius=0.5)
             wf = prop_begin(1.0, λm, n)
             prop_circular_aperture(wf, radius)
             prop_define_entrance(wf)

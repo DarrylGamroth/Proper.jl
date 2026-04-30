@@ -1,8 +1,20 @@
 using Proper
+include(joinpath(@__DIR__, "_passvalue.jl"))
 include(joinpath(@__DIR__, "telescope.jl"))
 include(joinpath(@__DIR__, "coronagraph.jl"))
 
-function run_coronagraph(wavelength::Real, grid_size::Integer, passvalue=Dict("use_errors" => false, "occulter_type" => "GAUSSIAN"))
+function run_coronagraph(wavelength::Real, grid_size::Integer, passvalue; kwargs...)
+    return run_coronagraph(wavelength, grid_size; passvalue_kwargs(passvalue)..., kwargs...)
+end
+
+function run_coronagraph(
+    wavelength::Real,
+    grid_size::Integer;
+    use_errors::Bool=false,
+    occulter=:gaussian,
+    occulter_type=nothing,
+    plot::Bool=false,
+)
     diam = 0.1
     f_lens = 24 * diam
     beam_ratio = 0.3
@@ -11,13 +23,13 @@ function run_coronagraph(wavelength::Real, grid_size::Integer, passvalue=Dict("u
     prop_circular_aperture(wfo, diam / 2)
     prop_define_entrance(wfo)
 
-    telescope(wfo, f_lens, get(passvalue, "use_errors", get(passvalue, :use_errors, false)))
+    telescope(wfo, f_lens, use_errors)
     coronagraph(
         wfo,
         f_lens,
-        get(passvalue, "occulter_type", get(passvalue, :occulter_type, "GAUSSIAN")),
+        occulter_type === nothing ? occulter : occulter_type,
         diam;
-        PLOT=get(passvalue, "plot", get(passvalue, :plot, false)),
+        plot=plot,
     )
 
     return prop_end(wfo)

@@ -7,15 +7,67 @@
     throw(ArgumentError("Prescription must return WaveFront or (psf, sampling)"))
 end
 
+@inline _passvalue_key(key) = Symbol(lowercase(String(key)))
+
+function _dict_to_namedtuple(dict::Dict{Symbol,Any})
+    pairs_vec = collect(pairs(dict))
+    keys_tuple = Tuple(first(pair) for pair in pairs_vec)
+    values_tuple = Tuple(last(pair) for pair in pairs_vec)
+    return NamedTuple{keys_tuple}(values_tuple)
+end
+
+function _passvalue_as_kwargs(passvalue::NamedTuple)
+    dict = Dict{Symbol,Any}()
+    for (key, value) in pairs(passvalue)
+        kw = _passvalue_key(key)
+        if haskey(dict, kw) && !isequal(dict[kw], value)
+            throw(ArgumentError("PASSVALUE contains conflicting values for keyword $(kw)"))
+        end
+        dict[kw] = value
+    end
+    return _dict_to_namedtuple(dict)
+end
+
+function _passvalue_as_kwargs(passvalue::AbstractDict)
+    dict = Dict{Symbol,Any}()
+    for (key, value) in pairs(passvalue)
+        kw = _passvalue_key(key)
+        if haskey(dict, kw) && !isequal(dict[kw], value)
+            throw(ArgumentError("PASSVALUE contains conflicting values for keyword $(kw)"))
+        end
+        dict[kw] = value
+    end
+    return _dict_to_namedtuple(dict)
+end
+
+function _merge_passvalue_kwargs(passvalue_kwargs::NamedTuple, kwargs::NamedTuple)
+    dict = Dict{Symbol,Any}()
+    for (key, value) in pairs(passvalue_kwargs)
+        dict[key] = value
+    end
+    for (key, value) in pairs(kwargs)
+        if haskey(dict, key) && !isequal(dict[key], value)
+            throw(ArgumentError("PASSVALUE and explicit keyword arguments both define $(key) with different values"))
+        end
+        dict[key] = value
+    end
+    return _dict_to_namedtuple(dict)
+end
+
 @inline function _call_prescription(fn::F, λm, gridsize::Integer, ::Nothing, kwargs::NamedTuple) where {F<:Function}
     return fn(λm, gridsize; kwargs...)
+end
+
+@inline function _call_prescription(fn::F, λm, gridsize::Integer, passvalue::Union{NamedTuple,AbstractDict}, kwargs::NamedTuple) where {F<:Function}
+    native_kwargs = _merge_passvalue_kwargs(_passvalue_as_kwargs(passvalue), kwargs)
+    return fn(λm, gridsize; native_kwargs...)
 end
 
 @inline function _call_prescription(fn::F, λm, gridsize::Integer, passvalue, kwargs::NamedTuple) where {F<:Function}
     try
         return fn(λm, gridsize, passvalue; kwargs...)
     catch err
-        if err isa MethodError
+        if err isa MethodError && err.f === fn
             return fn(λm, gridsize; PASSVALUE=passvalue, kwargs...)
         end
         rethrow(err)
@@ -52,8 +104,10 @@ Execute a PROPER prescription and return `(psf, pixscale)`.
   usual FFT-based paths
 
 # Keywords
-- `PASSVALUE`: value forwarded to the prescription in the familiar PROPER
-  calling style
+- `PASSVALUE`: compatibility adapter for upstream-style optional inputs.
+  `NamedTuple` and dictionary values are normalized into native Julia keyword
+  arguments before the prescription is called; other values are forwarded using
+  the legacy positional/`PASSVALUE` calling style.
 - `context`: explicit `RunContext` to reuse workspace and backend state
 - additional keyword arguments are passed through to the prescription
 
