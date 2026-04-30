@@ -10,6 +10,12 @@ function run_occulter(wavelength::Real, grid_size::Integer, passvalue=Dict("occu
     prop_circular_aperture(wfo, diam / 2)
     prop_define_entrance(wfo)
 
-    coronagraph(wfo, f_lens, get(passvalue, "occulter_type", get(passvalue, :occulter_type, "GAUSSIAN")), diam)
+    coronagraph(
+        wfo,
+        f_lens,
+        get(passvalue, "occulter_type", get(passvalue, :occulter_type, "GAUSSIAN")),
+        diam;
+        PLOT=get(passvalue, "plot", get(passvalue, :plot, false)),
+    )
     return prop_end(wfo)
 end

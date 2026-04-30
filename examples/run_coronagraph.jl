@@ -12,7 +12,13 @@ function run_coronagraph(wavelength::Real, grid_size::Integer, passvalue=Dict("u
     prop_define_entrance(wfo)
 
     telescope(wfo, f_lens, get(passvalue, "use_errors", get(passvalue, :use_errors, false)))
-    coronagraph(wfo, f_lens, get(passvalue, "occulter_type", get(passvalue, :occulter_type, "GAUSSIAN")), diam)
+    coronagraph(
+        wfo,
+        f_lens,
+        get(passvalue, "occulter_type", get(passvalue, :occulter_type, "GAUSSIAN")),
+        diam;
+        PLOT=get(passvalue, "plot", get(passvalue, :plot, false)),
+    )
 
     return prop_end(wfo)
 end

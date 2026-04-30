@@ -1,7 +1,39 @@
 using Proper
 using Plots
 
-function coronagraph(wfo::WaveFront, f_lens::Real, occulter_type::AbstractString, diam::Real)
+function _coronagraph_plot_title(occulter_type::AbstractString)
+    if occulter_type == "GAUSSIAN"
+        return "Gaussian spot"
+    elseif occulter_type == "SOLID"
+        return "Solid spot"
+    elseif occulter_type == "8TH_ORDER"
+        return "8th order band limited spot"
+    else
+        return "Coronagraph"
+    end
+end
+
+function _plot_coronagraph_planes(after_occulter::AbstractMatrix, before_lyot::AbstractMatrix, occulter_type::AbstractString)
+    p1 = heatmap(
+        after_occulter;
+        aspect_ratio=:equal,
+        color=:grays,
+        colorbar=true,
+        title="After Occulter",
+    )
+    p2 = heatmap(
+        before_lyot;
+        aspect_ratio=:equal,
+        color=:grays,
+        colorbar=true,
+        title="Before Lyot Stop",
+    )
+    plt = plot(p1, p2; layout=(1, 2), size=(1200, 500), plot_title=_coronagraph_plot_title(occulter_type))
+    display(plt)
+    return plt
+end
+
+function coronagraph(wfo::WaveFront, f_lens::Real, occulter_type::AbstractString, diam::Real; PLOT::Bool=true)
     prop_lens(wfo, f_lens, "coronagraph imaging lens")
     prop_propagate(wfo, f_lens, "occulter")
 
@@ -26,9 +58,16 @@ function coronagraph(wfo::WaveFront, f_lens::Real, occulter_type::AbstractString
         throw(ArgumentError("Unknown occulter_type=$occulter_type"))
     end
 
+    after_occulter = PLOT ? sqrt.(prop_get_amplitude(wfo)) : nothing
+
     prop_propagate(wfo, f_lens, "pupil reimaging lens")
     prop_lens(wfo, f_lens, "pupil reimaging lens")
     prop_propagate(wfo, 2f_lens, "lyot stop")
+
+    if PLOT
+        before_lyot = prop_get_amplitude(wfo) .^ 0.2
+        _plot_coronagraph_planes(after_occulter, before_lyot, occulter_type)
+    end
 
     if occulter_type == "GAUSSIAN"
         prop_circular_aperture(wfo, 0.25; NORM=true)

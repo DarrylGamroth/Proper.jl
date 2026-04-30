@@ -17,7 +17,13 @@ function run_coronagraph_dm(wavelength::Real, grid_size::Integer, passvalue=Dict
         get(passvalue, "use_errors", get(passvalue, :use_errors, false)),
         get(passvalue, "use_dm", get(passvalue, :use_dm, false)),
     )
-    coronagraph(wfo, f_lens, get(passvalue, "occulter_type", get(passvalue, :occulter_type, "GAUSSIAN")), diam)
+    coronagraph(
+        wfo,
+        f_lens,
+        get(passvalue, "occulter_type", get(passvalue, :occulter_type, "GAUSSIAN")),
+        diam;
+        PLOT=get(passvalue, "plot", get(passvalue, :plot, false)),
+    )
 
     return prop_end(wfo)
 end
