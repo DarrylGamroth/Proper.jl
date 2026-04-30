@@ -36,16 +36,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v3
         with:
           version: '1.12'
-      - uses: julia-actions/cache@v2
-      - uses: actions/setup-python@v5
+      - uses: julia-actions/cache@v3
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
       - name: Cache Python PROPER baseline
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .ci-cache/proper_v3.3.4_python
           key: proper-python-v3.3.4-sourceforge
@@ -67,7 +67,7 @@ jobs:
         run: ./scripts/benchmark_all.sh
       - name: Upload benchmark artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: benchmark-artifacts
           path: |
@@ -81,7 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Resolve WFIRST proper-models ref
         id: wfirst-models-ref
         shell: bash
@@ -89,25 +89,25 @@ jobs:
           sha="$(git ls-remote https://github.com/ajeldorado/proper-models.git refs/heads/master | awk '{print $1}')"
           test -n "${sha}"
           echo "sha=${sha}" >> "${GITHUB_OUTPUT}"
-      - uses: julia-actions/setup-julia@v2
+      - uses: julia-actions/setup-julia@v3
         with:
           version: '1.12'
-      - uses: julia-actions/cache@v2
-      - uses: actions/setup-python@v5
+      - uses: julia-actions/cache@v3
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
       - name: Cache Python PROPER baseline
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .ci-cache/proper_v3.3.4_python
           key: proper-python-v3.3.4-sourceforge
       - name: Cache WFIRST proper-models baseline
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .ci-cache/proper-models
           key: wfirst-proper-models-${{ steps.wfirst-models-ref.outputs.sha }}
       - name: Cache WFIRST public data compatibility root
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .cache/wfirst
           key: wfirst-roman-preflight-${{ hashFiles('bench/python/setup_wfirst_phaseb_compat_data.py') }}
@@ -144,7 +144,7 @@ jobs:
           ./scripts/benchmark_wfirst_phaseb_cpu.sh --parity-only
       - name: Upload WFIRST parity artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wfirst-phaseb-parity-artifacts
           path: |

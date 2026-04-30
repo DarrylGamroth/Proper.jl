@@ -18,11 +18,11 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         julia-version: ['1.10', '1.12']
     steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.julia-version }}
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - name: Instantiate
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
       - name: Test
@@ -35,17 +35,17 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v3
         with:
           version: '1.12'
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - name: Instantiate
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
       - name: Generate coverage
         run: ./scripts/coverage_lcov.sh
       - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-lcov
           path: lcov.info
@@ -65,16 +65,16 @@ jobs:
     env:
       PYPROPER_ROOT: ${{ github.workspace }}/.ci-cache/proper_v3.3.4_python
     steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v3
         with:
           version: '1.12'
-      - uses: julia-actions/cache@v2
-      - uses: actions/setup-python@v5
+      - uses: julia-actions/cache@v3
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
       - name: Cache Python PROPER baseline
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .ci-cache/proper_v3.3.4_python
           key: proper-python-v3.3.4-sourceforge
@@ -100,7 +100,7 @@ jobs:
         run: julia --project=. test/parity/compare_examples.jl
       - name: Upload parity artifacts
         if: ${{ always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: python-parity-artifacts
           path: test/parity/reports/*.json
@@ -111,11 +111,11 @@ jobs:
     runs-on: [self-hosted, linux, x64, cuda]
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v3
         with:
           version: '1.12'
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - name: Instantiate
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
       - name: Test
@@ -127,11 +127,11 @@ jobs:
     runs-on: [self-hosted, linux, x64, amdgpu]
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v3
         with:
           version: '1.12'
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - name: Instantiate
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
       - name: Test
