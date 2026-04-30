@@ -1,7 +1,7 @@
 using Proper
 using Plots
 
-function multi_example(lambda_m::Real, n::Integer, passvalue=Dict("use_dm" => false, "dm" => zeros(48, 48)); kwargs...)
+function multi_example(lambda_m::Real, n::Integer, passvalue=Dict("use_dm" => false); kwargs...)
     diam = 0.048
     pupil_ratio = 0.25
     fl_lens = 0.48
@@ -11,7 +11,7 @@ function multi_example(lambda_m::Real, n::Integer, passvalue=Dict("use_dm" => fa
     prop_define_entrance(wfo)
 
     if get(passvalue, "use_dm", get(passvalue, :use_dm, false))
-        dm = get(passvalue, "dm", get(passvalue, :dm, zeros(48, 48)))
+        dm = get(passvalue, "dm", get(passvalue, :dm, zeros(n, n)))
         prop_dm(wfo, dm; mirror=false)
     end
 
@@ -26,7 +26,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         0.55,
         256;
         name=:multi_example,
-        PASSVALUE=[Dict("use_dm" => false), Dict("use_dm" => true, "dm" => zeros(48, 48))],
+        PASSVALUE=[Dict("use_dm" => false), Dict("use_dm" => true, "dm" => zeros(256, 256))],
         pool_size=2,
     )
     stack, samplings = prop_run_multi(model)

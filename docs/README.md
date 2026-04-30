@@ -16,6 +16,12 @@ planning/audit records from the port effort.
 
 ## Benchmarking
 - Run `./scripts/benchmark_cpu_gpu.sh` for the Julia CPU/GPU comparison lane
+- Benchmark-only Julia dependencies live in `bench/Project.toml`; the benchmark
+  scripts automatically develop the local checkout into that environment before
+  running benchmark code
+- Optional GPU benchmark packages should be added to that environment, for
+  example `julia --project=bench -e 'using Pkg; Pkg.develop(path=pwd()); Pkg.add("CUDA")'`
+  or the same command with `"AMDGPU"`
 - The resulting summary is written to `bench/reports/julia_cpu_gpu_summary.md`
 - The lane also writes:
   - `bench/reports/julia_cpu_gpu_batch_throughput.csv`
@@ -30,8 +36,8 @@ planning/audit records from the port effort.
   package entry point
 - Run `./scripts/profile_core_cpu_gpu.sh` to capture backend-specific text
   profiles for that shared core workload
-- The driver uses any available Julia GPU backends (`CUDA.jl` and/or
-  `AMDGPU.jl`)
+- The driver uses any available Julia GPU backends; CUDA or AMDGPU lanes require
+  `CUDA.jl` or `AMDGPU.jl` to be available in the `bench/` environment
 - BenchmarkTools-based rows in that lane are warmed steady-state results, not
   cold-start / TTFx measurements
 - If a GPU backend or supported device is unavailable, the summary records that

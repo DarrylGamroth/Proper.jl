@@ -177,7 +177,10 @@ model = prepare_model(
     0.55,
     256;
     pool_size=2,
-    assets=(dm=zeros(48, 48),),
+    # Direct prop_dm(wf, dm) examples use a DM surface already sampled on the
+    # wavefront grid. Use the full actuator-space prop_dm form when modeling
+    # actuator geometry and influence functions.
+    assets=(dm=zeros(256, 256),),
 )
 
 psf, sampling = prop_run(model; slot=1, PASSVALUE=Dict("use_dm" => true))

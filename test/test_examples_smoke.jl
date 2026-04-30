@@ -31,3 +31,10 @@ end
     @test sampling > 0
     @test maximum(psf) > 0
 end
+
+@testset "Multi example executes with direct DM map" begin
+    mod = load_example_module(joinpath(@__DIR__, "..", "examples", "multi_example.jl"))
+    field, sampling = mod.multi_example(0.55e-6, 32, Dict("use_dm" => true, "dm" => zeros(32, 32)))
+    @test size(field) == (32, 32)
+    @test sampling > 0
+end

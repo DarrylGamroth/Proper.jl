@@ -17,7 +17,7 @@ Use the plain compatibility surface first when you are porting or validating a
 prescription:
 
 ```julia
-psf, sampling = prop_run(my_prescription, 0.55, 256; PASSVALUE=Dict("dm" => zeros(48, 48)))
+psf, sampling = prop_run(my_prescription, 0.55, 256; PASSVALUE=Dict("dm" => zeros(256, 256)))
 ```
 
 Move to the prepared layer when you need one or more of:
@@ -91,7 +91,7 @@ prepared = prepare_prescription(my_prescription, 0.55, 256)
 batch = prepare_prescription_batch(prepared; pool_size=4)
 
 psf1, sampling1 = prop_run(batch; slot=1, PASSVALUE=Dict("use_dm" => false))
-psf2, sampling2 = prop_run(batch; slot=2, PASSVALUE=Dict("use_dm" => true, "dm" => zeros(48, 48)))
+psf2, sampling2 = prop_run(batch; slot=2, PASSVALUE=Dict("use_dm" => true, "dm" => zeros(256, 256)))
 ```
 
 For parallel runs:
@@ -101,7 +101,7 @@ stack, samplings = prop_run_multi(
     batch;
     PASSVALUE=[
         Dict("use_dm" => false),
-        Dict("use_dm" => true, "dm" => zeros(48, 48)),
+        Dict("use_dm" => true, "dm" => zeros(256, 256)),
     ],
 )
 ```
@@ -124,7 +124,7 @@ Use this when each slot should lazily create and retain its own asset bundle.
 
 ```julia
 assets = prepare_asset_pool(; pool_size=2) do slot
-    return (dm=zeros(48, 48), label="slot_$slot")
+    return (dm=zeros(256, 256), label="slot_$slot")
 end
 ```
 
@@ -153,7 +153,7 @@ model = prepare_model(
     256;
     pool_size=2,
     assets=prepare_asset_pool(; pool_size=2) do slot
-        return (dm=zeros(48, 48), slot=slot)
+        return (dm=zeros(256, 256), slot=slot)
     end,
 )
 ```
@@ -225,12 +225,12 @@ When a `PreparedModel` resolves assets for a slot:
 That means both of these are valid:
 
 ```julia
-assets = prepare_asset_pool(() -> (dm=zeros(48, 48), use_dm=true); pool_size=1)
+assets = prepare_asset_pool(() -> (dm=zeros(256, 256), use_dm=true); pool_size=1)
 model = prepare_model(my_prescription, 0.55, 256; assets=assets, pool_size=1)
 ```
 
 ```julia
-assets = prepare_asset_pool(() -> Dict("dm" => zeros(48, 48)); pool_size=1)
+assets = prepare_asset_pool(() -> Dict("dm" => zeros(256, 256)); pool_size=1)
 model = prepare_model(my_prescription, 0.55, 256; assets=assets, pool_size=1)
 ```
 
@@ -291,7 +291,7 @@ stack, samplings = prop_run_multi(
 ### Model With Cached Assets
 ```julia
 assets = prepare_asset_pool(; pool_size=2) do slot
-    return (label="slot_$slot", dm=zeros(48, 48))
+    return (label="slot_$slot", dm=zeros(256, 256))
 end
 
 model = prepare_model(

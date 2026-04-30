@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "$0")/bench_env.sh"
 source "$(dirname "$0")/benchmark_cuda_lib.sh"
 source "$(dirname "$0")/benchmark_amdgpu_lib.sh"
 
@@ -67,17 +68,17 @@ fi
 
 echo "Using Python benchmark interpreter: ${PYTHON_BIN}"
 run_step "Python steady-state baseline" "${PYTHON_BIN}" bench/python/run.py
-run_step "Julia steady-state workload" julia --project=. bench/julia/steady_state/run.jl
-run_step "Julia supported CPU kernels" julia --project=. bench/julia/steady_state/supported_kernels.jl
-run_step "Julia phase-2 kernels" julia --project=. bench/julia/steady_state/phase2_kernels.jl
-run_step "Julia refactor kernels" julia --project=. bench/julia/steady_state/refactor_kernels.jl
-run_step "Julia KA interpolation pilot" julia --project=. bench/julia/steady_state/ka_interp_kernels.jl
-run_step "Julia KA geometry/sampling pilot" julia --project=. bench/julia/steady_state/ka_geometry_sampling_kernels.jl
-run_step "Julia example workflows" julia --project=. bench/julia/steady_state/example_workflows.jl
+run_step "Julia steady-state workload" bench_julia bench/julia/steady_state/run.jl
+run_step "Julia supported CPU kernels" bench_julia bench/julia/steady_state/supported_kernels.jl
+run_step "Julia phase-2 kernels" bench_julia bench/julia/steady_state/phase2_kernels.jl
+run_step "Julia refactor kernels" bench_julia bench/julia/steady_state/refactor_kernels.jl
+run_step "Julia KA interpolation pilot" bench_julia bench/julia/steady_state/ka_interp_kernels.jl
+run_step "Julia KA geometry/sampling pilot" bench_julia bench/julia/steady_state/ka_geometry_sampling_kernels.jl
+run_step "Julia example workflows" bench_julia bench/julia/steady_state/example_workflows.jl
 if [[ "${BENCH_INCLUDE_WFIRST_CPU:-0}" == "1" ]]; then
   run_step "WFIRST Phase B CPU comparison" ./scripts/benchmark_wfirst_phaseb_cpu.sh
 fi
 run_cuda_benchmarks
 run_amdgpu_benchmarks
-run_step "Julia cold-start / TTFx" julia --project=. bench/julia/cold_start/run.jl
-julia --project=. bench/reports/summarize.jl
+run_step "Julia cold-start / TTFx" bench_julia bench/julia/cold_start/run.jl
+bench_julia bench/reports/summarize.jl

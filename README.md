@@ -249,6 +249,18 @@ PYTHON_BIN=.venv-parity/bin/python BENCH_INCLUDE_WFIRST_CPU=0 ./scripts/benchmar
 PYTHON_BIN=.venv-parity/bin/python WFIRST_PARITY_ONLY=1 ./scripts/benchmark_wfirst_phaseb_cpu.sh --parity-only
 ```
 
+Julia benchmark dependencies live in `bench/Project.toml`, not the core package
+environment. The benchmark scripts automatically develop the local checkout into
+that environment before running Julia benchmark code.
+
+Optional GPU benchmark backends should be added to the benchmark environment,
+not to the core package environment:
+
+```bash
+julia --project=bench -e 'using Pkg; Pkg.develop(path=pwd()); Pkg.add("CUDA")'
+julia --project=bench -e 'using Pkg; Pkg.develop(path=pwd()); Pkg.add("AMDGPU")'
+```
+
 For a targeted WFIRST check:
 
 ```bash
@@ -273,10 +285,11 @@ This generates:
 - `bench/reports/julia_cpu_gpu_core_propagation_tail.csv`
 - `bench/reports/julia_cpu_gpu_supported_kernels.csv`
 
-The script uses the Julia steady-state CPU lane plus any available GPU lanes
-(`CUDA.jl` and/or `AMDGPU.jl`). It does not depend on the Python parity
-environment. If a GPU backend or supported device is unavailable, it records
-that backend as skipped instead of failing the whole run.
+The script uses the Julia steady-state CPU lane plus any available GPU lanes.
+It does not depend on the Python parity environment. If a GPU backend or
+supported device is unavailable, it records that backend as skipped instead of
+failing the whole run. GPU benchmark lanes require `CUDA.jl` or `AMDGPU.jl` to
+be available in the `bench/` environment on the machine running the benchmark.
 
 The summary includes both:
 - the standard steady-state workload
@@ -357,7 +370,6 @@ the current support matrix.
 ## Requirements
 - Julia 1.10 or newer
 - `FITSIO.jl` for FITS input/output
-- `Plots.jl` for example plotting
 
 Package dependencies are declared in `Project.toml` and resolved through Julia's
 package manager.
@@ -394,7 +406,18 @@ using Proper
 
 ## Plotting Output
 
-Example plotting uses `Plots.jl` by default:
+Plotting is intentionally not part of the core `Proper.jl` runtime dependency
+set. Example scripts use `Plots.jl` through `examples/Project.toml`.
+
+For local examples from a checkout:
+
+```bash
+julia --project=examples -e 'using Pkg; Pkg.develop(path=pwd()); Pkg.instantiate()'
+julia --project=examples examples/simple_prescription.jl
+```
+
+For your own application code, choose the plotting stack you prefer. With
+`Plots.jl`, a typical PSF display is:
 
 ```julia
 using Plots

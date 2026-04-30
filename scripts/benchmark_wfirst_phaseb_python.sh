@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "$0")/bench_env.sh"
 PYTHON_BIN="${PYTHON_BIN:-}"
 if [[ -z "${PYTHON_BIN}" ]]; then
   if [[ -x ".venv-parity/bin/python" ]]; then
@@ -50,4 +51,4 @@ run_step() {
 
 run_step "Python WFIRST Phase B compact HLC" "${PYTHON_BIN}" bench/python/wfirst_phaseb_external.py --case compact_hlc
 run_step "Python WFIRST Phase B full HLC" "${PYTHON_BIN}" bench/python/wfirst_phaseb_external.py --case full_hlc
-julia --project=. bench/reports/summarize.jl
+bench_julia bench/reports/summarize.jl

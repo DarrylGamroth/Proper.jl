@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "$0")/bench_env.sh"
 PYTHON_BIN="${PYTHON_BIN:-}"
 if [[ -z "${PYTHON_BIN}" ]]; then
   if [[ -x ".venv-parity/bin/python" ]]; then
@@ -69,7 +70,7 @@ PY
 echo "Using WFIRST_PHASEB_DATA_ROOT=${WFIRST_PHASEB_DATA_ROOT}"
 echo "Using WFIRST_CASE=${case_name}"
 
-julia --project=. bench/julia/wfirst_phaseb/profile_case_hotspots.jl \
+bench_julia bench/julia/wfirst_phaseb/profile_case_hotspots.jl \
   --case "${case_name}" \
   --data-root "${WFIRST_PHASEB_DATA_ROOT}" \
   --mincount "${mincount}" \

@@ -12,11 +12,12 @@ function testmulti1()
 
     wavelength = collect(range(lambda_min, lambda_max; length=nlambda))
 
-    optval = Dict("use_dm" => true, "dm" => zeros(48, 48))
+    optval = Dict("use_dm" => true, "dm" => zeros(gridsize, gridsize))
     optval["dm"][21, 21] = 0.2e-6
     optval["dm"][16, 26] = 0.2e-6
 
-    fields, sampling = prop_run_multi(multi_example, wavelength, gridsize; PASSVALUE=optval)
+    runs = [prepare_prescription(multi_example, λ, gridsize) for λ in wavelength]
+    fields, sampling = prop_run_multi(runs; PASSVALUE=fill(optval, nlambda))
 
     psfs = zeros(Float64, nlambda, npsf, npsf)
     for i in 1:nlambda

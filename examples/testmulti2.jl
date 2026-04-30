@@ -6,8 +6,8 @@ function testmulti2()
     gridsize = 256
 
     npatterns = 3
-    optval = [Dict("use_dm" => true, "dm" => zeros(48, 48)) for _ in 1:npatterns]
-    x = (collect(0:47) ./ 47 .* (2pi)) .* ones(Float64, 1, 48)
+    optval = [Dict("use_dm" => true, "dm" => zeros(gridsize, gridsize)) for _ in 1:npatterns]
+    x = (collect(0:(gridsize - 1)) ./ (gridsize - 1) .* (2pi)) .* ones(Float64, 1, gridsize)
     for i in 1:npatterns
         optval[i]["dm"] .= 5e-8 .* cos.(4 .* x .* i)
     end

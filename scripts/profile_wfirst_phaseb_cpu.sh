@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "$0")/bench_env.sh"
 PYTHON_BIN="${PYTHON_BIN:-}"
 if [[ -z "${PYTHON_BIN}" ]]; then
   if [[ -x ".venv-parity/bin/python" ]]; then
@@ -78,10 +79,10 @@ echo "Using WFIRST_SAMPLES=${samples}"
 IFS=',' read -r -a cases <<<"${cases_csv}"
 for case_name in "${cases[@]}"; do
   echo "[profile] Julia WFIRST Phase B ${case_name//_/ }"
-  julia --project=. bench/julia/wfirst_phaseb/run_case.jl \
+  bench_julia bench/julia/wfirst_phaseb/run_case.jl \
     --case "${case_name}" \
     --data-root "${WFIRST_PHASEB_DATA_ROOT}" \
     --samples "${samples}" >/dev/null
 done
 
-julia --project=. bench/julia/wfirst_phaseb/profile_cpu_cases.jl --cases "${cases_csv}"
+bench_julia bench/julia/wfirst_phaseb/profile_cpu_cases.jl --cases "${cases_csv}"

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "$0")/bench_env.sh"
 source "$(dirname "$0")/benchmark_cuda_lib.sh"
 
 run_step() {
@@ -16,5 +17,5 @@ run_step() {
 }
 
 run_cuda_benchmarks
-run_step "Julia cold-start / TTFx" julia --project=. bench/julia/cold_start/run.jl
-julia --project=. bench/reports/summarize.jl
+run_step "Julia cold-start / TTFx" bench_julia bench/julia/cold_start/run.jl
+bench_julia bench/reports/summarize.jl

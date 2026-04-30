@@ -1,0 +1,8 @@
+[deps]
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+Proper = "0686a737-3bdd-44da-9bf7-6692cf630078"
+
+[compat]
+Plots = "1.41.6"
+Proper = "0.1"
+julia = "1.10"

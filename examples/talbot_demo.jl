@@ -16,7 +16,7 @@ function talbot_demo()
     model = prepare_model(:talbot, talbot, wavelength_microns, n; pool_size=1)
 
     z = 0.0
-    plots = Plot[]
+    plots = Any[]
     for _ in 1:nseg
         wavefront, _ = prop_run(model; PASSVALUE=Dict("diam" => diam, "period" => period, "dist" => z))
         line = wavefront[:, n ÷ 2 + 1]

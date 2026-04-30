@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(dirname "$0")/bench_env.sh"
 PYTHON_BIN="${PYTHON_BIN:-}"
 if [[ -z "${PYTHON_BIN}" ]]; then
   if [[ -x ".venv-parity/bin/python" ]]; then
@@ -142,7 +143,7 @@ fi
 for case_name in "${cases[@]}"; do
   pretty_case="${case_name//_/ }"
   run_step "Python WFIRST Phase B ${pretty_case}" "${PYTHON_BIN}" bench/python/wfirst_phaseb_external.py --case "${case_name}" --write-output-prefix "bench/reports/python_wfirst_phaseb_${case_name}" "${python_extra_args[@]}"
-  run_step "Julia WFIRST Phase B ${pretty_case}" julia --project=. bench/julia/wfirst_phaseb/run_case.jl --case "${case_name}" --data-root "${WFIRST_PHASEB_DATA_ROOT}" "${julia_extra_args[@]}"
+  run_step "Julia WFIRST Phase B ${pretty_case}" bench_julia bench/julia/wfirst_phaseb/run_case.jl --case "${case_name}" --data-root "${WFIRST_PHASEB_DATA_ROOT}" "${julia_extra_args[@]}"
 done
 
 "${PYTHON_BIN}" bench/python/compare_wfirst_phaseb_outputs.py --cases "$(IFS=,; echo "${cases[*]}")"
