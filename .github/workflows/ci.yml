@@ -90,6 +90,8 @@ jobs:
         run: python3 -m pip install --upgrade pip numpy scipy astropy matplotlib
       - name: Instantiate
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
+      - name: Instantiate examples
+        run: julia --project=examples -e 'using Pkg; Pkg.develop(Pkg.PackageSpec(path=pwd())); Pkg.instantiate()'
       - name: Python baseline
         run: python3 test/parity/generate_python_baseline.py
       - name: Parity compare
@@ -97,7 +99,7 @@ jobs:
       - name: Python example metrics baseline
         run: python3 test/parity/generate_python_example_metrics.py
       - name: Example parity compare + thresholds
-        run: julia --project=. test/parity/compare_examples.jl
+        run: julia --project=examples test/parity/compare_examples.jl
       - name: Upload parity artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
