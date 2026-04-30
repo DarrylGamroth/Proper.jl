@@ -1,0 +1,19 @@
+coverage:
+  status:
+    project:
+      default:
+        target: 75%
+        threshold: 2%
+    patch:
+      default:
+        target: 70%
+        threshold: 5%
+
+ignore:
+  - "bench/**"
+  - "coverage/**"
+  - "docs/**"
+  - "examples/**"
+  - "reference_models/**"
+  - "scripts/**"
+  - "test/**"
