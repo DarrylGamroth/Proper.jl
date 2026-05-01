@@ -48,6 +48,11 @@ function bench_supported_kernels()
     mag_out = similar(img)
     szoom_out = similar(img)
     pix_out = similar(img, nmap ÷ 2, nmap ÷ 2)
+    coord_x_axis = collect(Float32, range(3, nmap - 3; length=nmap))
+    coord_y_axis = collect(Float32, range(3, nmap - 3; length=nmap))
+    coord_xgrid = repeat(reshape(coord_x_axis, 1, :), nmap, 1)
+    coord_ygrid = repeat(reshape(coord_y_axis, :, 1), 1, nmap)
+    coord_out = similar(img)
 
     wf_map = prop_begin(1.0, 0.55e-6, nmap)
     dmap = rand(Float32, nmap, nmap)
@@ -76,6 +81,7 @@ function bench_supported_kernels()
     prop_magnify!(mag_out, img, 1.1, mag_quick_opts, ctx_img)
     prop_szoom!(szoom_out, img, 1.1, ctx_img)
     Proper._prop_pixellate_factor!(pix_out, img, 2)
+    prop_cubic_conv_coordinate_grid!(coord_out, ctx_img, img, coord_xgrid, coord_ygrid)
     prop_resamplemap!(res_out, wf_map, dmap, res_opts, ctx_map)
     prop_rectangle!(rect_out, wf_map, 0.4, 0.2, 0.03, -0.05; ROTATION=22.0, NORM=true)
     prop_rounded_rectangle!(round_out, wf_map, 0.05, 0.3, 0.2, 0.01, -0.02)
@@ -120,6 +126,10 @@ function bench_supported_kernels()
         Proper._prop_pixellate_factor!($pix_out, $img, 2)
     end evals=1 samples=samples)
 
+    cc = run(@benchmarkable begin
+        prop_cubic_conv_coordinate_grid!($coord_out, $ctx_img, $img, $coord_xgrid, $coord_ygrid)
+    end evals=1 samples=samples)
+
     rs = run(@benchmarkable begin
         prop_resamplemap!($res_out, $wf_map, $dmap, $res_opts, $ctx_map)
     end evals=1 samples=samples)
@@ -146,6 +156,7 @@ function bench_supported_kernels()
             "prop_magnify_quick_mutating" => trial_stats(m),
             "prop_szoom_mutating" => trial_stats(sz),
             "prop_pixellate_mutating" => trial_stats(px),
+            "prop_cubic_conv_coordinate_grid_mutating" => trial_stats(cc),
             "prop_resamplemap_mutating" => trial_stats(rs),
             "prop_rectangle_mutating" => trial_stats(rc),
             "prop_rounded_rectangle_mutating" => trial_stats(rr),

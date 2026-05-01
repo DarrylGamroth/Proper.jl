@@ -108,7 +108,7 @@ export prop_elliptical_aperture, prop_elliptical_obscuration
 export prop_rectangular_aperture, prop_rectangular_obscuration
 export prop_qphase, prop_lens, prop_ptp, prop_wts, prop_stw, prop_propagate
 export prop_magnify, prop_rotate, prop_resamplemap, prop_select_propagator
-export prop_magnify!, prop_rotate!, prop_resamplemap!, prop_cubic_conv_grid!, prop_end!
+export prop_magnify!, prop_rotate!, prop_resamplemap!, prop_cubic_conv_grid!, prop_cubic_conv_coordinate_grid!, prop_end!
 export prop_fits_read, prop_fits_write, prop_readmap, prop_writemap
 export prop_errormap, prop_psd_errormap, prop_psd_errormap!
 export prop_savestate, prop_state, prop_is_statesaved, prop_init_savestate, prop_end_savestate

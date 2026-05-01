@@ -557,6 +557,23 @@ end
     end
 end
 
+@kernel function _ka_cubic_conv_coordinate_grid_kernel!(
+    out,
+    @Const(a),
+    @Const(xgrid),
+    @Const(ygrid),
+    oy::Int,
+    ox::Int,
+)
+    I = @index(Global, NTuple)
+    i = I[1]
+    j = I[2]
+
+    if i <= oy && j <= ox
+        out[i, j] = _ka_cubic_sample(a, ygrid[i, j], xgrid[i, j])
+    end
+end
+
 @kernel function _ka_rotate_linear_kernel!(
     out,
     @Const(old_image),
@@ -1240,6 +1257,18 @@ end
     oy, ox = size(out)
     backend = AK.get_backend(out)
     _ka_cubic_conv_grid_kernel!(backend, (16, 16))(out, a, xval, yval, oy, ox; ndrange=(oy, ox))
+    return out
+end
+
+@inline function ka_cubic_conv_coordinate_grid!(
+    out::AbstractMatrix,
+    a::AbstractMatrix,
+    xgrid::AbstractMatrix,
+    ygrid::AbstractMatrix,
+)
+    oy, ox = size(out)
+    backend = AK.get_backend(out)
+    _ka_cubic_conv_coordinate_grid_kernel!(backend, (16, 16))(out, a, xgrid, ygrid, oy, ox; ndrange=(oy, ox))
     return out
 end
 

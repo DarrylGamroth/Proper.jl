@@ -81,6 +81,17 @@ using Random
     Proper._prop_cubic_conv_grid_loop!(cubic_ref, Proper.CubicInterpStyle(), image, xval, yval)
     @test cubic ≈ cubic_ref
 
+    xgrid = repeat(reshape(xval, 1, :), length(yval), 1)
+    ygrid = repeat(reshape(yval, :, 1), 1, length(xval))
+    cubic_coord = zeros(Float32, size(xgrid))
+    @test Proper.ka_cubic_conv_coordinate_grid!(cubic_coord, image, xgrid, ygrid) === cubic_coord
+    cubic_coord_ref = Proper._prop_cubic_conv(Proper.CubicInterpStyle(), Proper.PointwiseTopology(), image, xgrid, ygrid)
+    @test cubic_coord ≈ cubic_coord_ref
+
+    cubic_coord_mut = similar(cubic_coord)
+    @test Proper.prop_cubic_conv_coordinate_grid!(cubic_coord_mut, Proper.CubicInterpStyle(), image, xgrid, ygrid) === cubic_coord_mut
+    @test cubic_coord_mut ≈ cubic_coord_ref
+
     rotlin = zeros(Float32, 8, 8)
     rotlin_ref = similar(rotlin)
     lin_opts = Proper.RotateOptions(image, pairs((; METH="linear")))

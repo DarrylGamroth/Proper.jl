@@ -44,6 +44,12 @@ struct CubicGridKAExecStyle <: CubicGridExecStyle end
 struct CubicGridHostExecStyle <: CubicGridExecStyle end
 struct CubicGridUnsupportedExecStyle <: CubicGridExecStyle end
 
+abstract type CubicCoordinateGridExecStyle end
+struct CubicCoordinateGridLoopExecStyle <: CubicCoordinateGridExecStyle end
+struct CubicCoordinateGridKAExecStyle <: CubicCoordinateGridExecStyle end
+struct CubicCoordinateGridHostExecStyle <: CubicCoordinateGridExecStyle end
+struct CubicCoordinateGridUnsupportedExecStyle <: CubicCoordinateGridExecStyle end
+
 @inline cubic_grid_exec_style(
     ::StridedLayout,
     ::StridedLayout,
@@ -79,6 +85,42 @@ struct CubicGridUnsupportedExecStyle <: CubicGridExecStyle end
     ::InterpStyle,
     ::Val,
 ) = CubicGridUnsupportedExecStyle()
+
+@inline cubic_coordinate_grid_exec_style(
+    ::StridedLayout,
+    ::StridedLayout,
+    ::CPUBackend,
+    ::CPUBackend,
+    ::InterpStyle,
+    ::Val{false},
+) = CubicCoordinateGridLoopExecStyle()
+
+@inline cubic_coordinate_grid_exec_style(
+    ::ArrayLayoutStyle,
+    ::ArrayLayoutStyle,
+    ::B,
+    ::B,
+    ::CubicInterpStyle,
+    ::Val{true},
+) where {B<:BackendStyle} = CubicCoordinateGridKAExecStyle()
+
+@inline cubic_coordinate_grid_exec_style(
+    ::ArrayLayoutStyle,
+    ::ArrayLayoutStyle,
+    ::CPUBackend,
+    ::CPUBackend,
+    ::InterpStyle,
+    ::Val,
+) = CubicCoordinateGridHostExecStyle()
+
+@inline cubic_coordinate_grid_exec_style(
+    ::ArrayLayoutStyle,
+    ::ArrayLayoutStyle,
+    ::BackendStyle,
+    ::BackendStyle,
+    ::InterpStyle,
+    ::Val,
+) = CubicCoordinateGridUnsupportedExecStyle()
 
 @inline function _prop_cubic_conv_grid!(
     ::CubicGridLoopExecStyle,
@@ -130,18 +172,71 @@ end
     throw(ArgumentError("prop_cubic_conv_grid! has no native implementation for $(typeof(a)) -> $(typeof(out)); use matching CPU arrays or a backend-native path"))
 end
 
+@inline function _prop_cubic_conv_coordinate_grid!(
+    ::CubicCoordinateGridLoopExecStyle,
+    out::StridedMatrix,
+    sty::InterpStyle,
+    a::StridedMatrix,
+    xgrid::AbstractMatrix,
+    ygrid::AbstractMatrix,
+)
+    return _prop_cubic_conv_coordinate_grid_loop!(out, sty, a, xgrid, ygrid)
+end
+
+@inline function _prop_cubic_conv_coordinate_grid!(
+    ::CubicCoordinateGridKAExecStyle,
+    out::AbstractMatrix,
+    ::CubicInterpStyle,
+    a::AbstractMatrix,
+    xgrid::AbstractMatrix,
+    ygrid::AbstractMatrix,
+)
+    return ka_cubic_conv_coordinate_grid!(out, a, backend_adapt(out, xgrid), backend_adapt(out, ygrid))
+end
+
+@inline function _prop_cubic_conv_coordinate_grid!(
+    ::CubicCoordinateGridHostExecStyle,
+    out::AbstractMatrix,
+    sty::InterpStyle,
+    a::AbstractMatrix,
+    xgrid::AbstractMatrix,
+    ygrid::AbstractMatrix,
+)
+    host_out = _prop_cubic_conv(sty, PointwiseTopology(), Matrix(a), Matrix(xgrid), Matrix(ygrid))
+    copyto!(out, host_out)
+    return out
+end
+
+@inline function _prop_cubic_conv_coordinate_grid!(
+    ::CubicCoordinateGridUnsupportedExecStyle,
+    out::AbstractMatrix,
+    sty::InterpStyle,
+    a::AbstractMatrix,
+    xgrid::AbstractMatrix,
+    ygrid::AbstractMatrix,
+)
+    _ = out
+    _ = sty
+    _ = xgrid
+    _ = ygrid
+    throw(ArgumentError("prop_cubic_conv coordinate-grid mode has no native implementation for $(typeof(a)); use matching CPU arrays or a backend-native path"))
+end
+
 """
     prop_cubic_conv_grid!(out, sty, a, xval, yval)
     prop_cubic_conv_grid!(out, a, xval, yval)
     prop_cubic_conv_grid!(out, ctx, a, xval, yval)
+    prop_cubic_conv_coordinate_grid!(out, sty, a, xgrid, ygrid)
 
 Evaluate cubic-convolution interpolation over the tensor-product grid defined
-by `xval` and `yval` and write the result into `out`.
+by `xval` and `yval`, or over explicit coordinate grids `xgrid` and `ygrid`,
+and write the result into `out`.
 
 # Arguments
 - `out`: destination array of size `(length(yval), length(xval))`
 - `a`: source image
 - `xval`, `yval`: grid axes in the cubic-convolution coordinate system
+- `xgrid`, `ygrid`: same-sized coordinate maps for arbitrary map projection
 """
 function prop_cubic_conv_grid!(out::AbstractMatrix, sty::InterpStyle, a::AbstractMatrix, xval::AbstractVector, yval::AbstractVector)
     size(out) == (length(yval), length(xval)) || throw(ArgumentError("output size mismatch for grid interpolation"))
@@ -157,6 +252,27 @@ function prop_cubic_conv_grid!(out::AbstractMatrix, sty::InterpStyle, a::Abstrac
     return _prop_cubic_conv_grid!(sty_exec, out, sty, a, xval, yval)
 end
 
+function prop_cubic_conv_coordinate_grid!(
+    out::AbstractMatrix,
+    sty::InterpStyle,
+    a::AbstractMatrix,
+    xgrid::AbstractMatrix,
+    ygrid::AbstractMatrix,
+)
+    size(xgrid) == size(ygrid) || throw(ArgumentError("xgrid and ygrid sizes must match"))
+    size(out) == size(xgrid) || throw(ArgumentError("output size mismatch for coordinate-grid interpolation"))
+    oy, ox = size(out)
+    sty_exec = cubic_coordinate_grid_exec_style(
+        array_layout_style(typeof(out)),
+        array_layout_style(typeof(a)),
+        backend_style(typeof(out)),
+        backend_style(typeof(a)),
+        sty,
+        Val(ka_cubic_grid_enabled(typeof(out), oy, ox)),
+    )
+    return _prop_cubic_conv_coordinate_grid!(sty_exec, out, sty, a, xgrid, ygrid)
+end
+
 @inline function prop_cubic_conv_grid!(out::AbstractMatrix, a::AbstractMatrix, xval::AbstractVector, yval::AbstractVector)
     return prop_cubic_conv_grid!(out, _default_interp_style(a), a, xval, yval)
 end
@@ -165,9 +281,34 @@ end
     return prop_cubic_conv_grid!(out, interp_style(ctx), a, xval, yval)
 end
 
+@inline function prop_cubic_conv_coordinate_grid!(out::AbstractMatrix, a::AbstractMatrix, xgrid::AbstractMatrix, ygrid::AbstractMatrix)
+    return prop_cubic_conv_coordinate_grid!(out, _default_interp_style(a), a, xgrid, ygrid)
+end
+
+@inline function prop_cubic_conv_coordinate_grid!(out::AbstractMatrix, ctx::RunContext, a::AbstractMatrix, xgrid::AbstractMatrix, ygrid::AbstractMatrix)
+    return prop_cubic_conv_coordinate_grid!(out, interp_style(ctx), a, xgrid, ygrid)
+end
+
 function _prop_cubic_conv(sty::InterpStyle, ::PointwiseTopology, a::StridedMatrix, xgrid::AbstractMatrix, ygrid::AbstractMatrix)
     size(xgrid) == size(ygrid) || throw(ArgumentError("xgrid and ygrid sizes must match"))
     out = similar(a, size(xgrid)...)
+    @inbounds for j in axes(xgrid, 2)
+        for i in axes(xgrid, 1)
+            out[i, j] = _cubic_sample(sty, a, ygrid[i, j], xgrid[i, j])
+        end
+    end
+    return out
+end
+
+function _prop_cubic_conv_coordinate_grid_loop!(
+    out::StridedMatrix,
+    sty::InterpStyle,
+    a::StridedMatrix,
+    xgrid::AbstractMatrix,
+    ygrid::AbstractMatrix,
+)
+    size(xgrid) == size(ygrid) || throw(ArgumentError("xgrid and ygrid sizes must match"))
+    size(out) == size(xgrid) || throw(ArgumentError("output size mismatch for coordinate-grid interpolation"))
     @inbounds for j in axes(xgrid, 2)
         for i in axes(xgrid, 1)
             out[i, j] = _cubic_sample(sty, a, ygrid[i, j], xgrid[i, j])
@@ -332,10 +473,8 @@ end
     xgrid::AbstractMatrix,
     ygrid::AbstractMatrix,
 )
-    _ = sty
-    _ = xgrid
-    _ = ygrid
-    throw(ArgumentError("prop_cubic_conv grid=false coordinate mode has no native implementation for $(typeof(a)); use CPU arrays or a backend-native path"))
+    out = similar(a, size(xgrid)...)
+    return prop_cubic_conv_coordinate_grid!(out, sty, a, xgrid, ygrid)
 end
 
 function prop_cubic_conv(a::AbstractMatrix, xgrid::AbstractMatrix, ygrid::AbstractMatrix; threaded::Bool=true, grid::Bool=false)

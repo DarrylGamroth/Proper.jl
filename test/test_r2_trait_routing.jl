@@ -382,6 +382,13 @@ end
             res = similar(a)
             Proper.prop_resamplemap!(res, wf_resample, a, ropts, ctx)
             @test_throws ArgumentError Proper.prop_cubic_conv(a, 1.5f0, 1.5f0)
+            img_cpu = reshape(Float32.(1:256), 16, 16)
+            xcoords_cpu = repeat(reshape(collect(Float32, range(3, 13; length=8)), 1, :), 8, 1)
+            ycoords_cpu = repeat(reshape(collect(Float32, range(3, 13; length=8)), :, 1), 1, 8)
+            coord_ref = Proper.prop_cubic_conv(img_cpu, xcoords_cpu, ycoords_cpu; grid=false)
+            coord_gpu = Proper.prop_cubic_conv(CUDA.CuArray(img_cpu), xcoords_cpu, ycoords_cpu; grid=false)
+            @test coord_gpu isa CUDA.CuArray
+            @test isapprox(Array(coord_gpu), coord_ref; atol=1f-5, rtol=1f-5)
             @test size(m) == (16, 16)
             @test size(r) == (16, 16)
             @test size(s) == (16, 16)
@@ -458,11 +465,19 @@ end
             @test ctx.backend isa Proper.AMDGPUBackend
             @test ctx.fft isa Proper.ROCFFTStyle
             @test ctx.interp isa Proper.CubicInterpStyle
+            @test Proper.ka_cubic_grid_enabled(typeof(a), 16, 16)
             @test Proper.ka_geometry_enabled(typeof(a), 16, 16)
             @test Proper.ka_sampling_enabled(typeof(a), 16, 16)
 
             p = Proper._prop_pixellate_factor(a, 2)
             @test_throws ArgumentError Proper.prop_cubic_conv(a, 1.5f0, 1.5f0)
+            img_cpu = reshape(Float32.(1:256), 16, 16)
+            xcoords_cpu = repeat(reshape(collect(Float32, range(3, 13; length=8)), 1, :), 8, 1)
+            ycoords_cpu = repeat(reshape(collect(Float32, range(3, 13; length=8)), :, 1), 1, 8)
+            coord_ref = Proper.prop_cubic_conv(img_cpu, xcoords_cpu, ycoords_cpu; grid=false)
+            coord_gpu = Proper.prop_cubic_conv(AMDGPU.ROCArray(img_cpu), xcoords_cpu, ycoords_cpu; grid=false)
+            @test coord_gpu isa AMDGPU.ROCArray
+            @test isapprox(Array(coord_gpu), coord_ref; atol=3f-4, rtol=1f-3)
             @test size(p) == (8, 8)
 
             wf = Proper.WaveFront(AMDGPU.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)

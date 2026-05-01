@@ -37,6 +37,45 @@ This document is the current maintainer tracker for GPU-facing work in
 - validate optional self-hosted CUDA/AMDGPU CI runners when those runners become
   part of the project infrastructure
 
+## RTC / HIL DM-To-Pixels Plan
+The near-real-time use case is receiving raw deformable-mirror actuator commands
+from an RTC and returning detector pixels. The preferred design is to keep
+actuator-to-surface reconstruction outside the generic PROPER compatibility
+surface when a dedicated AO package can do that job.
+
+Recommended data path:
+1. RTC emits raw actuator commands.
+2. `AdaptiveOpticsSim.jl` or an application-specific reconstructor converts
+   actuator commands into a wavefront-sampled DM surface.
+3. `Proper.jl` receives that sampled surface on the desired backend and applies
+   it with the simple `prop_dm(wf, dm_surface)` path.
+4. Prepared `Proper.jl` execution performs propagation and detector-plane
+   sampling with preallocated contexts.
+
+This keeps `Proper.jl` focused on wave-optics propagation and avoids making the
+upstream-compatible `prop_dm` actuator/influence-function adapter the real-time
+hot path.
+
+Implementation priorities:
+1. GPU-native coordinate-grid cubic convolution for arbitrary map projection.
+   This is required by map reprojection and the full upstream-compatible
+   actuator-space `prop_dm` adapter.
+2. GPU-friendly DM surface application remains through `prop_dm(wf, dm_map)`;
+   if actuator-space commands must be handled inside `Proper.jl`, route the
+   projection through the coordinate-grid interpolation kernel.
+3. GPU Zernike map generation only if per-frame Zernike updates are part of a
+   real workload.
+4. Keep FITS I/O, PSD map generation, fitting routines, plotting, and
+   calibration-style helpers host-side unless profiling shows they are inside a
+   repeated run loop.
+
+Status:
+- Core propagation and prepared batch execution are GPU-capable.
+- GPU-native coordinate-grid cubic convolution is implemented for backend
+  arrays with explicit failure for unsupported scalar point sampling.
+- Full actuator-space `prop_dm` remains a compatibility adapter, not the
+  recommended HIL hot path.
+
 ## Benchmark Commands
 ```bash
 ./scripts/benchmark_cpu_gpu.sh
