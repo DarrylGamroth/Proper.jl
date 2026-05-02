@@ -108,6 +108,7 @@ function bench_cuda_supported_kernels()
             "prop_wts" => wavefront_stats["prop_wts"],
             "prop_stw" => wavefront_stats["prop_stw"],
             "prop_circular_aperture" => wavefront_stats["prop_circular_aperture"],
+            "prop_dm_direct_map" => wavefront_stats["prop_dm_direct_map"],
             "prop_end_mutating" => wavefront_stats["prop_end_mutating"],
             "prop_rotate_mutating" => trial_stats(r),
             "prop_magnify_quick_mutating" => trial_stats(m),

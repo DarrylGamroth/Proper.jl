@@ -157,6 +157,30 @@ function _gpu_map_apply_smoke!(
     @test isapprox(Array(wf_psd_apply_gpu.field), wf_psd_apply_cpu.field; atol=3f-4, rtol=1f-3)
 end
 
+function _gpu_direct_dm_smoke!(wf_gpu, gpu_real_matrix, expected_backend_array_type, sync!)
+    n = size(wf_gpu.field, 1)
+    dm_cpu = fill(Float32(1f-9), n, n)
+    dm_gpu = copyto!(similar(gpu_real_matrix, size(dm_cpu)...), dm_cpu)
+
+    wf_dm_gpu = Proper.WaveFront(similar(wf_gpu.field), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
+    fill!(wf_dm_gpu.field, ComplexF32(1))
+    wf_dm_cpu = Proper.WaveFront(fill(ComplexF32(1), n, n), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
+    @test prop_dm(wf_dm_gpu, dm_gpu) === wf_dm_gpu
+    sync!()
+    prop_dm(wf_dm_cpu, dm_cpu)
+    @test wf_dm_gpu.field isa expected_backend_array_type
+    @test isapprox(Array(wf_dm_gpu.field), wf_dm_cpu.field; atol=1f-5, rtol=1f-5)
+
+    wf_mirror_gpu = Proper.WaveFront(similar(wf_gpu.field), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
+    fill!(wf_mirror_gpu.field, ComplexF32(1))
+    wf_mirror_cpu = Proper.WaveFront(fill(ComplexF32(1), n, n), wf_gpu.wavelength_m, wf_gpu.sampling_m, wf_gpu.z_m, wf_gpu.beam_diameter_m)
+    prop_dm(wf_mirror_gpu, dm_gpu; mirror=true)
+    sync!()
+    prop_dm(wf_mirror_cpu, dm_cpu; mirror=true)
+    @test wf_mirror_gpu.field isa expected_backend_array_type
+    @test isapprox(Array(wf_mirror_gpu.field), wf_mirror_cpu.field; atol=1f-5, rtol=1f-5)
+end
+
 @testset "R2 trait-driven routing" begin
     @testset "Style dispatch for cubic convolution" begin
         struct TestInterpStyle <: Proper.InterpStyle end
@@ -441,6 +465,7 @@ end
             @test _warmed_gpu_stw_alloc(wf_alloc, 0.01f0, ctx, CUDA.synchronize) <= GPU_WARM_STW_ALLOC_MAX
             @test _warmed_gpu_end_real_alloc(out_alloc, wf_alloc, CUDA.synchronize) <= GPU_WARM_END_REAL_ALLOC_MAX
             @test _warmed_gpu_end_complex_alloc(similar(wf_alloc.field), wf_alloc, CUDA.synchronize) <= GPU_WARM_END_COMPLEX_ALLOC_MAX
+            _gpu_direct_dm_smoke!(wf_alloc, CUDA.zeros(Float32, 16, 16), CUDA.CuArray, CUDA.synchronize)
             _gpu_map_apply_smoke!(wf_alloc, CUDA.zeros(Float32, 16, 16), CUDA.CuArray, CUDA.synchronize)
         else
             @test true
@@ -520,6 +545,7 @@ end
             @test _warmed_gpu_stw_alloc(wf_alloc, 0.01f0, ctx, AMDGPU.synchronize) <= GPU_WARM_STW_ALLOC_MAX
             @test _warmed_gpu_end_real_alloc(out_alloc, wf_alloc, AMDGPU.synchronize) <= GPU_WARM_END_REAL_ALLOC_MAX
             @test _warmed_gpu_end_complex_alloc(similar(wf_alloc.field), wf_alloc, AMDGPU.synchronize) <= GPU_WARM_END_COMPLEX_ALLOC_MAX
+            _gpu_direct_dm_smoke!(wf_alloc, AMDGPU.zeros(Float32, 16, 16), AMDGPU.ROCArray, AMDGPU.synchronize)
         else
             @test true
         end

@@ -13,6 +13,7 @@ const CUDA_WAVEFRONT_KERNEL_ORDER = (
     "prop_wts",
     "prop_stw",
     "prop_circular_aperture",
+    "prop_dm_direct_map",
     "prop_end_mutating",
 )
 
@@ -88,6 +89,9 @@ function build_cuda_wavefront_kernel_cases(::Type{T}, grid_n::Integer) where {T<
 
     wf_a = cuda_wavefront_begin(T, 2.4, 0.55e-6, grid_n; beam_diam_fraction=diam_frac)
 
+    wf_dm = cuda_wavefront_begin(T, 2.4, 0.55e-6, grid_n; beam_diam_fraction=diam_frac)
+    dm_map = CUDA.fill(T(1e-9), grid_n, grid_n)
+
     wf_e = cuda_wavefront_begin(T, 2.4, 0.55e-6, grid_n; beam_diam_fraction=diam_frac)
     prop_circular_aperture(wf_e, radius)
     out_end = cuda_zeros(T, grid_n, grid_n)
@@ -97,6 +101,7 @@ function build_cuda_wavefront_kernel_cases(::Type{T}, grid_n::Integer) where {T<
     snap_w = capture_wavefront_state(wf_w)
     snap_s = capture_wavefront_state(wf_s)
     snap_a = capture_wavefront_state(wf_a)
+    snap_dm = capture_wavefront_state(wf_dm)
     snap_e = capture_wavefront_state(wf_e)
     cuda_sync()
 
@@ -107,6 +112,7 @@ function build_cuda_wavefront_kernel_cases(::Type{T}, grid_n::Integer) where {T<
     prop_wts(wf_w, distance, ctx_w)
     prop_stw(wf_s, distance, ctx_s)
     prop_circular_aperture(wf_a, radius)
+    prop_dm(wf_dm, dm_map)
     prop_end!(out_end, wf_e)
     cuda_sync()
 
@@ -130,6 +136,10 @@ function build_cuda_wavefront_kernel_cases(::Type{T}, grid_n::Integer) where {T<
         prop_circular_aperture=CUDABenchmarkCase(
             () -> (restore_wavefront_state!(wf_a, snap_a); cuda_sync()),
             () -> prop_circular_aperture(wf_a, radius),
+        ),
+        prop_dm_direct_map=CUDABenchmarkCase(
+            () -> (restore_wavefront_state!(wf_dm, snap_dm); cuda_sync()),
+            () -> prop_dm(wf_dm, dm_map),
         ),
         prop_end_mutating=CUDABenchmarkCase(
             () -> (restore_wavefront_state!(wf_e, snap_e); cuda_sync()),

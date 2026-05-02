@@ -37,6 +37,8 @@ function bench_supported_kernels()
     prop_wts(wf_s, 0.01, ctx_s)
 
     wf_a = prop_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
+    wf_dm = prop_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
+    dm_map = fill(1e-9, nprop, nprop)
     wf_e = prop_begin(2.4, 0.55e-6, nprop; beam_diam_fraction=0.5)
     prop_circular_aperture(wf_e, 0.6)
     out_end = zeros(Float64, nprop, nprop)
@@ -67,6 +69,7 @@ function bench_supported_kernels()
     snap_w = capture_wavefront_state(wf_w)
     snap_s = capture_wavefront_state(wf_s)
     snap_a = capture_wavefront_state(wf_a)
+    snap_dm = capture_wavefront_state(wf_dm)
     snap_e = capture_wavefront_state(wf_e)
 
     # Warmup: exclude compilation from the reported timings.
@@ -76,6 +79,7 @@ function bench_supported_kernels()
     prop_wts(wf_w, 0.01, ctx_w)
     prop_stw(wf_s, 0.01, ctx_s)
     prop_circular_aperture(wf_a, 0.6)
+    prop_dm(wf_dm, dm_map)
     prop_end!(out_end, wf_e)
     prop_rotate!(rot_out, img, 12.0, ctx_img)
     prop_magnify!(mag_out, img, 1.1, mag_quick_opts, ctx_img)
@@ -105,6 +109,10 @@ function bench_supported_kernels()
     a = run(@benchmarkable begin
         prop_circular_aperture($wf_a, 0.6)
     end setup=(restore_wavefront_state!($wf_a, $snap_a)) evals=1 samples=samples)
+
+    dm = run(@benchmarkable begin
+        prop_dm($wf_dm, $dm_map)
+    end setup=(restore_wavefront_state!($wf_dm, $snap_dm)) evals=1 samples=samples)
 
     e = run(@benchmarkable begin
         prop_end!($out_end, $wf_e)
@@ -151,6 +159,7 @@ function bench_supported_kernels()
             "prop_wts" => trial_stats(w),
             "prop_stw" => trial_stats(s),
             "prop_circular_aperture" => trial_stats(a),
+            "prop_dm_direct_map" => trial_stats(dm),
             "prop_end_mutating" => trial_stats(e),
             "prop_rotate_mutating" => trial_stats(r),
             "prop_magnify_quick_mutating" => trial_stats(m),
