@@ -32,11 +32,34 @@ mutable struct PreparedModel{ID,P,B,A}
     assets::A
 end
 
+abstract type HotCallContextActivation end
+struct HotCallContextActive <: HotCallContextActivation end
+struct HotCallContextInactive <: HotCallContextActivation end
+
+@inline hot_call_context_activation(active::Bool) = active ? HotCallContextActive() : HotCallContextInactive()
+
+struct PreparedHotCall{F,T<:AbstractFloat,CTX,KW,ACT<:HotCallContextActivation}
+    routine::F
+    wavelength_m::T
+    gridsize::Int
+    context::CTX
+    kwargs::KW
+end
+
 @inline prepared_context(prepared::PreparedPrescription) = prepared.context
 @inline prepared_prescription(batch::PreparedBatch) = batch.prepared
 @inline prepared_prescription(model::PreparedModel) = model.prepared
 @inline prepared_batch(model::PreparedModel) = model.batch
 @inline prepared_assets(model::PreparedModel) = model.assets
+@inline prepared_context(call::PreparedHotCall) = call.context
+
+function prepared_context(batch::PreparedBatch, slot::Integer)
+    slot > 0 || throw(ArgumentError("slot must be positive"))
+    contexts = ensure_prepared_batch_contexts!(batch, slot)
+    return contexts[slot]
+end
+
+prepared_context(model::PreparedModel, slot::Integer) = prepared_context(model.batch, slot)
 
 @inline function _prepared_context_with_precision(
     context::Union{Nothing,RunContext},
@@ -231,4 +254,72 @@ function prepare_prescription(
     fn = resolve_prescription_routine(routine_name)
     ctx = _prepared_context_with_precision(context, precision)
     return PreparedPrescription(fn, λm, Int(gridsize), ctx, (; kwargs...), PASSVALUE)
+end
+
+@inline function _prepared_hot_call(
+    ::ACT,
+    prepared::PreparedPrescription,
+    context,
+    kwargs::NamedTuple,
+) where {ACT<:HotCallContextActivation}
+    prepared.passvalue === nothing ||
+        throw(ArgumentError("prepare_hot_call only supports native Julia keyword prescriptions; PASSVALUE remains supported through prop_run"))
+    merged_kwargs = merge(prepared.kwargs, kwargs)
+    return PreparedHotCall{typeof(prepared.routine),typeof(prepared.wavelength_m),typeof(context),typeof(merged_kwargs),ACT}(
+        prepared.routine,
+        prepared.wavelength_m,
+        prepared.gridsize,
+        context,
+        merged_kwargs,
+    )
+end
+
+"""
+    prepare_hot_call(prepared; context=prepared.context, activate_context=true, kwargs...)
+    prepare_hot_call(batch; slot=1, activate_context=true, kwargs...)
+    prepare_hot_call(model; slot=1, activate_context=true, kwargs...)
+
+Prepare a lower-level hot-loop call object for native Julia prescriptions.
+
+Unlike `prop_run(model; kwargs...)`, this resolves slot context, model assets,
+and keyword merging once. Use it when the same prepared prescription is invoked
+many times with stable payload and workspace objects.
+
+`PASSVALUE` compatibility is intentionally excluded from this API; use
+`prop_run` for upstream-style compatibility adapters.
+
+Set `activate_context=false` only when the prescription explicitly passes the
+stored context to context-aware operations such as `prop_begin!(...;
+context=...)`, `prop_lens(..., ctx)`, and `prop_propagate(..., ctx)`.
+"""
+function prepare_hot_call(
+    prepared::PreparedPrescription;
+    context=prepared.context,
+    activate_context::Bool=true,
+    kwargs...,
+)
+    return _prepared_hot_call(hot_call_context_activation(activate_context), prepared, context, (; kwargs...))
+end
+
+function prepare_hot_call(
+    batch::PreparedBatch;
+    slot::Integer=1,
+    activate_context::Bool=true,
+    kwargs...,
+)
+    slot > 0 || throw(ArgumentError("slot must be positive"))
+    contexts = ensure_prepared_batch_contexts!(batch, slot)
+    return prepare_hot_call(batch.prepared; context=contexts[slot], activate_context=activate_context, kwargs...)
+end
+
+function prepare_hot_call(
+    model::PreparedModel;
+    slot::Integer=1,
+    activate_context::Bool=true,
+    kwargs...,
+)
+    assets = prepared_assets(model, slot)
+    merged_kwargs = assets === nothing ? (; kwargs...) :
+        (assets isa NamedTuple ? merge(assets, (; kwargs...)) : merge((; assets=assets), (; kwargs...)))
+    return prepare_hot_call(model.batch; slot=slot, activate_context=activate_context, merged_kwargs...)
 end

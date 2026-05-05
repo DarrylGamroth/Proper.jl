@@ -159,6 +159,8 @@ Prefer explicit Julia keywords or prepared assets when:
 - the model is now Julia-native
 - the same assets are reused across runs
 - the call surface is stable enough to type explicitly
+- passing typed integration payloads, such as AO/HIL state from another Julia
+  package
 
 For new Julia-native prescriptions, prefer:
 
@@ -172,8 +174,14 @@ over a dictionary-only signature. A compatibility wrapper may still translate
 `PASSVALUE=Dict("use_errors" => true, "occulter_type" => "GAUSSIAN")` into
 those keywords at the `prop_run` boundary.
 
+For AO/HIL integrations, prefer `prop_run(model; payload=payload)` over
+`prop_run(model; PASSVALUE=payload)`. Reserve `PASSVALUE` for upstream-style
+ports or parity workflows.
+
 Use symbols for user-facing selectors (`:gaussian`, `:solid`) and normalize to
-typed singleton values internally when dispatch clarifies the implementation.
+concrete singleton selector types internally when dispatch clarifies the
+implementation. Do not use `Val(:selector)` as the normal implementation
+interface for semantic options.
 
 ## Prepared Execution Mental Model
 
@@ -202,6 +210,17 @@ Concrete translation:
 
 For GPU-oriented throughput work, that last form is the intended public sweep
 surface.
+
+For fixed-payload real-time loops, prepare the model normally and then bind a
+lower-level hot call once:
+
+| MATLAB | Python | Julia |
+| --- | --- | --- |
+| `prop_run('model', lambda_um, n, PASSVALUE)` | `proper.prop_run(model, lambda_um, n, PASSVALUE=passvalue)` | `model = prepare_model(my_model, lambda_um, n; pool_size=1)` then `hot = prepare_hot_call(model; payload=payload)` and `psf, sampling = prop_run_hot(hot)` |
+
+Use this only when the prescription uses native Julia keywords and the payload
+objects are reused across frames. Keep `PASSVALUE` on `prop_run` for upstream
+compatibility and parity harnesses.
 
 ## Known Semantics Adopted In Julia
 - `prop_resamplemap`: independent `xshift`/`yshift` handling

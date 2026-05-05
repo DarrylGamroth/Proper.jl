@@ -139,6 +139,9 @@ end
     @test Base.isexported(Proper, :prepare_prescription_batch)
     @test Base.isexported(Proper, :prepare_asset_pool)
     @test Base.isexported(Proper, :prepare_model)
+    @test Base.isexported(Proper, :prepare_hot_call)
+    @test Base.isexported(Proper, :prepared_context)
+    @test Base.isexported(Proper, :prop_run_hot)
 
     @test Base.isexported(Proper, :prop_dftidefs)
 

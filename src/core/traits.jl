@@ -6,6 +6,12 @@ struct UnknownBackend <: BackendStyle end
 
 backend_style(::Type{<:AbstractArray}) = CPUBackend()
 
+abstract type FeatureFlagStyle end
+struct FeatureEnabled <: FeatureFlagStyle end
+struct FeatureDisabled <: FeatureFlagStyle end
+
+@inline feature_flag(enabled::Bool) = enabled ? FeatureEnabled() : FeatureDisabled()
+
 abstract type ArrayLayoutStyle end
 struct GenericLayout <: ArrayLayoutStyle end
 struct StridedLayout <: ArrayLayoutStyle end
@@ -94,11 +100,11 @@ abstract type GeometryExecStyle end
 struct GeometryLoopExecStyle <: GeometryExecStyle end
 struct GeometryKAExecStyle <: GeometryExecStyle end
 
-@inline geometry_exec_style(::Val{true}) = GeometryKAExecStyle()
-@inline geometry_exec_style(::Val{false}) = GeometryLoopExecStyle()
+@inline geometry_exec_style(::FeatureEnabled) = GeometryKAExecStyle()
+@inline geometry_exec_style(::FeatureDisabled) = GeometryLoopExecStyle()
 
 @inline function geometry_exec_style(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
-    return geometry_exec_style(Val(ka_geometry_enabled(A, ny, nx)))
+    return geometry_exec_style(feature_flag(ka_geometry_enabled(A, ny, nx)))
 end
 
 abstract type SamplingKernelStyle end
@@ -120,11 +126,11 @@ abstract type SamplingExecStyle end
 struct SamplingLoopExecStyle <: SamplingExecStyle end
 struct SamplingKAExecStyle <: SamplingExecStyle end
 
-@inline sampling_exec_style(::Val{true}) = SamplingKAExecStyle()
-@inline sampling_exec_style(::Val{false}) = SamplingLoopExecStyle()
+@inline sampling_exec_style(::FeatureEnabled) = SamplingKAExecStyle()
+@inline sampling_exec_style(::FeatureDisabled) = SamplingLoopExecStyle()
 
 @inline function sampling_exec_style(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
-    return sampling_exec_style(Val(ka_sampling_enabled(A, ny, nx)))
+    return sampling_exec_style(feature_flag(ka_sampling_enabled(A, ny, nx)))
 end
 
 @inline function ka_cubic_grid_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}

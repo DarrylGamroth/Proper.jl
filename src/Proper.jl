@@ -96,10 +96,12 @@ export BackendStyle, CPUBackend, CUDABackend, AMDGPUBackend, UnknownBackend, FFT
 export InterpStyle, GenericInterpStyle, CubicInterpStyle, RNGStyle, GenericRNGStyle
 export ShiftKernelStyle, ShiftLoopStyle, ShiftKAStyle
 export RunContext, FFTEstimateStyle, FFTMeasureStyle, ProperConfig, ProperRuntime, WaveFront
-export PreparedPrescription, PreparedBatch, PreparedAssetPool, PreparedModel
+export PreparedPrescription, PreparedBatch, PreparedAssetPool, PreparedModel, PreparedHotCall
 export prepare_prescription, prepare_prescription_batch, prepare_asset_pool, prepare_model
+export prepare_hot_call
+export prepared_context
 export reset_prepared_batch!, reset_prepared_assets!, reset_prepared_model!
-export prop_wavefront, prop_begin, prop_end, prop_add_phase, prop_add_wavefront
+export prop_wavefront, prop_begin, prop_begin!, prop_end, prop_add_phase, prop_add_wavefront
 export prop_multiply, prop_divide, prop_shift_center
 export prop_shift_center!
 export prop_radius, prop_ellipse, prop_rectangle
@@ -120,12 +122,12 @@ export prop_pixellate!, prop_szoom!
 export prop_polygon!, prop_irregular_polygon!, prop_ellipse!, prop_rectangle!, prop_rounded_rectangle!
 export prop_dftidefs, prop_szoom
 export prop_cubic_conv, prop_define_entrance
-export prop_hex_wavefront, prop_hex_zernikes, prop_8th_order_mask
+export prop_hex_wavefront, prop_hex_zernikes, prop_8th_order_mask, prop_8th_order_mask!
 export prop_get_wavefront, prop_get_amplitude, prop_get_phase
 export prop_get_sampling, prop_get_sampling_radians, prop_get_sampling_arcsec
 export prop_get_wavelength, prop_get_z, prop_get_gridsize
 export prop_get_beamradius, prop_get_distancetofocus, prop_get_fratio
 export prop_get_nyquistsampling, prop_get_refradius
-export prop_run, prop_run_multi
+export prop_run, prop_run_hot, prop_run_multi
 
 end # module Proper

@@ -56,7 +56,7 @@ struct CubicCoordinateGridUnsupportedExecStyle <: CubicCoordinateGridExecStyle e
     ::CPUBackend,
     ::CPUBackend,
     ::InterpStyle,
-    ::Val{false},
+    ::FeatureDisabled,
 ) = CubicGridLoopExecStyle()
 
 @inline cubic_grid_exec_style(
@@ -65,7 +65,7 @@ struct CubicCoordinateGridUnsupportedExecStyle <: CubicCoordinateGridExecStyle e
     ::B,
     ::B,
     ::CubicInterpStyle,
-    ::Val{true},
+    ::FeatureEnabled,
 ) where {B<:BackendStyle} = CubicGridKAExecStyle()
 
 @inline cubic_grid_exec_style(
@@ -74,7 +74,7 @@ struct CubicCoordinateGridUnsupportedExecStyle <: CubicCoordinateGridExecStyle e
     ::CPUBackend,
     ::CPUBackend,
     ::InterpStyle,
-    ::Val,
+    ::FeatureFlagStyle,
 ) = CubicGridHostExecStyle()
 
 @inline cubic_grid_exec_style(
@@ -83,7 +83,7 @@ struct CubicCoordinateGridUnsupportedExecStyle <: CubicCoordinateGridExecStyle e
     ::BackendStyle,
     ::BackendStyle,
     ::InterpStyle,
-    ::Val,
+    ::FeatureFlagStyle,
 ) = CubicGridUnsupportedExecStyle()
 
 @inline cubic_coordinate_grid_exec_style(
@@ -92,7 +92,7 @@ struct CubicCoordinateGridUnsupportedExecStyle <: CubicCoordinateGridExecStyle e
     ::CPUBackend,
     ::CPUBackend,
     ::InterpStyle,
-    ::Val{false},
+    ::FeatureDisabled,
 ) = CubicCoordinateGridLoopExecStyle()
 
 @inline cubic_coordinate_grid_exec_style(
@@ -101,7 +101,7 @@ struct CubicCoordinateGridUnsupportedExecStyle <: CubicCoordinateGridExecStyle e
     ::B,
     ::B,
     ::CubicInterpStyle,
-    ::Val{true},
+    ::FeatureEnabled,
 ) where {B<:BackendStyle} = CubicCoordinateGridKAExecStyle()
 
 @inline cubic_coordinate_grid_exec_style(
@@ -110,7 +110,7 @@ struct CubicCoordinateGridUnsupportedExecStyle <: CubicCoordinateGridExecStyle e
     ::CPUBackend,
     ::CPUBackend,
     ::InterpStyle,
-    ::Val,
+    ::FeatureFlagStyle,
 ) = CubicCoordinateGridHostExecStyle()
 
 @inline cubic_coordinate_grid_exec_style(
@@ -119,7 +119,7 @@ struct CubicCoordinateGridUnsupportedExecStyle <: CubicCoordinateGridExecStyle e
     ::BackendStyle,
     ::BackendStyle,
     ::InterpStyle,
-    ::Val,
+    ::FeatureFlagStyle,
 ) = CubicCoordinateGridUnsupportedExecStyle()
 
 @inline function _prop_cubic_conv_grid!(
@@ -247,7 +247,7 @@ function prop_cubic_conv_grid!(out::AbstractMatrix, sty::InterpStyle, a::Abstrac
         backend_style(typeof(out)),
         backend_style(typeof(a)),
         sty,
-        Val(ka_cubic_grid_enabled(typeof(out), oy, ox)),
+        feature_flag(ka_cubic_grid_enabled(typeof(out), oy, ox)),
     )
     return _prop_cubic_conv_grid!(sty_exec, out, sty, a, xval, yval)
 end
@@ -268,7 +268,7 @@ function prop_cubic_conv_coordinate_grid!(
         backend_style(typeof(out)),
         backend_style(typeof(a)),
         sty,
-        Val(ka_cubic_grid_enabled(typeof(out), oy, ox)),
+        feature_flag(ka_cubic_grid_enabled(typeof(out), oy, ox)),
     )
     return _prop_cubic_conv_coordinate_grid!(sty_exec, out, sty, a, xgrid, ygrid)
 end

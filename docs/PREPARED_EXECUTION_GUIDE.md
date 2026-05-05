@@ -322,3 +322,65 @@ runs = [
 
 stack, samplings = prop_run_multi(runs)
 ```
+
+### Lower-Level Hot Calls
+Use `prepare_hot_call` only after the prescription call shape is stable and you
+need to remove repeated model asset resolution, slot lookup, and keyword
+merging from a hot loop.
+
+```julia
+model = prepare_model(my_prescription, 0.55, 256; pool_size=1)
+hot = prepare_hot_call(model; payload=payload)
+
+psf, sampling = prop_run_hot(hot)
+```
+
+For most users, `prop_run(model; kwargs...)` remains the right prepared API.
+`prop_run_hot(hot)` is a lower-level execution primitive for application loops
+where the same mutable payload and output buffers are reused frame after frame.
+
+`prepare_hot_call` intentionally supports native Julia keyword prescriptions
+only. `PASSVALUE` remains available through `prop_run` as the upstream
+compatibility adapter, but it is not part of this lower-level hot-loop surface.
+
+By default, hot calls still activate the stored `RunContext` around the
+prescription:
+
+```julia
+hot = prepare_hot_call(model; payload=payload)
+```
+
+Set `activate_context=false` only when the prescription explicitly passes the
+stored context to context-aware operations. This avoids task-local context setup
+in the hot loop, but the prescription must own that explicit context threading:
+
+```julia
+function hil_prescription(λm, n; payload, wavefront, output, run_context)
+    wf = prop_begin!(wavefront, payload.diam_m, λm; beam_diam_fraction=1.0)
+    prop_lens(wf, payload.focal_length_m, run_context, "science_lens")
+    return prop_end(wf, output)
+end
+
+ctx = RunContext(Matrix{Float32})
+model = prepare_model(hil_prescription, 0.55, 256; context=ctx, pool_size=1)
+run_context = prepared_context(model, 1)
+field = Matrix{ComplexF32}(undef, 256, 256)
+wavefront = prop_begin!(field, payload.diam_m, 0.55f-6;
+    beam_diam_fraction=1.0,
+    context=run_context,
+)
+output = Matrix{Float32}(undef, 256, 256)
+hot = prepare_hot_call(
+    model;
+    slot=1,
+    activate_context=false,
+    payload=payload,
+    wavefront=wavefront,
+    output=output,
+    run_context=run_context,
+)
+```
+
+This is the intended boundary for low-latency HIL and RTC integration: resolve
+all static structure once, reuse caller-owned arrays, and keep per-frame work
+limited to command updates plus propagation.

@@ -191,6 +191,12 @@ end
     out_model, s_model = prop_run(prepared_model)
     @test size(out_model) == (16, 16)
     @test s_model > 0
+    @test prepared_context(prepared_model, 1) === prepared_model.batch.contexts[1]
+    hot_call = prepare_hot_call(prepared_model; slot=1)
+    hot_out, hot_sampling = prop_run_hot(hot_call)
+    @test hot_call isa PreparedHotCall
+    @test size(hot_out) == (16, 16)
+    @test hot_sampling == s_model
     stack_model, samplings_model = prop_run_multi(prepared_model; PASSVALUE=passvals)
     @test size(stack_model) == (16, 16, 3)
     @test length(samplings_model) == 3
@@ -205,6 +211,7 @@ end
     out_pass, s_pass = prop_run(prepared_pass)
     @test size(out_pass) == (16, 16)
     @test s_pass > 0
+    @test_throws ArgumentError prepare_hot_call(prepared_pass)
 
     let ctx = RunContext(Matrix{Float32})
         function dummy_scoped(λm, n; kwargs...)
@@ -515,6 +522,31 @@ end
     m = prop_8th_order_mask(wf, 3.0; circular=true)
     @test size(m) == size(wf.field)
     @test 0.0 <= minimum(m) <= maximum(m) <= 1.0
+
+    field_buf = Matrix{ComplexF64}(undef, 64, 64)
+    wf_begin_mut = prop_begin!(field_buf, 1.0, 500e-9)
+    wf_begin_ref = prop_begin(1.0, 500e-9, 64)
+    @test wf_begin_mut.field === field_buf
+    @test wf_begin_mut.field == wf_begin_ref.field
+    @test wf_begin_mut.sampling_m == wf_begin_ref.sampling_m
+    prop_lens(wf_begin_mut, 2.0)
+    prop_begin!(wf_begin_mut, 2.0, 600e-9; beam_diam_fraction=1.0)
+    @test wf_begin_mut.field === field_buf
+    @test all(==(1 + 0im), wf_begin_mut.field)
+    @test wf_begin_mut.wavelength_m == 600e-9
+    @test wf_begin_mut.beam_diameter_m == 2.0
+    @test wf_begin_mut.sampling_m == 2.0 / 64
+    @test wf_begin_mut.reference_surface === Proper.PLANAR
+    @test wf_begin_mut.beam_type_old === Proper.INSIDE
+
+    wf_mut = prop_begin(1.0, 500e-9, 64)
+    mask_mut = zeros(Float64, size(wf_mut.field)...)
+    returned = prop_8th_order_mask!(mask_mut, wf_mut, 3.0; circular=true)
+    wf_ref = prop_begin(1.0, 500e-9, 64)
+    mask_ref = prop_8th_order_mask(wf_ref, 3.0; circular=true)
+    @test returned === mask_mut
+    @test mask_mut == mask_ref
+    @test wf_mut.field == wf_ref.field
 
     hz = prop_hex_zernikes(1:3, Float32[1e-9, -2e-9, 1e-9], 64, Float32(prop_get_sampling(wf)), 0.03f0)
     @test size(hz) == (64, 64)

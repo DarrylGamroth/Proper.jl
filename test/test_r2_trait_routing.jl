@@ -446,6 +446,13 @@ end
             prop_ptp(wf_ref, 0.01f0)
             prop_circular_aperture(wf_ref, 2.5f-4)
             @test isapprox(Array(wf.field), wf_ref.field; atol=1f-5, rtol=1f-5)
+            wf_mask = Proper.WaveFront(CUDA.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
+            wf_mask_ref = Proper.WaveFront(fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
+            mask = prop_8th_order_mask(wf_mask, 3f0; circular=true)
+            mask_ref = prop_8th_order_mask(wf_mask_ref, 3f0; circular=true)
+            @test mask isa CUDA.CuArray
+            @test isapprox(Array(mask), mask_ref; atol=1f-5, rtol=1f-5)
+            @test isapprox(Array(wf_mask.field), wf_mask_ref.field; atol=1f-5, rtol=1f-5)
             rect = prop_rectangle(wf, 5f-4, 4f-4)
             round = prop_rounded_rectangle(wf, 2f-4, 5f-4, 4f-4)
             out, sampling = prop_end(wf)
@@ -527,6 +534,13 @@ end
             wf_ref.reference_surface = Proper.PLANAR
             prop_ptp(wf_ref, 0.01f0)
             @test isapprox(Array(wf.field), wf_ref.field; atol=3f-4, rtol=1f-3)
+            wf_mask = Proper.WaveFront(AMDGPU.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
+            wf_mask_ref = Proper.WaveFront(fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
+            mask = prop_8th_order_mask(wf_mask, 3f0; circular=true)
+            mask_ref = prop_8th_order_mask(wf_mask_ref, 3f0; circular=true)
+            @test mask isa AMDGPU.ROCArray
+            @test isapprox(Array(mask), mask_ref; atol=3f-4, rtol=1f-3)
+            @test isapprox(Array(wf_mask.field), wf_mask_ref.field; atol=3f-4, rtol=1f-3)
             prop_circular_aperture(wf, 2.5f-4)
             @test wf.workspace.mask.mask isa AMDGPU.ROCArray
             prop_circular_aperture(wf_ref, 2.5f-4)

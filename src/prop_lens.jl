@@ -4,21 +4,20 @@ end
 
 @inline LensOptions(surface_name::AbstractString="") = LensOptions(String(surface_name))
 
-@inline _lens_phase(::Val{INSIDE_TO_INSIDE}, lens_fl::Real, r_beam_old::Real, r_beam::Real) = inv(lens_fl)
-@inline _lens_phase(::Val{INSIDE_TO_OUTSIDE}, lens_fl::Real, r_beam_old::Real, r_beam::Real) = inv(lens_fl) + inv(r_beam)
-@inline _lens_phase(::Val{OUTSIDE_TO_INSIDE}, lens_fl::Real, r_beam_old::Real, r_beam::Real) = inv(lens_fl) - inv(r_beam_old)
-
-@inline function _lens_phase(::Val{OUTSIDE_TO_OUTSIDE}, lens_fl::Real, r_beam_old::Real, r_beam::Real)
+@inline function _lens_phase(pt::PropagatorType, lens_fl::Real, r_beam_old::Real, r_beam::Real)
+    if pt === INSIDE_TO_INSIDE
+        return inv(lens_fl)
+    elseif pt === INSIDE_TO_OUTSIDE
+        return inv(lens_fl) + inv(r_beam)
+    elseif pt === OUTSIDE_TO_INSIDE
+        return inv(lens_fl) - inv(r_beam_old)
+    end
     if r_beam_old == 0
         return inv(lens_fl) + inv(r_beam)
     elseif r_beam == 0
         return inv(lens_fl) - inv(r_beam_old)
     end
     return inv(lens_fl) - inv(r_beam_old) + inv(r_beam)
-end
-
-@inline function _lens_phase(pt::PropagatorType, lens_fl::Real, r_beam_old::Real, r_beam::Real)
-    return _lens_phase(Val(pt), lens_fl, r_beam_old, r_beam)
 end
 
 @inline function _prop_lens!(wf::WaveFront, lens_fl::Real, opts::LensOptions, ctx::RunContext)

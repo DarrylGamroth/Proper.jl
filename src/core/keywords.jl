@@ -40,10 +40,12 @@ end
     Symbol(lowercase(String(kw_resolve(primary, secondary, default))))
 
 @inline function kw_lookup(kwargs::Base.Iterators.Pairs, key::Symbol, default=nothing)
-    lk = Symbol(lowercase(String(key)))
+    isempty(kwargs) && return default
     if haskey(kwargs, key)
         return kwargs[key]
-    elseif haskey(kwargs, lk)
+    end
+    lk = Symbol(lowercase(String(key)))
+    if haskey(kwargs, lk)
         return kwargs[lk]
     end
     return default
@@ -66,5 +68,8 @@ end
     return v === nothing ? nothing : String(v)
 end
 
-@inline kw_lookup_present(kwargs::Base.Iterators.Pairs, key::Symbol)::Bool =
-    haskey(kwargs, key) || haskey(kwargs, Symbol(lowercase(String(key))))
+@inline function kw_lookup_present(kwargs::Base.Iterators.Pairs, key::Symbol)::Bool
+    isempty(kwargs) && return false
+    haskey(kwargs, key) && return true
+    return haskey(kwargs, Symbol(lowercase(String(key))))
+end

@@ -3,53 +3,7 @@ struct PropagateOptions
 end
 
 @inline PropagateOptions(kwargs::Base.Iterators.Pairs) = PropagateOptions(kw_lookup_bool(kwargs, :TO_PLANE, false))
-
-@inline function _propagate_by_transition!(
-    wf::WaveFront,
-    z1::Real,
-    z2::Real,
-    dzv::Real,
-    ctx::RunContext,
-    ::Val{INSIDE_TO_INSIDE},
-)
-    return prop_ptp(wf, dzv, ctx)
-end
-
-@inline function _propagate_by_transition!(
-    wf::WaveFront,
-    z1::Real,
-    z2::Real,
-    dzv::Real,
-    ctx::RunContext,
-    ::Val{INSIDE_TO_OUTSIDE},
-)
-    prop_ptp(wf, wf.z_w0_m - z1, ctx)
-    return prop_wts(wf, z2 - wf.z_w0_m, ctx)
-end
-
-@inline function _propagate_by_transition!(
-    wf::WaveFront,
-    z1::Real,
-    z2::Real,
-    dzv::Real,
-    ctx::RunContext,
-    ::Val{OUTSIDE_TO_INSIDE},
-)
-    prop_stw(wf, wf.z_w0_m - z1, ctx)
-    return prop_ptp(wf, z2 - wf.z_w0_m, ctx)
-end
-
-@inline function _propagate_by_transition!(
-    wf::WaveFront,
-    z1::Real,
-    z2::Real,
-    dzv::Real,
-    ctx::RunContext,
-    ::Val{OUTSIDE_TO_OUTSIDE},
-)
-    prop_stw(wf, wf.z_w0_m - z1, ctx)
-    return prop_wts(wf, z2 - wf.z_w0_m, ctx)
-end
+@inline PropagateOptions(::Base.Pairs{Symbol,Union{},Nothing,@NamedTuple{}}) = PropagateOptions(false)
 
 @inline function _propagate_by_transition!(
     wf::WaveFront,
@@ -59,7 +13,17 @@ end
     ctx::RunContext,
     pt::PropagatorType,
 )
-    return _propagate_by_transition!(wf, z1, z2, dzv, ctx, Val(pt))
+    if pt === INSIDE_TO_INSIDE
+        return prop_ptp(wf, dzv, ctx)
+    elseif pt === INSIDE_TO_OUTSIDE
+        prop_ptp(wf, wf.z_w0_m - z1, ctx)
+        return prop_wts(wf, z2 - wf.z_w0_m, ctx)
+    elseif pt === OUTSIDE_TO_INSIDE
+        prop_stw(wf, wf.z_w0_m - z1, ctx)
+        return prop_ptp(wf, z2 - wf.z_w0_m, ctx)
+    end
+    prop_stw(wf, wf.z_w0_m - z1, ctx)
+    return prop_wts(wf, z2 - wf.z_w0_m, ctx)
 end
 
 @inline function _prop_propagate!(wf::WaveFront, dz::Real, opts::PropagateOptions)

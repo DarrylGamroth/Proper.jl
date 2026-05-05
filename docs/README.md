@@ -11,6 +11,8 @@ planning/audit records from the port effort.
 - If you are writing or restructuring prescriptions in Julia after the initial
   port:
   - [Prescription authoring guide](PRESCRIPTION_AUTHORING_GUIDE.md)
+- If you are integrating with AO/HIL runtimes such as `AdaptiveOpticsSim.jl`:
+  - [Adaptive optics integration guide](ADAPTIVE_OPTICS_INTEGRATION.md)
 - For the precise stable public surface:
   - [API contract](api_contract.md)
 

@@ -47,8 +47,10 @@ Recommended data path:
 1. RTC emits raw actuator commands.
 2. `AdaptiveOpticsSim.jl` or an application-specific reconstructor converts
    actuator commands into a wavefront-sampled DM surface.
-3. `Proper.jl` receives that sampled surface on the desired backend and applies
-   it with the simple `prop_dm(wf, dm_surface)` path.
+3. `Proper.jl` receives a typed payload through ordinary Julia keywords. Use
+   `prop_add_phase(wf, opd_map)` when the AO runtime provides total sampled
+   OPD, or `prop_dm(wf, dm_surface)` when the Proper prescription intentionally
+   owns the sampled DM surface.
 4. Prepared `Proper.jl` execution performs propagation and detector-plane
    sampling with preallocated contexts.
 
@@ -75,6 +77,9 @@ Status:
   arrays with explicit failure for unsupported scalar point sampling.
 - Full actuator-space `prop_dm` remains a compatibility adapter, not the
   recommended HIL hot path.
+
+The user-facing integration contract is documented in
+[`ADAPTIVE_OPTICS_INTEGRATION.md`](ADAPTIVE_OPTICS_INTEGRATION.md).
 
 ## Benchmark Commands
 ```bash

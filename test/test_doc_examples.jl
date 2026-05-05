@@ -72,6 +72,20 @@ using Proper
         @test sampling == 1.0e-3
     end
 
+    @testset "prepare_hot_call example" begin
+        function hot_demo(λm, n; payload)
+            psf = fill(Float64(payload.gain), n, n)
+            return psf, 1.0e-3
+        end
+
+        payload = (gain=2.5,)
+        model = prepare_model(hot_demo, 0.55, 8; pool_size=1)
+        hot = prepare_hot_call(model; payload=payload)
+        psf, sampling = prop_run_hot(hot)
+        @test psf[1, 1] == 2.5
+        @test sampling == 1.0e-3
+    end
+
     @testset "vector of prepared runs example" begin
         sweep_demo(λm, n) = prop_end(prop_begin(1.0f0, λm, n))
 

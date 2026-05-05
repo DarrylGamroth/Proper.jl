@@ -113,9 +113,9 @@ struct ShiftedCircleStyle <: CircleCenterExecStyle end
 @inline shifted_circle_apply_exec_style(::GeometryKAStyle) = ShiftedCircleKAExecStyle()
 @inline shifted_circle_apply_exec_style(::GeometryKernelStyle) = ShiftedCircleMaskExecStyle()
 @inline shifted_circle_apply_exec_style(::Type{A}) where {A<:AbstractArray} = shifted_circle_apply_exec_style(geometry_kernel_style(A))
-@inline circle_center_exec_style(::Val{true}) = CenteredCircleStyle()
-@inline circle_center_exec_style(::Val{false}) = ShiftedCircleStyle()
-@inline circle_center_exec_style(geom::CircleGeometry) = circle_center_exec_style(Val(iszero(geom.xoffset_pix) && iszero(geom.yoffset_pix)))
+@inline circle_center_exec_style(::FeatureEnabled) = CenteredCircleStyle()
+@inline circle_center_exec_style(::FeatureDisabled) = ShiftedCircleStyle()
+@inline circle_center_exec_style(geom::CircleGeometry) = circle_center_exec_style(feature_flag(iszero(geom.xoffset_pix) && iszero(geom.yoffset_pix)))
 
 @inline ellipse_options(opts::CircleOptions{T}) where {T<:AbstractFloat} = EllipseOptions{T}(opts.norm, opts.dark, zero(T))
 
@@ -198,7 +198,24 @@ end
 end
 
 """Multiply the current wavefront by a circular clear aperture."""
-function prop_circular_aperture(wf::WaveFront, radius::Real, xc::Real=0.0, yc::Real=0.0; kwargs...)
-    opts = CircleOptions(real(eltype(wf.field)), kwargs)
+function prop_circular_aperture(
+    wf::WaveFront,
+    radius::Real,
+    xc::Real=0.0,
+    yc::Real=0.0;
+    NORM=nothing,
+    norm=nothing,
+    DARK=nothing,
+    dark=nothing,
+    kwargs...,
+)
+    T = real(eltype(wf.field))
+    normv = kw_resolve_bool(NORM, norm, false)
+    darkv = kw_resolve_bool(DARK, dark, false)
+    if !isempty(kwargs)
+        normv = normv || kw_lookup_bool(kwargs, :NORM, false)
+        darkv = darkv || kw_lookup_bool(kwargs, :DARK, false)
+    end
+    opts = CircleOptions{T}(normv, darkv)
     return _apply_shifted_circle!(wf, radius, xc, yc, opts, false)
 end

@@ -694,7 +694,7 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     are normalized into keyword arguments before calling the prescription.
   - Semantic selectors should normalize strings/symbols at API boundaries and
     use concrete singleton selector types internally when dispatch improves
-    clarity.
+    clarity; `Val(:selector)` is not the default implementation interface.
 - Consequences:
   - Native examples should show calls such as `occulter=:gaussian` while still
     accepting `PASSVALUE=Dict("occulter_type" => "GAUSSIAN")`.

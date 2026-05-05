@@ -88,6 +88,34 @@ function _prop_run_resolved(
     return _prop_run_finalize(result)
 end
 
+@inline function _call_hot_prescription(fn::F, λm, gridsize::Integer, kwargs::NamedTuple) where {F<:Function}
+    return fn(λm, gridsize; kwargs...)
+end
+
+@inline function _prop_run_hot(call::PreparedHotCall{F,T,CTX,KW,HotCallContextActive}) where {F,T,CTX,KW}
+    result = with_run_context(call.context) do
+        _call_hot_prescription(call.routine, call.wavelength_m, call.gridsize, call.kwargs)
+    end
+    return _prop_run_finalize(result)
+end
+
+@inline function _prop_run_hot(call::PreparedHotCall{F,T,CTX,KW,HotCallContextInactive}) where {F,T,CTX,KW}
+    result = _call_hot_prescription(call.routine, call.wavelength_m, call.gridsize, call.kwargs)
+    return _prop_run_finalize(result)
+end
+
+"""
+    prop_run_hot(call::PreparedHotCall)
+
+Execute a pre-bound native Julia prescription hot call.
+
+This bypasses per-call model asset resolution, slot lookup, and keyword merging.
+Construct `call` with `prepare_hot_call`.
+"""
+function prop_run_hot(call::PreparedHotCall)
+    return _prop_run_hot(call)
+end
+
 """
     prop_run(routine_name, lambda0_microns, gridsize; PASSVALUE=nothing, context=nothing, kwargs...)
     prop_run(prepared::PreparedPrescription; PASSVALUE=prepared.passvalue, context=prepared.context, kwargs...)
@@ -171,3 +199,5 @@ function prop_run(
         (assets isa NamedTuple ? merge(assets, (; kwargs...)) : merge((; assets=assets), (; kwargs...)))
     return prop_run(model.batch; PASSVALUE=PASSVALUE, slot=slot, merged_kwargs...)
 end
+
+prop_run(call::PreparedHotCall) = prop_run_hot(call)

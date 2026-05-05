@@ -1,7 +1,12 @@
-@enum RotateMethod ROTATE_LINEAR ROTATE_CUBIC
+abstract type AbstractRotateMethod end
+struct RotateLinear <: AbstractRotateMethod end
+struct RotateCubic <: AbstractRotateMethod end
 
-struct RotateOptions{T<:AbstractFloat}
-    method::RotateMethod
+const ROTATE_LINEAR = RotateLinear()
+const ROTATE_CUBIC = RotateCubic()
+
+struct RotateOptions{T<:AbstractFloat,M<:AbstractRotateMethod}
+    method::M
     cx::T
     cy::T
     sx::T
@@ -9,7 +14,11 @@ struct RotateOptions{T<:AbstractFloat}
     missing::T
 end
 
-@inline function _rotate_method(kwargs::Base.Iterators.Pairs)::RotateMethod
+@inline function RotateOptions{T}(method::M, cx::T, cy::T, sx::T, sy::T, missing::T) where {T<:AbstractFloat,M<:AbstractRotateMethod}
+    return RotateOptions{T,M}(method, cx, cy, sx, sy, missing)
+end
+
+@inline function _rotate_method(kwargs::Base.Iterators.Pairs)
     m = kw_lookup_string(kwargs, :METH, nothing)
     if m !== nothing
         return lowercase(m) == "linear" ? ROTATE_LINEAR : ROTATE_CUBIC
@@ -91,17 +100,17 @@ struct RotateKAExecStyle <: RotateExecStyle end
 struct RotateHostExecStyle <: RotateExecStyle end
 struct RotateUnsupportedExecStyle <: RotateExecStyle end
 
-@inline rotate_ka_support(::Val{ROTATE_LINEAR}, ::InterpStyle) = Val(true)
-@inline rotate_ka_support(::Val{ROTATE_CUBIC}, ::CubicInterpStyle) = Val(true)
-@inline rotate_ka_support(::Val{ROTATE_CUBIC}, ::InterpStyle) = Val(false)
+@inline rotate_ka_support(::RotateLinear, ::InterpStyle) = FeatureEnabled()
+@inline rotate_ka_support(::RotateCubic, ::CubicInterpStyle) = FeatureEnabled()
+@inline rotate_ka_support(::RotateCubic, ::InterpStyle) = FeatureDisabled()
 
 @inline rotate_exec_style(
     ::StridedLayout,
     ::StridedLayout,
     ::CPUBackend,
     ::CPUBackend,
-    ::Val{false},
-    ::Val,
+    ::FeatureDisabled,
+    ::FeatureFlagStyle,
 ) = RotateLoopExecStyle()
 
 @inline rotate_exec_style(
@@ -109,8 +118,8 @@ struct RotateUnsupportedExecStyle <: RotateExecStyle end
     ::StridedLayout,
     ::CPUBackend,
     ::CPUBackend,
-    ::Val{true},
-    ::Val{false},
+    ::FeatureEnabled,
+    ::FeatureDisabled,
 ) = RotateLoopExecStyle()
 
 @inline rotate_exec_style(
@@ -118,8 +127,8 @@ struct RotateUnsupportedExecStyle <: RotateExecStyle end
     ::ArrayLayoutStyle,
     ::B,
     ::B,
-    ::Val{true},
-    ::Val{true},
+    ::FeatureEnabled,
+    ::FeatureEnabled,
 ) where {B<:BackendStyle} = RotateKAExecStyle()
 
 @inline rotate_exec_style(
@@ -127,8 +136,8 @@ struct RotateUnsupportedExecStyle <: RotateExecStyle end
     ::ArrayLayoutStyle,
     ::CPUBackend,
     ::CPUBackend,
-    ::Val,
-    ::Val,
+    ::FeatureFlagStyle,
+    ::FeatureFlagStyle,
 ) = RotateHostExecStyle()
 
 @inline rotate_exec_style(
@@ -136,12 +145,12 @@ struct RotateUnsupportedExecStyle <: RotateExecStyle end
     ::ArrayLayoutStyle,
     ::BackendStyle,
     ::BackendStyle,
-    ::Val,
-    ::Val,
+    ::FeatureFlagStyle,
+    ::FeatureFlagStyle,
 ) = RotateUnsupportedExecStyle()
 
 @inline function _prop_rotate_ka!(
-    ::Val{ROTATE_LINEAR},
+    ::RotateLinear,
     out::AbstractMatrix,
     old_image::AbstractMatrix,
     c::Real,
@@ -154,7 +163,7 @@ struct RotateUnsupportedExecStyle <: RotateExecStyle end
 end
 
 @inline function _prop_rotate_ka!(
-    ::Val{ROTATE_CUBIC},
+    ::RotateCubic,
     out::AbstractMatrix,
     old_image::AbstractMatrix,
     c::Real,
@@ -166,7 +175,7 @@ end
 end
 
 @inline function _prop_rotate_loop!(
-    ::Val{ROTATE_LINEAR},
+    ::RotateLinear,
     sty::InterpStyle,
     out::StridedMatrix,
     old_image::StridedMatrix,
@@ -179,7 +188,7 @@ end
 end
 
 @inline function _prop_rotate_loop!(
-    ::Val{ROTATE_CUBIC},
+    ::RotateCubic,
     sty::InterpStyle,
     out::StridedMatrix,
     old_image::StridedMatrix,
@@ -201,7 +210,7 @@ end
     ang = deg2rad(-float(theta))
     c = cos(ang)
     s = sin(ang)
-    return _prop_rotate_ka!(Val(opts.method), out, old_image, c, s, opts, sty)
+    return _prop_rotate_ka!(opts.method, out, old_image, c, s, opts, sty)
 end
 
 @inline function _prop_rotate_exec!(
@@ -215,7 +224,7 @@ end
     ang = deg2rad(-float(theta))
     c = cos(ang)
     s = sin(ang)
-    return _prop_rotate_loop!(Val(opts.method), sty, out, old_image, c, s, opts)
+    return _prop_rotate_loop!(opts.method, sty, out, old_image, c, s, opts)
 end
 
 @inline function _prop_rotate_exec!(
@@ -260,8 +269,8 @@ end
         array_layout_style(typeof(old_image)),
         backend_style(typeof(out)),
         backend_style(typeof(old_image)),
-        Val(ka_rotate_enabled(typeof(out), ny, nx)),
-        rotate_ka_support(Val(opts.method), sty),
+        feature_flag(ka_rotate_enabled(typeof(out), ny, nx)),
+        rotate_ka_support(opts.method, sty),
     )
     return _prop_rotate_exec!(sty_exec, sty, out, old_image, theta, opts)
 end

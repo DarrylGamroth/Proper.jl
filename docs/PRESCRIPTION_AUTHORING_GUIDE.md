@@ -121,7 +121,8 @@ Use `PASSVALUE` when you need upstream-style compatibility or parity harness
 alignment. Prefer explicit Julia keywords for new code.
 
 For stable semantic selectors, prefer symbols at the user-facing boundary and
-typed singleton values internally:
+concrete singleton selector types internally. Avoid `Val(:selector)` as the
+implementation interface unless the value is truly a compile-time trait:
 
 ```julia
 abstract type AbstractStop end
