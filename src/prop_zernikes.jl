@@ -39,6 +39,90 @@ end
     end
 end
 
+const _ZERNIKE_TRIG_NONE = UInt8(0)
+const _ZERNIKE_TRIG_COS = UInt8(1)
+const _ZERNIKE_TRIG_SIN = UInt8(2)
+
+struct WeightedZernikeTerm{T<:AbstractFloat}
+    coeff::T
+    n::Int
+    m::Int
+    trig::UInt8
+end
+
+@inline function _zernike_trig_code(trig::Symbol)
+    trig === :none && return _ZERNIKE_TRIG_NONE
+    trig === :cos && return _ZERNIKE_TRIG_COS
+    return _ZERNIKE_TRIG_SIN
+end
+
+@inline function _radial_zernike_weighted(n::Int, m::Int, r::T) where {T<:AbstractFloat}
+    acc = zero(T)
+    top = (n - m) ÷ 2
+    @inbounds for s in 0:top
+        sgn = isodd(s) ? -one(T) : one(T)
+        num = sgn * T(_facti(n - s))
+        den = T(_facti(s)) * T(_facti((n + m) ÷ 2 - s)) * T(_facti((n - m) ÷ 2 - s))
+        acc += (num / den) * r^(n - 2s)
+    end
+    return acc
+end
+
+@inline function _weighted_zernike_mode(term::WeightedZernikeTerm{T}, r::T, t::T) where {T<:AbstractFloat}
+    radial = _radial_zernike_weighted(term.n, term.m, r)
+    norm = term.m == 0 ? sqrt(T(term.n) + one(T)) : sqrt(T(2) * (T(term.n) + one(T)))
+    basis = if term.trig == _ZERNIKE_TRIG_NONE
+        norm * radial
+    elseif term.trig == _ZERNIKE_TRIG_COS
+        norm * radial * cos(term.m * t)
+    else
+        norm * radial * sin(term.m * t)
+    end
+    return term.coeff * basis
+end
+
+function _weighted_zernike_terms(::Type{T}, nums, vals) where {T<:AbstractFloat}
+    nmax = maximum(nums)
+    descs = prop_noll_zernikes(nmax)
+    terms = Vector{WeightedZernikeTerm{T}}(undef, length(nums))
+    @inbounds for k in eachindex(nums, vals)
+        desc = descs[nums[k]]
+        terms[k] = WeightedZernikeTerm{T}(T(vals[k]), desc.n, desc.m, _zernike_trig_code(desc.trig))
+    end
+    return terms
+end
+
+@inline function _zernike_beam_radius(::Type{T}, wf::WaveFront, radius::Union{Nothing,Real}) where {T<:AbstractFloat}
+    return radius === nothing ? T(prop_get_beamradius(wf)) : T(radius)
+end
+
+function _weighted_zernike_map_unobscured!(
+    dmap::AbstractMatrix{T},
+    wf::WaveFront,
+    terms::AbstractVector{WeightedZernikeTerm{T}},
+    radius::Union{Nothing,Real},
+) where {T<:AbstractFloat}
+    ny, nx = size(dmap)
+    x = coordinate_axis(nx, wf.sampling_m)
+    y = coordinate_axis(ny, wf.sampling_m)
+    inv_beam_radius = inv(_zernike_beam_radius(T, wf, radius))
+
+    @inbounds for j in 1:nx
+        xj = T(x[j]) * inv_beam_radius
+        for i in 1:ny
+            yi = T(y[i]) * inv_beam_radius
+            r = hypot(xj, yi)
+            t = atan(yi, xj)
+            acc = zero(T)
+            for k in eachindex(terms)
+                acc += _weighted_zernike_mode(terms[k], r, t)
+            end
+            dmap[i, j] = acc
+        end
+    end
+    return dmap
+end
+
 @inline function _obscured_zernike_mode(j::Int, r::T, t::T, eps::T) where {T<:AbstractFloat}
     r2 = r * r
     r3 = r * r2
@@ -189,11 +273,8 @@ function prop_zernikes(
     fill!(dmap, zero(RT))
 
     if eps_t == 0
-        nmax = maximum(nums)
-        all_maps = _zernike_maps(wf, nmax; radius_m=radius)
-        @inbounds for (j, coeff) in zip(nums, vals)
-            dmap .+= coeff .* @view(all_maps[:, :, j])
-        end
+        terms = _weighted_zernike_terms(RT, nums, vals)
+        _weighted_zernike_map_unobscured!(dmap, wf, terms, radius)
     else
         ny, nx = size(wf.field)
         x = coordinate_axis(nx, wf.sampling_m)

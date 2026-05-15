@@ -364,6 +364,37 @@ end
         @test zmap_apply ≈ zmap_manual
         prop_add_phase(wf_manual, zmap_manual)
         @test wf_apply.field ≈ wf_manual.field
+
+        wf_stack = prop_begin(1.0, 550e-9, 64)
+        nums = [1, 2, 4, 7, 11, 22]
+        vals = [8e-9, -5e-9, 13e-9, -3e-9, 2e-9, -1e-9]
+        direct = prop_zernikes(wf_stack, nums, vals; no_apply=true)
+        stack = prop_zernikes(wf_stack, maximum(nums))
+        expected = zeros(eltype(direct), size(direct))
+        @inbounds for (j, coeff) in zip(nums, vals)
+            expected .+= coeff .* @view(stack[:, :, j])
+        end
+        @test direct ≈ expected
+
+        wf32 = prop_begin(1.0f0, 550f-9, 32)
+        nums32 = [1, 3, 6, 10]
+        vals32 = Float32[4e-9, -2e-9, 3e-9, -1e-9]
+        direct32 = prop_zernikes(wf32, nums32, vals32; no_apply=true)
+        stack32 = prop_zernikes(wf32, maximum(nums32))
+        expected32 = zeros(eltype(direct32), size(direct32))
+        @inbounds for (j, coeff) in zip(nums32, vals32)
+            expected32 .+= coeff .* @view(stack32[:, :, j])
+        end
+        @test eltype(direct32) == Float32
+        @test direct32 ≈ expected32
+
+        wf_amp_apply = prop_begin(1.0, 550e-9, 64)
+        wf_amp_manual = prop_begin(1.0, 550e-9, 64)
+        amp_map_apply = prop_zernikes(wf_amp_apply, [1, 4, 6], [0.25, -0.10, 0.05]; amplitude=true)
+        amp_map_manual = prop_zernikes(wf_amp_manual, [1, 4, 6], [0.25, -0.10, 0.05]; no_apply=true)
+        @test amp_map_apply ≈ amp_map_manual
+        wf_amp_manual.field .*= prop_shift_center(amp_map_manual)
+        @test wf_amp_apply.field ≈ wf_amp_manual.field
     end
 end
 
