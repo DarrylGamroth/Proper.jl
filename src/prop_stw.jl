@@ -87,12 +87,12 @@ end
 end
 
 function prop_stw(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
+    n = _require_square_propagation_grid(wf, :prop_stw)
     if wf.reference_surface !== SPHERICAL
         return prop_ptp(wf, dz, ctx)
     end
 
     d = iszero(dz) ? (wf.z_w0_m - wf.z_m) : float(dz)
-    n = size(wf.field, 1)
 
     wf.z_m += d
     wf.sampling_m = wf.wavelength_m * abs(d) / (n * wf.sampling_m)

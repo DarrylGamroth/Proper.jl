@@ -87,11 +87,11 @@ end
 end
 
 function prop_wts(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
+    n = _require_square_propagation_grid(wf, :prop_wts)
     wf.reference_surface = SPHERICAL
     iszero(dz) && return wf
 
     d = float(dz)
-    n = size(wf.field, 1)
 
     wf.z_m += d
     prop_qphase(wf, d, ctx)
