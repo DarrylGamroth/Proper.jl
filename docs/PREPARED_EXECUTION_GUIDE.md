@@ -155,6 +155,10 @@ PROPER_FFTW_THREADS=1 julia --threads=4 --project=. my_batch_run.jl
 This outer threading applies to independent CPU contexts. AMDGPU, CUDA, and
 unknown backends use ordered serial host submission by default so Julia tasks
 do not contend while submitting whole prescriptions to a single device.
+When a CPU batch already has enough independent runs to occupy the thread
+pool, PROPER raises the crossover for inner cubic-interpolation and rotation
+task fan-out. Smaller batches and standalone large interpolation or rotation
+calls can use otherwise-idle Julia threads at smaller grid sizes.
 
 Thread counts are machine- and grid-size-dependent. Benchmark representative
 256, 512, and 1024 grids before choosing a production value. Changing

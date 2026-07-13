@@ -222,8 +222,15 @@ end
 
     @testset "KA interpolation pilot parity on large CPU arrays" begin
         n = 256
-        @test !Proper.ka_cubic_grid_enabled(Matrix{Float32}, n, n)
-        @test !Proper.ka_rotate_enabled(Matrix{Float32}, n, n)
+        expected_ka = Threads.nthreads() > 1 && n * n >= Proper.cpu_interp_ka_min_elems()
+        @test Proper.cpu_interp_ka_min_elems(1) == 16_384
+        @test Proper.cpu_interp_ka_min_elems(16) == 32_768
+        @test Proper.ka_cubic_grid_enabled(Matrix{Float32}, n, n) == expected_ka
+        @test Proper.ka_rotate_enabled(Matrix{Float32}, n, n) == expected_ka
+        Proper.with_cpu_inner_kernel_parallelism(false) do
+            @test !Proper.ka_cubic_grid_enabled(Matrix{Float32}, n, n)
+            @test !Proper.ka_rotate_enabled(Matrix{Float32}, n, n)
+        end
 
         a = reshape(collect(Float32, 1:(n * n)), n, n)
         x = collect(Float32, 1:n)

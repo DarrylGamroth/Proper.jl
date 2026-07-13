@@ -61,8 +61,37 @@ struct InterpKAStyle <: InterpKernelStyle end
 interp_kernel_style(::Type{<:AbstractArray}) = InterpLoopStyle()
 interp_kernel_style(::Type{<:StridedMatrix}) = InterpKAStyle()
 
-const KA_CUBIC_GRID_MIN_ELEMS = typemax(Int)
-const KA_ROTATE_MIN_ELEMS = typemax(Int)
+const KA_CUBIC_GRID_MIN_ELEMS = 16_384
+const KA_ROTATE_MIN_ELEMS = 16_384
+const CPU_INNER_KERNEL_POLICY_KEY = :Proper_CPU_INNER_KERNEL_POLICY
+
+struct CPUInnerKernelPolicy
+    enabled::Bool
+    min_elems::Int
+end
+
+const DEFAULT_CPU_INNER_KERNEL_POLICY = CPUInnerKernelPolicy(true, 0)
+
+@inline cpu_inner_kernel_policy() =
+    get(task_local_storage(), CPU_INNER_KERNEL_POLICY_KEY, DEFAULT_CPU_INNER_KERNEL_POLICY)::CPUInnerKernelPolicy
+
+@inline cpu_inner_kernel_parallelism_enabled() =
+    cpu_inner_kernel_policy().enabled
+
+@inline cpu_inner_kernel_min_elems() = cpu_inner_kernel_policy().min_elems
+
+@inline function with_cpu_inner_kernel_policy(f::F, policy::CPUInnerKernelPolicy) where {F<:Function}
+    return task_local_storage(CPU_INNER_KERNEL_POLICY_KEY, policy) do
+        f()
+    end
+end
+
+@inline function with_cpu_inner_kernel_parallelism(f::F, enabled::Bool) where {F<:Function}
+    return with_cpu_inner_kernel_policy(f, CPUInnerKernelPolicy(enabled, 0))
+end
+
+@inline cpu_interp_ka_min_elems(nthreads::Integer=Base.Threads.nthreads()) =
+    max(KA_CUBIC_GRID_MIN_ELEMS, 2_048 * nthreads)
 
 @inline ka_enabled(::ShiftKAStyle, ny::Integer, nx::Integer, min_elems::Int) = (ny * nx) >= min_elems
 @inline ka_enabled(::InterpKAStyle, ny::Integer, nx::Integer, min_elems::Int) = (ny * nx) >= min_elems
@@ -134,11 +163,27 @@ struct SamplingKAExecStyle <: SamplingExecStyle end
 end
 
 @inline function ka_cubic_grid_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
-    return ka_enabled(interp_kernel_style(A), ny, nx, KA_CUBIC_GRID_MIN_ELEMS)
+    nthreads = Base.Threads.nthreads()
+    return nthreads > 1 &&
+        cpu_inner_kernel_parallelism_enabled() &&
+        ka_enabled(
+            interp_kernel_style(A),
+            ny,
+            nx,
+            max(cpu_interp_ka_min_elems(nthreads), cpu_inner_kernel_min_elems()),
+        )
 end
 
 @inline function ka_rotate_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
-    return ka_enabled(interp_kernel_style(A), ny, nx, KA_ROTATE_MIN_ELEMS)
+    nthreads = Base.Threads.nthreads()
+    return nthreads > 1 &&
+        cpu_inner_kernel_parallelism_enabled() &&
+        ka_enabled(
+            interp_kernel_style(A),
+            ny,
+            nx,
+            max(KA_ROTATE_MIN_ELEMS, 2_048 * nthreads, cpu_inner_kernel_min_elems()),
+        )
 end
 
 abstract type AxisFillExecStyle end
