@@ -95,9 +95,12 @@ function prepared_contexts(prepared::PreparedPrescription, n::Integer)
     n >= 0 || throw(ArgumentError("n must be non-negative"))
     ctx = prepared.context
     ctx === nothing && return fill(nothing, n)
+    n == 0 && return Vector{typeof(ctx)}()
 
-    contexts = Vector{RunContext}(undef, n)
-    for i in 1:n
+    first_ctx = fresh_context(ctx; rng=fork_rng(ctx.rng, 1))
+    contexts = Vector{typeof(first_ctx)}(undef, n)
+    contexts[1] = first_ctx
+    for i in 2:n
         contexts[i] = fresh_context(ctx; rng=fork_rng(ctx.rng, i))
     end
     return contexts

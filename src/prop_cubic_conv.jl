@@ -73,6 +73,15 @@ struct CubicCoordinateGridUnsupportedExecStyle <: CubicCoordinateGridExecStyle e
     ::ArrayLayoutStyle,
     ::CPUBackend,
     ::CPUBackend,
+    ::CubicInterpStyle,
+    ::FeatureEnabled,
+) = CubicGridKAExecStyle()
+
+@inline cubic_grid_exec_style(
+    ::ArrayLayoutStyle,
+    ::ArrayLayoutStyle,
+    ::CPUBackend,
+    ::CPUBackend,
     ::InterpStyle,
     ::FeatureFlagStyle,
 ) = CubicGridHostExecStyle()
@@ -103,6 +112,15 @@ struct CubicCoordinateGridUnsupportedExecStyle <: CubicCoordinateGridExecStyle e
     ::CubicInterpStyle,
     ::FeatureEnabled,
 ) where {B<:BackendStyle} = CubicCoordinateGridKAExecStyle()
+
+@inline cubic_coordinate_grid_exec_style(
+    ::ArrayLayoutStyle,
+    ::ArrayLayoutStyle,
+    ::CPUBackend,
+    ::CPUBackend,
+    ::CubicInterpStyle,
+    ::FeatureEnabled,
+) = CubicCoordinateGridKAExecStyle()
 
 @inline cubic_coordinate_grid_exec_style(
     ::ArrayLayoutStyle,
