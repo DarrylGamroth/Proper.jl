@@ -19,6 +19,52 @@ using Random
     Proper._apply_shifted_mask_loop!(shifted_mask_invert_ref, mask; invert=true)
     @test shifted_mask_invert == shifted_mask_invert_ref
 
+    @testset "Fused 8th-order mask normalization and shifted application" begin
+        cases = (((5, 7), false), ((6, 8), false), ((3, 5), true), ((1, 1), true))
+        for T in (Float32, Float64), (dims, degenerate) in cases
+            raw = degenerate ? fill(T(0.37), dims) : rand(rng, T, dims...)
+            min_transmission = T(0.1)
+            max_transmission = T(0.9)
+
+            squared_mask = raw .* raw
+            reference_mask = copy(squared_mask)
+            squared_min = minimum(reference_mask)
+            squared_max = maximum(reference_mask)
+            reference_mask .-= squared_min
+            squared_range = maximum(reference_mask)
+            if squared_range > 0
+                reference_mask ./= squared_range
+            end
+            reference_mask .*= max_transmission - min_transmission
+            reference_mask .+= min_transmission
+            reference_mask .= sqrt.(reference_mask)
+
+            candidate_mask = copy(raw)
+            candidate_field = fill(complex(one(T), T(0.25)), dims)
+            reference_field = candidate_field .* prop_shift_center(reference_mask)
+
+            @test Proper.ka_normalize_apply_8th_mask!(
+                candidate_mask,
+                candidate_field,
+                squared_min,
+                squared_max,
+                min_transmission,
+                max_transmission,
+            ) === candidate_mask
+            @test candidate_mask == reference_mask
+            @test candidate_field == reference_field
+        end
+
+        @test_throws ArgumentError Proper.ka_normalize_apply_8th_mask!(
+            zeros(Float32, 3, 5),
+            zeros(ComplexF32, 5, 3),
+            0.0f0,
+            1.0f0,
+            0.0f0,
+            1.0f0,
+        )
+    end
+
     @test Proper.ka_apply_centered_circle!(copy(field), 9.0f0, 4.0f0, 6.25f0; nsub=2) isa Matrix{ComplexF32}
     @test Proper.ka_apply_centered_circle!(copy(field), 9.0f0, 4.0f0, 6.25f0; dark=true, invert=true, nsub=2) isa Matrix{ComplexF32}
     @test Proper.ka_apply_shifted_circle!(copy(field), 0.25f0, -0.5f0, 2.5f0, 9.0f0, 4.0f0, 6.25f0; nsub=2) isa Matrix{ComplexF32}

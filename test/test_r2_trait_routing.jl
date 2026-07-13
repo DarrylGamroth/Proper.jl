@@ -82,12 +82,45 @@ function _warmed_gpu_end_complex_alloc(out, wf, sync!)
     end
 end
 
+function _warmed_gpu_8th_mask_alloc(mask, wf, sync!)
+    prop_8th_order_mask!(
+        mask,
+        wf,
+        3f0;
+        circular=true,
+        min_transmission=0.1f0,
+        max_transmission=0.9f0,
+    )
+    sync!()
+    prop_8th_order_mask!(
+        mask,
+        wf,
+        3f0;
+        circular=true,
+        min_transmission=0.1f0,
+        max_transmission=0.9f0,
+    )
+    sync!()
+    return @allocated begin
+        prop_8th_order_mask!(
+            mask,
+            wf,
+            3f0;
+            circular=true,
+            min_transmission=0.1f0,
+            max_transmission=0.9f0,
+        )
+        sync!()
+    end
+end
+
 const GPU_WARM_QPHASE_ALLOC_MAX = 12_288
 const GPU_WARM_PTP_ALLOC_MAX = 12_288
 const GPU_WARM_WTS_ALLOC_MAX = 12_288
 const GPU_WARM_STW_ALLOC_MAX = 8_192
 const GPU_WARM_END_REAL_ALLOC_MAX = 16_384
 const GPU_WARM_END_COMPLEX_ALLOC_MAX = 16_384
+const GPU_WARM_8TH_MASK_ALLOC_MAX = 16_384
 
 function _gpu_map_apply_smoke!(
     wf_gpu,
@@ -603,6 +636,87 @@ end
             @test mask isa AMDGPU.ROCArray
             @test isapprox(Array(mask), mask_ref; atol=3f-4, rtol=1f-3)
             @test isapprox(Array(wf_mask.field), wf_mask_ref.field; atol=3f-4, rtol=1f-3)
+
+            mask_rng = MersenneTwister(20260713)
+            mask_cases = (
+                (;
+                    dims=(15, 17),
+                    circular=false,
+                    elliptical=nothing,
+                    y_axis=true,
+                    min_transmission=0.05f0,
+                    max_transmission=0.8f0,
+                ),
+                (;
+                    dims=(16, 18),
+                    circular=true,
+                    elliptical=nothing,
+                    y_axis=false,
+                    min_transmission=0.1f0,
+                    max_transmission=0.9f0,
+                ),
+                (;
+                    dims=(15, 17),
+                    circular=false,
+                    elliptical=1.4f0,
+                    y_axis=false,
+                    min_transmission=0.0f0,
+                    max_transmission=0.7f0,
+                ),
+            )
+            for mask_case in mask_cases
+                mask_input = rand(mask_rng, ComplexF32, mask_case.dims...)
+                wf_mask_cpu = Proper.WaveFront(copy(mask_input), 500f-9, 1f-3, 0f0, 1f0)
+                wf_mask_gpu = Proper.WaveFront(AMDGPU.ROCArray(mask_input), 500f-9, 1f-3, 0f0, 1f0)
+                mask_cpu = zeros(Float32, mask_case.dims...)
+                mask_gpu = AMDGPU.zeros(Float32, mask_case.dims...)
+
+                prop_8th_order_mask!(
+                    mask_cpu,
+                    wf_mask_cpu,
+                    3f0;
+                    circular=mask_case.circular,
+                    elliptical=mask_case.elliptical,
+                    y_axis=mask_case.y_axis,
+                    min_transmission=mask_case.min_transmission,
+                    max_transmission=mask_case.max_transmission,
+                )
+                prop_8th_order_mask!(
+                    mask_gpu,
+                    wf_mask_gpu,
+                    3f0;
+                    circular=mask_case.circular,
+                    elliptical=mask_case.elliptical,
+                    y_axis=mask_case.y_axis,
+                    min_transmission=mask_case.min_transmission,
+                    max_transmission=mask_case.max_transmission,
+                )
+                AMDGPU.synchronize()
+
+                @test isapprox(Array(mask_gpu), mask_cpu; atol=3f-5, rtol=3f-5)
+                @test isapprox(Array(wf_mask_gpu.field), wf_mask_cpu.field; atol=3f-5, rtol=3f-5)
+                @test wf_mask_gpu.workspace.fft.scratch isa AMDGPU.ROCArray
+            end
+
+            wf_mask_alloc = Proper.WaveFront(
+                AMDGPU.fill(ComplexF32(1), 32, 34),
+                500f-9,
+                1f-3,
+                0f0,
+                1f0,
+            )
+            mask_alloc = AMDGPU.zeros(Float32, 32, 34)
+            mask_alloc_bytes = _warmed_gpu_8th_mask_alloc(
+                mask_alloc,
+                wf_mask_alloc,
+                AMDGPU.synchronize,
+            )
+            @test mask_alloc_bytes <= GPU_WARM_8TH_MASK_ALLOC_MAX
+            reduction_scratch = wf_mask_alloc.workspace.fft.scratch
+            prop_8th_order_mask!(mask_alloc, wf_mask_alloc, 3f0; circular=true)
+            AMDGPU.synchronize()
+            @test wf_mask_alloc.workspace.fft.scratch === reduction_scratch
+
             prop_circular_aperture(wf, 2.5f-4)
             @test wf.workspace.mask.mask isa AMDGPU.ROCArray
             prop_circular_aperture(wf_ref, 2.5f-4)
