@@ -174,10 +174,16 @@ application's non-propagation workloads.
 Use this when each slot should lazily create and retain its own asset bundle.
 
 ```julia
-assets = prepare_asset_pool(; pool_size=2) do slot
+AssetBundle = @NamedTuple{dm::Matrix{Float64}, label::String}
+assets = prepare_asset_pool(AssetBundle; pool_size=2) do slot
     return (dm=zeros(256, 256), label="slot_$slot")
 end
 ```
+
+The concrete asset type is required because a lazy factory may depend on the
+eventual model. Declaring it keeps cache access type-stable without executing
+the factory during setup. Factory results must be instances of that type;
+mismatches raise `ArgumentError` instead of entering the cache.
 
 Factory call forms accepted by the pool:
 
@@ -185,6 +191,11 @@ Factory call forms accepted by the pool:
 - `factory(slot)`
 - `factory(model)`
 - `factory()`
+
+Factories for distinct slots may run concurrently during threaded batch
+execution. Mutable state captured by a factory remains caller-owned and must be
+thread-safe; the pool synchronizes neither that external state nor concurrent
+reuse of the same slot.
 
 Reset cached assets with:
 
@@ -197,13 +208,14 @@ Use this when you want a named reusable execution object with both context reuse
 and optional assets.
 
 ```julia
+AssetBundle = @NamedTuple{dm::Matrix{Float64}, slot::Int}
 model = prepare_model(
     :multi_example,
     multi_example,
     0.55,
     256;
     pool_size=2,
-    assets=prepare_asset_pool(; pool_size=2) do slot
+    assets=prepare_asset_pool(AssetBundle; pool_size=2) do slot
         return (dm=zeros(256, 256), slot=slot)
     end,
 )
@@ -276,12 +288,17 @@ When a `PreparedModel` resolves assets for a slot:
 That means both of these are valid:
 
 ```julia
-assets = prepare_asset_pool(() -> (dm=zeros(256, 256), use_dm=true); pool_size=1)
+AssetBundle = @NamedTuple{dm::Matrix{Float64}, use_dm::Bool}
+assets = prepare_asset_pool(() -> (dm=zeros(256, 256), use_dm=true), AssetBundle; pool_size=1)
 model = prepare_model(my_prescription, 0.55, 256; assets=assets, pool_size=1)
 ```
 
 ```julia
-assets = prepare_asset_pool(() -> Dict("dm" => zeros(256, 256)); pool_size=1)
+assets = prepare_asset_pool(
+    () -> Dict("dm" => zeros(256, 256)),
+    Dict{String,Matrix{Float64}};
+    pool_size=1,
+)
 model = prepare_model(my_prescription, 0.55, 256; assets=assets, pool_size=1)
 ```
 
@@ -341,7 +358,8 @@ stack, samplings = prop_run_multi(
 
 ### Model With Cached Assets
 ```julia
-assets = prepare_asset_pool(; pool_size=2) do slot
+AssetBundle = @NamedTuple{label::String, dm::Matrix{Float64}}
+assets = prepare_asset_pool(AssetBundle; pool_size=2) do slot
     return (label="slot_$slot", dm=zeros(256, 256))
 end
 

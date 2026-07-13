@@ -103,7 +103,7 @@ Notes:
   - `prepare_prescription(routine_name, lambda0_microns, gridsize; context=..., PASSVALUE=..., kwargs...)`
   - `prepare_prescription(routine_name, lambda0_microns, gridsize; precision=Float32|Float64, ...)`
   - `prepare_prescription_batch(prepared_or_routine, ...; pool_size=..., precision=...)`
-  - `prepare_asset_pool(factory; pool_size=...)`
+  - `prepare_asset_pool(factory, AssetType; pool_size=...)`
   - `prepare_model(prepared_or_routine, ...; pool_size=..., assets=..., precision=...)`
 - `prop_*` public APIs should consume `RunContext` (or equivalent typed config) without compatibility mode flags.
 
@@ -118,6 +118,12 @@ Prepared precision contract:
 
 Prepared-model asset contract:
 - `PreparedModel` may carry static assets or a `PreparedAssetPool`.
+- Lazy asset pools require an explicit concrete `AssetType`; this keeps their
+  cache storage and slot lookup type-stable without evaluating factories during
+  construction.
+- Factories for distinct slots may execute concurrently. Captured mutable state
+  is caller-owned and must be thread-safe; one slot must not be reused by
+  concurrent executions.
 - `prop_run(model; slot=i)` resolves assets for that slot and merges them into execution kwargs.
 - If the resolved asset is a `NamedTuple`, its entries are merged into kwargs directly.
 - Otherwise it is passed as `assets=...`.

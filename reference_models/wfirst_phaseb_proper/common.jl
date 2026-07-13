@@ -853,10 +853,14 @@ function prepare_phaseb_models(case::NamedTuple; data_root::AbstractString=phase
         ctx = Proper.RunContext()
         if shared === nothing
             cfg = _phaseb_config(cor_type, λm, data_root; compact=is_compact, use_fpm=Int(passget(case.passvalue, :use_fpm, 1)))
-            asset_factory = if cfg.branch == :spc
-                () -> prepare_phaseb_spc_assets(cfg, λm, case.output_dim; compact=is_compact)
+            asset_pool = if cfg.branch == :spc
+                prepare_asset_pool(PhaseBSPCPreparedAssets; pool_size=1) do
+                    prepare_phaseb_spc_assets(cfg, λm, case.output_dim; compact=is_compact)
+                end
             elseif cfg.branch == :none
-                () -> prepare_phaseb_pupil_assets(cfg, case.output_dim)
+                prepare_asset_pool(PhaseBPupilPreparedAssets; pool_size=1) do
+                    prepare_phaseb_pupil_assets(cfg, case.output_dim)
+                end
             else
                 throw(ArgumentError("unsupported WFIRST Phase B asset branch: $(cfg.branch)"))
             end
@@ -867,7 +871,7 @@ function prepare_phaseb_models(case::NamedTuple; data_root::AbstractString=phase
                 case.output_dim;
                 context=ctx,
                 PASSVALUE=passvalue,
-                assets=prepare_asset_pool(asset_factory; pool_size=1),
+                assets=asset_pool,
                 pool_size=1,
             )
         end
@@ -878,7 +882,9 @@ function prepare_phaseb_models(case::NamedTuple; data_root::AbstractString=phase
             case.output_dim;
             context=ctx,
             PASSVALUE=passvalue,
-            assets=prepare_asset_pool(() -> PhaseBPreparedAssets(shared, _nearest_occulter(shared, λm), PhaseBModelWorkspace(case.output_dim)); pool_size=1),
+            assets=prepare_asset_pool(PhaseBPreparedAssets; pool_size=1) do
+                PhaseBPreparedAssets(shared, _nearest_occulter(shared, λm), PhaseBModelWorkspace(case.output_dim))
+            end,
             pool_size=1,
         )
     end

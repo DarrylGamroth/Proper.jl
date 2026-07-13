@@ -271,11 +271,13 @@ end
             return psf, 1.0f0
         end
 
-        asset_counter = Ref(0)
-        asset_pool = prepare_asset_pool() do slot, model
-            asset_counter[] += 1
-            return (asset_slot=slot, asset_model=String(model.name), asset_token=asset_counter[])
+        asset_counter = Atomic{Int}(0)
+        asset_type = NamedTuple{(:asset_slot, :asset_model, :asset_token),Tuple{Int,String,Int}}
+        asset_pool = prepare_asset_pool(asset_type; pool_size=1) do slot, model
+            asset_token = atomic_add!(asset_counter, 1) + 1
+            return (asset_slot=slot, asset_model=String(model.name), asset_token=asset_token)
         end
+        @test eltype(asset_pool.cache) == Union{Nothing,asset_type}
         prepared_assets_model = prepare_model(dummy_prepared_parallel, 0.55f0, 16; name=:asset_model, context=ctx, assets=asset_pool, pool_size=2)
         out_assets, s_assets = prop_run(prepared_assets_model; PASSVALUE=1, slot=1)
         @test size(out_assets) == (16, 16)
@@ -289,6 +291,7 @@ end
         @test size(stack_assets_model) == (16, 16, 3)
         @test samplings_assets_model == fill(1.0f0, 3)
         @test asset_counter[] == 3
+        @test length(prepared_assets_model.assets.cache) == 3
         @test length(unique(vec(stack_assets_model[1, 1, :]))) == 3
         reset_prepared_model!(prepared_assets_model)
         @test all(isnothing, prepared_assets_model.assets.cache)

@@ -57,4 +57,30 @@
     @test all(inner_enabled)
     expected_min_elems = Threads.nthreads() > 1 && length(inner_enabled) >= Threads.nthreads() ? 262_144 : 0
     @test all(==(expected_min_elems), inner_min_elems)
+
+    # BitArray stores adjacent logical slices in shared packed words. Threaded
+    # writes directly into a BitArray stack can therefore race even when each
+    # task owns a distinct third-axis slice. Typed per-run staging followed by
+    # serial stack assembly must preserve every bit.
+    bit_items = collect(1:64)
+    bit_passes = zeros(Int, length(bit_items))
+    bit_expected = falses(3, 3, length(bit_items))
+    for i in eachindex(bit_items)
+        @views bit_expected[:, :, i] .= isodd(i)
+    end
+    bit_runner = function (_, _, slot)
+        yield()
+        return isodd(slot) ? trues(3, 3) : falses(3, 3), Float64(slot)
+    end
+    for _ in 1:32
+        bit_stack, bit_samplings = Proper._prop_run_multi_items(
+            Proper.MultiRunThreadedExecStyle(),
+            bit_items,
+            bit_passes,
+            bit_runner,
+        )
+        @test bit_stack isa BitArray{3}
+        @test bit_stack == bit_expected
+        @test bit_samplings == Float64.(bit_items)
+    end
 end

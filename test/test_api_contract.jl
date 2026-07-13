@@ -79,9 +79,11 @@ end
 
     prepared = prepare_prescription(_contract_passvalue_prescription, 0.55, 16; PASSVALUE=0.0)
     batch = prepare_prescription_batch(prepared; pool_size=2)
-    assets = prepare_asset_pool(; pool_size=2) do slot
+    asset_type = NamedTuple{(:scale,),Tuple{Float64}}
+    assets = prepare_asset_pool(asset_type; pool_size=2) do slot
         return (scale=1.0 + 0.1 * slot,)
     end
+    @test eltype(assets.cache) == Union{Nothing,asset_type}
     model = prepare_model(prepared; name=:contract_model, assets=assets, pool_size=2)
 
     ppsf, psampling = prop_run(prepared; PASSVALUE=1.0)

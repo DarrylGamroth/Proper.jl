@@ -44,6 +44,31 @@ end
     return stack
 end
 
+function _finish_multi_run_serial(
+    first_out::O,
+    first_sampling,
+    items::AbstractVector,
+    passes,
+    runner::F,
+) where {O<:AbstractMatrix,F<:Function}
+    n = length(items)
+    sampT = typeof(float(first_sampling))
+    sy, sx = size(first_out)
+    stack = _allocate_output_stack(first_out, sy, sx, n)
+    samplings = Vector{sampT}(undef, n)
+    _store_output_slice!(stack, 1, first_out)
+    samplings[1] = float(first_sampling)
+
+    @inbounds for i in 2:n
+        out, s = runner(items[i], passes[i], i)
+        out isa O || throw(ArgumentError("All prop_run_multi outputs must have the same type"))
+        size(out) == (sy, sx) || throw(ArgumentError("All prop_run_multi outputs must have the same size"))
+        _store_output_slice!(stack, i, out)
+        samplings[i] = float(s)
+    end
+    return stack, samplings
+end
+
 function _prop_run_multi_items(
     ::MultiRunSerialExecStyle,
     items::AbstractVector,
@@ -56,22 +81,40 @@ function _prop_run_multi_items(
 
     first_out, first_sampling = runner(items[1], passes[1], 1)
     first_out isa AbstractMatrix || throw(ArgumentError("prop_run_multi expects matrix outputs"))
+    return _finish_multi_run_serial(first_out, first_sampling, items, passes, runner)
+end
 
-    outT = typeof(first_out)
+function _finish_multi_run_threaded(
+    first_out::O,
+    first_sampling,
+    items::AbstractVector,
+    passes,
+    runner::F,
+    inner_policy::CPUInnerKernelPolicy,
+) where {O<:AbstractMatrix,F<:Function}
+    n = length(items)
     sampT = typeof(float(first_sampling))
     sy, sx = size(first_out)
-    stack = _allocate_output_stack(first_out, sy, sx, n)
+    results = Vector{O}(undef, n)
     samplings = Vector{sampT}(undef, n)
-    _store_output_slice!(stack, 1, first_out)
+    results[1] = first_out
     samplings[1] = float(first_sampling)
 
-    @inbounds for i in 2:n
-        out, s = runner(items[i], passes[i], i)
-        out isa outT || throw(ArgumentError("All prop_run_multi outputs must have the same type"))
+    @threads for i in 2:n
+        out, s = with_cpu_inner_kernel_policy(inner_policy) do
+            runner(items[i], passes[i], i)
+        end
+        out isa O || throw(ArgumentError("All prop_run_multi outputs must have the same type"))
         size(out) == (sy, sx) || throw(ArgumentError("All prop_run_multi outputs must have the same size"))
-        _store_output_slice!(stack, i, out)
+        results[i] = out
         samplings[i] = float(s)
     end
+
+    stack = _allocate_output_stack(first_out, sy, sx, n)
+    @inbounds for i in eachindex(results)
+        _store_output_slice!(stack, i, results[i])
+    end
+
     return stack, samplings
 end
 
@@ -89,33 +132,13 @@ function _prop_run_multi_items(
         return _prop_run_multi_items(MultiRunSerialExecStyle(), items, passes, runner)
     end
 
-    results = Vector{Any}(undef, n)
     inner_min_elems = n >= Threads.nthreads() ? 262_144 : 0
     inner_policy = CPUInnerKernelPolicy(true, inner_min_elems)
-    @threads for i in eachindex(items, passes)
-        results[i] = with_cpu_inner_kernel_policy(inner_policy) do
-            runner(items[i], passes[i], i)
-        end
+    first_out, first_sampling = with_cpu_inner_kernel_policy(inner_policy) do
+        runner(items[1], passes[1], 1)
     end
-
-    first_out, first_sampling = results[1]
     first_out isa AbstractMatrix || throw(ArgumentError("prop_run_multi expects matrix outputs"))
-
-    outT = typeof(first_out)
-    sampT = typeof(float(first_sampling))
-    sy, sx = size(first_out)
-    stack = _allocate_output_stack(first_out, sy, sx, n)
-    samplings = Vector{sampT}(undef, n)
-
-    @inbounds for i in eachindex(results)
-        out, s = results[i]
-        out isa outT || throw(ArgumentError("All prop_run_multi outputs must have the same type"))
-        size(out) == (sy, sx) || throw(ArgumentError("All prop_run_multi outputs must have the same size"))
-        _store_output_slice!(stack, i, out)
-        samplings[i] = float(s)
-    end
-
-    return stack, samplings
+    return _finish_multi_run_threaded(first_out, first_sampling, items, passes, runner, inner_policy)
 end
 
 """
@@ -182,6 +205,7 @@ function prop_run_multi(model::PreparedModel; PASSVALUE=model.prepared.passvalue
     n = length(passes)
     n > 0 || throw(ArgumentError("PASSVALUE must not be empty"))
     contexts = ensure_prepared_batch_contexts!(model.batch, n)
+    model.assets isa PreparedAssetPool && ensure_prepared_asset_pool!(model.assets, n)
     style = _multi_run_exec_style(@view contexts[1:n])
     return _prop_run_multi_items(style, Base.OneTo(n), passes, (_, pass, slot) -> begin
         prop_run(model; PASSVALUE=pass, slot=slot, kwargs...)

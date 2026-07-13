@@ -761,3 +761,28 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   - CPU regression tests cover asymmetric fields and both grid parities;
     accelerator tests additionally enforce backend preservation. Both cover
     scalar and centered-matrix addition.
+
+## D-0058: Lazy Prepared Asset Pools Require A Concrete Asset Type
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - `PreparedAssetPool` lazily constructs per-slot assets, including factories
+    that depend on the eventual `PreparedModel`.
+  - The previous cache used `Vector{Any}`, so every slot lookup lost the asset
+    type and introduced dynamic dispatch into prepared model execution.
+  - A model-dependent lazy factory cannot be evaluated safely during pool
+    construction merely to discover its return type.
+- Decision:
+  - Require callers to provide a concrete asset type when constructing a lazy
+    prepared asset pool.
+  - Store slots as `Vector{Union{Nothing,A}}`, where `A` is that declared asset
+    type, and reject non-concrete asset types or mismatched factory results.
+  - Keep heterogeneous dictionaries only at explicit compatibility and metadata
+    boundaries; they are not the storage model for prepared execution caches.
+- Consequences:
+  - The constructor is now `prepare_asset_pool(factory, AssetType; ...)`, with
+    `prepare_asset_pool(AssetType; ...) do ... end` as the do-block form.
+  - Existing callers must name their asset bundle type, but factories remain
+    lazy and are not executed during setup.
+  - Prepared asset lookup preserves a small concrete `Union{Nothing,A}` until
+    initialization and returns `A` thereafter.
