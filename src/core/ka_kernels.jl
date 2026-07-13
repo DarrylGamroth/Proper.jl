@@ -2,7 +2,10 @@ using KernelAbstractions
 import AcceleratedKernels as AK
 
 @inline function _ka_roundval(x::T) where {T<:Real}
-    return x > zero(T) ? floor(Int, x + T(0.5)) : -floor(Int, -x + T(0.5))
+    if x > zero(T)
+        return Base.unsafe_trunc(Int, floor(x + T(0.5)))
+    end
+    return -Base.unsafe_trunc(Int, floor(-x + T(0.5)))
 end
 
 @inline function _ka_k0k1(d::T) where {T<:AbstractFloat}
@@ -56,8 +59,8 @@ end
 
 @inline function _ka_bilinear_sample(a::AbstractMatrix{T}, y::Real, x::Real) where {T}
     ny, nx = size(a)
-    x0 = floor(Int, x)
-    y0 = floor(Int, y)
+    x0 = Base.unsafe_trunc(Int, floor(x))
+    y0 = Base.unsafe_trunc(Int, floor(y))
     x1 = x0 + 1
     y1 = y0 + 1
 
@@ -69,10 +72,10 @@ end
     tx = x - x0
     ty = y - y0
 
-    v00 = a[y0c, x0c]
-    v10 = a[y0c, x1c]
-    v01 = a[y1c, x0c]
-    v11 = a[y1c, x1c]
+    @inbounds v00 = a[y0c, x0c]
+    @inbounds v10 = a[y0c, x1c]
+    @inbounds v01 = a[y1c, x0c]
+    @inbounds v11 = a[y1c, x1c]
 
     v0 = (one(tx) - tx) * v00 + tx * v10
     v1 = (one(tx) - tx) * v01 + tx * v11
@@ -173,8 +176,8 @@ end
         js = j + sx
         is = ifelse(is > ny, is - ny, is)
         js = ifelse(js > nx, js - nx, js)
-        m = mask[is, js]
-        field[i, j] *= invert ? (one(m) - m) : m
+        @inbounds m = mask[is, js]
+        @inbounds field[i, j] *= invert ? (one(m) - m) : m
     end
 end
 
@@ -248,9 +251,9 @@ end
             end
         end
         if factor == zero(T)
-            field[i, j] = zero(eltype(field))
+            @inbounds field[i, j] = zero(eltype(field))
         elseif factor != one(T)
-            field[i, j] *= factor
+            @inbounds field[i, j] *= factor
         end
     end
 end
@@ -302,9 +305,9 @@ end
         end
 
         if factor == zero(T)
-            field[i, j] = zero(eltype(field))
+            @inbounds field[i, j] = zero(eltype(field))
         elseif factor != one(T)
-            field[i, j] *= factor
+            @inbounds field[i, j] *= factor
         end
     end
 end
@@ -353,9 +356,9 @@ end
         end
 
         if factor == zero(T)
-            field[i, j] = zero(eltype(field))
+            @inbounds field[i, j] = zero(eltype(field))
         elseif factor != one(T)
-            field[i, j] *= factor
+            @inbounds field[i, j] *= factor
         end
     end
 end
@@ -381,7 +384,7 @@ end
         js = c0 + j - 1 + sx
         is = ifelse(is > ny, is - ny, is)
         js = ifelse(js > nx, js - nx, js)
-        out[i, j] = field[is, js]
+        @inbounds out[i, j] = field[is, js]
     end
 end
 
@@ -406,7 +409,7 @@ end
         js = c0 + j - 1 + sx
         is = ifelse(is > ny, is - ny, is)
         js = ifelse(js > nx, js - nx, js)
-        out[i, j] = abs2(field[is, js])
+        @inbounds out[i, j] = abs2(field[is, js])
     end
 end
 
@@ -427,7 +430,7 @@ end
         js = j + sx
         is = ifelse(is > ny, is - ny, is)
         js = ifelse(js > nx, js - nx, js)
-        out[is, js] = input[i, j]
+        @inbounds out[is, js] = input[i, j]
     end
 end
 
@@ -446,7 +449,7 @@ end
         T = typeof(dx)
         x = T(_ka_shifted_index_0based(j - 1, nx)) * dx
         y = T(_ka_shifted_index_0based(i - 1, ny)) * dx
-        field[i, j] *= cis(k * (x * x + y * y))
+        @inbounds field[i, j] *= cis(k * (x * x + y * y))
     end
 end
 
@@ -466,7 +469,7 @@ end
         T = typeof(inv_dx_y)
         fy = T(_ka_shifted_index_0based(i - 1, ny)) * inv_dx_y
         fx = T(_ka_shifted_index_0based(j - 1, nx)) * inv_dx_x
-        field[i, j] *= cis(kphase * (fx * fx + fy * fy))
+        @inbounds field[i, j] *= cis(kphase * (fx * fx + fy * fy))
     end
 end
 
@@ -480,7 +483,7 @@ end
     i = @index(Global, Linear)
     if i <= n
         T = typeof(scale)
-        out[i] = (T(i - 1) - origin) * scale + offset
+        @inbounds out[i] = (T(i - 1) - origin) * scale + offset
     end
 end
 
@@ -499,10 +502,10 @@ end
     i = @index(Global, Linear)
 
     if i <= nx
-        xout[i] = (typeof(xorigin)(i - 1) - xorigin) * xscale + xoffset
+        @inbounds xout[i] = (typeof(xorigin)(i - 1) - xorigin) * xscale + xoffset
     end
     if i <= ny
-        yout[i] = (typeof(yorigin)(i - 1) - yorigin) * yscale + yoffset
+        @inbounds yout[i] = (typeof(yorigin)(i - 1) - yorigin) * yscale + yoffset
     end
 end
 
@@ -521,7 +524,7 @@ end
         @uniform T = eltype(rho2)
         fx = T(_ka_shifted_index_0based(j - 1, nx)) * inv_dx
         fy = T(_ka_shifted_index_0based(i - 1, ny)) * inv_dy
-        rho2[i, j] = fx * fx + fy * fy
+        @inbounds rho2[i, j] = fx * fx + fy * fy
     end
 end
 
@@ -536,7 +539,7 @@ end
     j = I[2]
 
     if i <= ny && j <= nx
-        field[i, j] *= scale
+        @inbounds field[i, j] *= scale
     end
 end
 
@@ -553,7 +556,7 @@ end
     j = I[2]
 
     if i <= oy && j <= ox
-        out[i, j] = _ka_cubic_sample(a, yval[i], xval[j])
+        @inbounds out[i, j] = _ka_cubic_sample(a, yval[i], xval[j])
     end
 end
 
@@ -570,7 +573,7 @@ end
     j = I[2]
 
     if i <= oy && j <= ox
-        out[i, j] = _ka_cubic_sample(a, ygrid[i, j], xgrid[i, j])
+        @inbounds out[i, j] = _ka_cubic_sample(a, ygrid[i, j], xgrid[i, j])
     end
 end
 
@@ -596,7 +599,7 @@ end
         y = i - cy - sy
         xr = c * x - s * y + cx
         yr = s * x + c * y + cy
-        out[i, j] = _ka_bilinear_sample_extrap(old_image, yr, xr, missing)
+        @inbounds out[i, j] = _ka_bilinear_sample_extrap(old_image, yr, xr, missing)
     end
 end
 
@@ -623,9 +626,9 @@ end
         xr = c * x - s * y + cx
         yr = s * x + c * y + cy
         if 1 <= xr <= nx && 1 <= yr <= ny
-            out[i, j] = _ka_cubic_sample(old_image, xr - 1, yr - 1)
+            @inbounds out[i, j] = _ka_cubic_sample(old_image, xr - 1, yr - 1)
         else
-            out[i, j] = missing
+            @inbounds out[i, j] = missing
         end
     end
 end
@@ -671,7 +674,7 @@ end
             end
         end
 
-        image[i, j] = T(cnt) * inv_nsub2
+        @inbounds image[i, j] = T(cnt) * inv_nsub2
     end
 end
 
@@ -708,7 +711,7 @@ end
         xpix = j - 1
 
         if xpix < minx || xpix > maxx || ypix < miny || ypix > maxy
-            image[i, j] = outside
+            @inbounds image[i, j] = outside
         else
             x0 = T(xpix) - xcp
             y0 = T(ypix) - ycp
@@ -725,7 +728,7 @@ end
             end
 
             pixval = T(cnt) * inv_nsub2
-            image[i, j] = dark ? (one(T) - pixval) : pixval
+            @inbounds image[i, j] = dark ? (one(T) - pixval) : pixval
         end
     end
 end
@@ -780,7 +783,7 @@ end
             T(cnt) * inv_nsub2
         end
 
-        image[i, j] = dark ? (one(T) - pixval) : pixval
+        @inbounds image[i, j] = dark ? (one(T) - pixval) : pixval
     end
 end
 
@@ -818,7 +821,7 @@ end
         end
 
         pixval = T(cnt) * inv_nsub2
-        image[i, j] = dark ? (one(T) - pixval) : pixval
+        @inbounds image[i, j] = dark ? (one(T) - pixval) : pixval
     end
 end
 
@@ -852,7 +855,7 @@ end
         ax = max(qx, zero(T))
         ay = max(qy, zero(T))
         inside = (qx <= 0 && abs(y) <= hh) || (qy <= 0 && abs(x) <= hw) || (ax * ax + ay * ay <= r * r)
-        image[i, j] = inside ? one(T) : zero(T)
+        @inbounds image[i, j] = inside ? one(T) : zero(T)
     end
 end
 
@@ -876,12 +879,12 @@ end
         if abs(x) <= T(dk)
             xpi = x * T(pi)
             if xpi == zero(T)
-                table[row, idx] = one(T)
+                @inbounds table[row, idx] = one(T)
             else
-                table[row, idx] = (sin(xpi) / xpi) * (sin(xpi / T(dk)) / (xpi / T(dk)))
+                @inbounds table[row, idx] = (sin(xpi) / xpi) * (sin(xpi / T(dk)) / (xpi / T(dk)))
             end
         else
-            table[row, idx] = zero(T)
+            @inbounds table[row, idx] = zero(T)
         end
     end
 end
@@ -908,12 +911,12 @@ end
         if abs(x) <= T(dk)
             xpi = x * T(pi)
             if xpi == zero(T)
-                tablex[row, idx] = one(T)
+                @inbounds tablex[row, idx] = one(T)
             else
-                tablex[row, idx] = (sin(xpi) / xpi) * (sin(xpi / T(dk)) / (xpi / T(dk)))
+                @inbounds tablex[row, idx] = (sin(xpi) / xpi) * (sin(xpi / T(dk)) / (xpi / T(dk)))
             end
         else
-            tablex[row, idx] = zero(T)
+            @inbounds tablex[row, idx] = zero(T)
         end
     end
 
@@ -925,12 +928,12 @@ end
         if abs(y) <= T(dk)
             ypi = y * T(pi)
             if ypi == zero(T)
-                tabley[row, idx] = one(T)
+                @inbounds tabley[row, idx] = one(T)
             else
-                tabley[row, idx] = (sin(ypi) / ypi) * (sin(ypi / T(dk)) / (ypi / T(dk)))
+                @inbounds tabley[row, idx] = (sin(ypi) / ypi) * (sin(ypi / T(dk)) / (ypi / T(dk)))
             end
         else
-            tabley[row, idx] = zero(T)
+            @inbounds tabley[row, idx] = zero(T)
         end
     end
 end
@@ -952,47 +955,49 @@ end
         T = typeof(float(real(zero(eltype(out)))))
         yin = T(row_out - 1 - (n_out ÷ 2)) / mag
         ypix = _ka_szoom_round(yin) + T(n_in ÷ 2)
-        y1 = Int(ypix) - (k ÷ 2)
-        y2_excl = Int(ypix) + (k ÷ 2) + 1
+        y1 = Base.unsafe_trunc(Int, ypix) - (k ÷ 2)
+        y2_excl = Base.unsafe_trunc(Int, ypix) + (k ÷ 2) + 1
 
         xin = T(col_out - 1 - (n_out ÷ 2)) / mag
         xpix = _ka_szoom_round(xin) + T(n_in ÷ 2)
-        x1 = Int(xpix) - (k ÷ 2)
-        x2_excl = Int(xpix) + (k ÷ 2) + 1
+        x1 = Base.unsafe_trunc(Int, xpix) - (k ÷ 2)
+        x2_excl = Base.unsafe_trunc(Int, xpix) + (k ÷ 2) + 1
 
-        if y1 < 0 || y2_excl > n_in || x1 < 0 || x2_excl > n_in
-            out[row_out, col_out] = zero(eltype(out))
-        elseif eltype(image_in) <: Complex
-            acc_re = zero(T)
-            acc_im = zero(T)
-            for co in 0:(k - 1)
-                col = x1 + co + 1
-                s_re = zero(T)
-                s_im = zero(T)
-                for ro in 0:(k - 1)
-                    row = y1 + ro + 1
-                    wrow = table[row_out, ro + 1]
-                    z = image_in[row, col]
-                    s_re += T(real(z)) * wrow
-                    s_im += T(imag(z)) * wrow
+        @inbounds begin
+            if y1 < 0 || y2_excl > n_in || x1 < 0 || x2_excl > n_in
+                out[row_out, col_out] = zero(eltype(out))
+            elseif eltype(image_in) <: Complex
+                acc_re = zero(T)
+                acc_im = zero(T)
+                for co in 0:(k - 1)
+                    col = x1 + co + 1
+                    s_re = zero(T)
+                    s_im = zero(T)
+                    for ro in 0:(k - 1)
+                        row = y1 + ro + 1
+                        wrow = table[row_out, ro + 1]
+                        z = image_in[row, col]
+                        s_re += T(real(z)) * wrow
+                        s_im += T(imag(z)) * wrow
+                    end
+                    wcol = table[col_out, co + 1]
+                    acc_re += s_re * wcol
+                    acc_im += s_im * wcol
                 end
-                wcol = table[col_out, co + 1]
-                acc_re += s_re * wcol
-                acc_im += s_im * wcol
-            end
-            out[row_out, col_out] = complex(acc_re, acc_im)
-        else
-            acc = zero(T)
-            for co in 0:(k - 1)
-                col = x1 + co + 1
-                scol = zero(T)
-                for ro in 0:(k - 1)
-                    row = y1 + ro + 1
-                    scol += T(image_in[row, col]) * table[row_out, ro + 1]
+                out[row_out, col_out] = complex(acc_re, acc_im)
+            else
+                acc = zero(T)
+                for co in 0:(k - 1)
+                    col = x1 + co + 1
+                    scol = zero(T)
+                    for ro in 0:(k - 1)
+                        row = y1 + ro + 1
+                        scol += T(image_in[row, col]) * table[row_out, ro + 1]
+                    end
+                    acc += scol * table[col_out, co + 1]
                 end
-                acc += scol * table[col_out, co + 1]
+                out[row_out, col_out] = acc
             end
-            out[row_out, col_out] = acc
         end
     end
 end
@@ -1012,13 +1017,15 @@ end
     if i <= ny2 && j <= nx2
         ys = (i - 1) * f + 1
         xs = (j - 1) * f + 1
-        acc = zero(eltype(out))
-        for xoff in 0:(f - 1)
-            for yoff in 0:(f - 1)
-                acc += img[ys + yoff, xs + xoff]
+        @inbounds begin
+            acc = zero(eltype(out))
+            for xoff in 0:(f - 1)
+                for yoff in 0:(f - 1)
+                    acc += img[ys + yoff, xs + xoff]
+                end
             end
+            out[i, j] = acc * scale
         end
-        out[i, j] = acc * scale
     end
 end
 
@@ -1522,47 +1529,49 @@ end
         T = typeof(float(real(zero(eltype(out)))))
         yin = T(row_out - 1 - (n_outy ÷ 2)) / mag
         ypix = _ka_szoom_round(yin) + T(n_iny ÷ 2)
-        y1 = Int(ypix) - (k ÷ 2)
-        y2_excl = Int(ypix) + (k ÷ 2) + 1
+        y1 = Base.unsafe_trunc(Int, ypix) - (k ÷ 2)
+        y2_excl = Base.unsafe_trunc(Int, ypix) + (k ÷ 2) + 1
 
         xin = T(col_out - 1 - (n_outx ÷ 2)) / mag
         xpix = _ka_szoom_round(xin) + T(n_inx ÷ 2)
-        x1 = Int(xpix) - (k ÷ 2)
-        x2_excl = Int(xpix) + (k ÷ 2) + 1
+        x1 = Base.unsafe_trunc(Int, xpix) - (k ÷ 2)
+        x2_excl = Base.unsafe_trunc(Int, xpix) + (k ÷ 2) + 1
 
-        if y1 < 0 || y2_excl > n_iny || x1 < 0 || x2_excl > n_inx
-            out[row_out, col_out] = zero(eltype(out))
-        elseif eltype(image_in) <: Complex
-            acc_re = zero(T)
-            acc_im = zero(T)
-            for co in 0:(k - 1)
-                col = x1 + co + 1
-                s_re = zero(T)
-                s_im = zero(T)
-                for ro in 0:(k - 1)
-                    row = y1 + ro + 1
-                    wrow = tabley[row_out, ro + 1]
-                    z = image_in[row, col]
-                    s_re += T(real(z)) * wrow
-                    s_im += T(imag(z)) * wrow
+        @inbounds begin
+            if y1 < 0 || y2_excl > n_iny || x1 < 0 || x2_excl > n_inx
+                out[row_out, col_out] = zero(eltype(out))
+            elseif eltype(image_in) <: Complex
+                acc_re = zero(T)
+                acc_im = zero(T)
+                for co in 0:(k - 1)
+                    col = x1 + co + 1
+                    s_re = zero(T)
+                    s_im = zero(T)
+                    for ro in 0:(k - 1)
+                        row = y1 + ro + 1
+                        wrow = tabley[row_out, ro + 1]
+                        z = image_in[row, col]
+                        s_re += T(real(z)) * wrow
+                        s_im += T(imag(z)) * wrow
+                    end
+                    wcol = tablex[col_out, co + 1]
+                    acc_re += s_re * wcol
+                    acc_im += s_im * wcol
                 end
-                wcol = tablex[col_out, co + 1]
-                acc_re += s_re * wcol
-                acc_im += s_im * wcol
-            end
-            out[row_out, col_out] = complex(acc_re, acc_im)
-        else
-            acc = zero(T)
-            for co in 0:(k - 1)
-                col = x1 + co + 1
-                scol = zero(T)
-                for ro in 0:(k - 1)
-                    row = y1 + ro + 1
-                    scol += T(image_in[row, col]) * tabley[row_out, ro + 1]
+                out[row_out, col_out] = complex(acc_re, acc_im)
+            else
+                acc = zero(T)
+                for co in 0:(k - 1)
+                    col = x1 + co + 1
+                    scol = zero(T)
+                    for ro in 0:(k - 1)
+                        row = y1 + ro + 1
+                        scol += T(image_in[row, col]) * tabley[row_out, ro + 1]
+                    end
+                    acc += scol * tablex[col_out, co + 1]
                 end
-                acc += scol * tablex[col_out, co + 1]
+                out[row_out, col_out] = acc
             end
-            out[row_out, col_out] = acc
         end
     end
 end
