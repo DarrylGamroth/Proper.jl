@@ -136,6 +136,15 @@ struct RotateUnsupportedExecStyle <: RotateExecStyle end
     ::ArrayLayoutStyle,
     ::CPUBackend,
     ::CPUBackend,
+    ::FeatureEnabled,
+    ::FeatureEnabled,
+) = RotateKAExecStyle()
+
+@inline rotate_exec_style(
+    ::ArrayLayoutStyle,
+    ::ArrayLayoutStyle,
+    ::CPUBackend,
+    ::CPUBackend,
     ::FeatureFlagStyle,
     ::FeatureFlagStyle,
 ) = RotateHostExecStyle()
