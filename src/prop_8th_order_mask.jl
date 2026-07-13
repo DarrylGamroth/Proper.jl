@@ -36,7 +36,7 @@ end
 
     if i <= ny && j <= nx
         r = y_axis ? _mask_coord(i, ny, c) : _mask_coord(j, nx, c)
-        mask[i, j] = _mask_profile(r, e, ll, mm, plml)
+        @inbounds mask[i, j] = _mask_profile(r, e, ll, mm, plml)
     end
 end
 
@@ -57,7 +57,7 @@ end
     if i <= ny && j <= nx
         x = _mask_coord(j, nx, c)
         y = _mask_coord(i, ny, c)
-        mask[i, j] = _mask_profile(hypot(x, y), e, ll, mm, plml)
+        @inbounds mask[i, j] = _mask_profile(hypot(x, y), e, ll, mm, plml)
     end
 end
 
@@ -79,7 +79,7 @@ end
     if i <= ny && j <= nx
         x = _mask_coord(j, nx, c)
         y = _mask_coord(i, ny, c)
-        mask[i, j] = _mask_profile(hypot(x, y / axis_ratio), e, ll, mm, plml)
+        @inbounds mask[i, j] = _mask_profile(hypot(x, y / axis_ratio), e, ll, mm, plml)
     end
 end
 
@@ -335,9 +335,9 @@ function prop_8th_order_mask!(
 
     # Renormalize in intensity space then convert back to amplitude.
     mask .*= mask
-    mmin = minimum(mask)
+    mmin = AK.minimum(mask)
     mask .-= mmin
-    mmax = maximum(mask)
+    mmax = AK.maximum(mask)
     if mmax > 0
         mask ./= mmax
     end

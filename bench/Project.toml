@@ -10,7 +10,7 @@ AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 
 [compat]
-AMDGPU = "2.3"
+AMDGPU = "2.7"
 BenchmarkTools = "1.6"
 CUDA = "5"
 FFTW = "1.10"
