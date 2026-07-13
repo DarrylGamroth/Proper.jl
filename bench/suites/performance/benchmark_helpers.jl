@@ -1,17 +1,17 @@
-module Card00BenchmarkHelpers
+module PerformanceBenchmarkHelpers
 
 using Proper
 
-export CARD00_DM_ACTIVE_COUNTS, CARD00_ZERNIKE_NTERMS, CARD00_ZERNIKE_GRIDS
-export CARD00_ZERNIKE_FIT_GRIDS, CARD00_WFIRST_CASES
+export DEFAULT_DM_ACTIVE_COUNTS, DEFAULT_ZERNIKE_NTERMS, DEFAULT_ZERNIKE_GRIDS
+export DEFAULT_ZERNIKE_FIT_GRIDS, DEFAULT_WFIRST_CASES
 export active_actuator_positions, active_dm_command, count_active_actuators
 export zernike_coefficients, circular_fit_pupil, zernike_fit_wavefront
 
-const CARD00_DM_ACTIVE_COUNTS = (277, 468, 1024, 4096)
-const CARD00_ZERNIKE_NTERMS = (8, 22, 64)
-const CARD00_ZERNIKE_GRIDS = (128, 512, 1024)
-const CARD00_ZERNIKE_FIT_GRIDS = (256,)
-const CARD00_WFIRST_CASES = (
+const DEFAULT_DM_ACTIVE_COUNTS = (277, 468, 1024, 4096)
+const DEFAULT_ZERNIKE_NTERMS = (8, 22, 64)
+const DEFAULT_ZERNIKE_GRIDS = (128, 512, 1024)
+const DEFAULT_ZERNIKE_FIT_GRIDS = (256,)
+const DEFAULT_WFIRST_CASES = (
     "compact_hlc",
     "full_hlc",
     "compact_spc_spec_long",
@@ -52,7 +52,7 @@ end
 """
     active_dm_command(active_count; T=Float64, amplitude_m=25e-9)
 
-Build the Card 00 deterministic DM command matrix. Inactive actuators are zero;
+Build the benchmark deterministic DM command matrix. Inactive actuators are zero;
 active actuator positions are selected by `active_actuator_positions`.
 """
 function active_dm_command(active_count::Integer; T::Type{<:AbstractFloat}=Float64, amplitude_m::Real=25e-9)

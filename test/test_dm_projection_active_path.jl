@@ -1,5 +1,5 @@
-@testset "Card 02 DM projection active path" begin
-    function _card02_dm_command(side::Integer; sparse::Bool)
+@testset "DM projection active path" begin
+    function _dm_projection_dm_command(side::Integer; sparse::Bool)
         n = Int(side)
         cmd = zeros(Float64, n, n)
         center = (n + 1) / 2
@@ -15,7 +15,7 @@
         return cmd
     end
 
-    function _card02_seed_field!(wf)
+    function _dm_projection_seed_field!(wf)
         @inbounds for j in axes(wf.field, 2)
             for i in axes(wf.field, 1)
                 phase = 0.002 * i - 0.0015 * j
@@ -25,7 +25,7 @@
         return wf
     end
 
-    function _card02_dm_reference(wf, dm_cmd, dm_xc, dm_yc; nact)
+    function _dm_projection_dm_reference(wf, dm_cmd, dm_xc, dm_yc; nact)
         influence_path = joinpath(@__DIR__, "..", "data", "influence_dm5v2_1.fits")
         inf, hdr = prop_fits_read(influence_path; header=true)
         dx_inf_native = float(hdr["P2PD_M"])
@@ -75,15 +75,15 @@
     end
 
     for (side, sparse, dm_xc, dm_yc) in ((5, true, 0.25, -0.5), (8, false, -0.4, 0.3))
-        dm = _card02_dm_command(side; sparse=sparse)
+        dm = _dm_projection_dm_command(side; sparse=sparse)
 
         wf_map = prop_begin(1.0, 0.55e-6, 64)
         fast = prop_dm(wf_map, dm, dm_xc, dm_yc, 0.0; N_ACT_ACROSS_PUPIL=side, NO_APPLY=true)
-        ref = _card02_dm_reference(wf_map, dm, dm_xc, dm_yc; nact=side)
+        ref = _dm_projection_dm_reference(wf_map, dm, dm_xc, dm_yc; nact=side)
         @test fast ≈ ref rtol=5e-13 atol=1e-22
 
-        wf_fast = _card02_seed_field!(prop_begin(1.0, 0.55e-6, 64))
-        wf_ref = _card02_seed_field!(prop_begin(1.0, 0.55e-6, 64))
+        wf_fast = _dm_projection_seed_field!(prop_begin(1.0, 0.55e-6, 64))
+        wf_ref = _dm_projection_seed_field!(prop_begin(1.0, 0.55e-6, 64))
         prop_dm(wf_fast, dm, dm_xc, dm_yc, 0.0; N_ACT_ACROSS_PUPIL=side)
         prop_add_phase(wf_ref, 2 .* transpose(ref))
         @test wf_fast.field ≈ wf_ref.field rtol=5e-13 atol=5e-15

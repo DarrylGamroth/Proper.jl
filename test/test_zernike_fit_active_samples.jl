@@ -2,7 +2,7 @@ using Test
 using Proper
 using LinearAlgebra
 
-function card03_reference_fit_zernikes_qr(
+function zernike_fit_reference_fit_zernikes_qr(
     wavefront::AbstractMatrix,
     pupil::AbstractMatrix,
     pupilradius::Real,
@@ -40,7 +40,7 @@ function card03_reference_fit_zernikes_qr(
     return coeff
 end
 
-function card03_circular_mask(n::Int, radius::Float64, x0::Int, y0::Int; clipped::Bool=false)
+function zernike_fit_circular_mask(n::Int, radius::Float64, x0::Int, y0::Int; clipped::Bool=false)
     mask = zeros(Float64, n, n)
     @inbounds for j in 1:n
         x = (j - 1 - x0) / radius
@@ -53,7 +53,7 @@ function card03_circular_mask(n::Int, radius::Float64, x0::Int, y0::Int; clipped
     return mask
 end
 
-function card03_wavefront_map(n::Int, nterms::Int)
+function zernike_fit_wavefront_map(n::Int, nterms::Int)
     wf = prop_begin(1.0, 550e-9, n)
     coeffs = [((isodd(k) ? 1.0 : -1.0) * (0.5 + k / nterms) * 1e-9) for k in 1:nterms]
     zmap = prop_zernikes(wf, collect(1:nterms), coeffs; no_apply=true)
@@ -65,17 +65,17 @@ function card03_wavefront_map(n::Int, nterms::Int)
     return zmap
 end
 
-@testset "Card 03 Zernike fit active-sample path" begin
+@testset "Zernike fit active-sample path" begin
     cases = (
         (grid=32, nzer=8, radius=14.0, xc=16, yc=16, clipped=false),
         (grid=64, nzer=22, radius=28.0, xc=33, yc=30, clipped=true),
     )
 
     for case in cases
-        wavefront = card03_wavefront_map(case.grid, max(case.nzer, 22))
-        pupil = card03_circular_mask(case.grid, case.radius, case.xc, case.yc; clipped=case.clipped)
+        wavefront = zernike_fit_wavefront_map(case.grid, max(case.nzer, 22))
+        pupil = zernike_fit_circular_mask(case.grid, case.radius, case.xc, case.yc; clipped=case.clipped)
 
-        coeff_ref = card03_reference_fit_zernikes_qr(
+        coeff_ref = zernike_fit_reference_fit_zernikes_qr(
             wavefront,
             pupil,
             case.radius,
@@ -93,7 +93,7 @@ end
         )
         @test coeff ≈ coeff_ref rtol = 1e-9 atol = 5e-20
 
-        coeff_fit_ref, fitmap_ref = card03_reference_fit_zernikes_qr(
+        coeff_fit_ref, fitmap_ref = zernike_fit_reference_fit_zernikes_qr(
             wavefront,
             pupil,
             case.radius,
@@ -117,10 +117,10 @@ end
         @test fitmap isa Matrix{Float64}
     end
 
-    sparse_wavefront = card03_wavefront_map(16, 8)
+    sparse_wavefront = zernike_fit_wavefront_map(16, 8)
     sparse_pupil = zeros(Float64, 16, 16)
     sparse_pupil[8, 8] = 1.0
-    sparse_ref = card03_reference_fit_zernikes_qr(sparse_wavefront, sparse_pupil, 7.0, 4; xc=8, yc=8)
+    sparse_ref = zernike_fit_reference_fit_zernikes_qr(sparse_wavefront, sparse_pupil, 7.0, 4; xc=8, yc=8)
     sparse_coeff = prop_fit_zernikes(sparse_wavefront, sparse_pupil, 7.0, 4; xc=8, yc=8)
     @test sparse_coeff ≈ sparse_ref rtol = 1e-9 atol = 5e-20
 end

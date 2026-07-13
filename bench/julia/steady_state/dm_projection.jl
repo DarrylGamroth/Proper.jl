@@ -1,12 +1,12 @@
 using Proper
 
 include(joinpath(@__DIR__, "..", "..", "common", "metadata.jl"))
-include(joinpath(@__DIR__, "..", "..", "cards", "card00", "benchmark_helpers.jl"))
-include(joinpath(@__DIR__, "..", "..", "cards", "card00", "reporting.jl"))
+include(joinpath(@__DIR__, "..", "..", "suites", "performance", "benchmark_helpers.jl"))
+include(joinpath(@__DIR__, "..", "..", "suites", "performance", "reporting.jl"))
 
 using .BenchMetadata
-using .Card00BenchmarkHelpers
-using .Card00Reporting
+using .PerformanceBenchmarkHelpers
+using .BenchmarkReporting
 
 function bench_dm_case(active_count::Integer, grid_n::Integer, samples::Integer)
     cmd = active_dm_command(active_count)
@@ -40,18 +40,18 @@ end
 function main()
     samples = parse(Int, String(arg_value("--samples", "5")))
     grid_n = parse(Int, String(arg_value("--grid", "256")))
-    counts = parse_int_list(arg_value("--active-counts", nothing), CARD00_DM_ACTIVE_COUNTS)
+    counts = parse_int_list(arg_value("--active-counts", nothing), DEFAULT_DM_ACTIVE_COUNTS)
 
     cases = [bench_dm_case(active_count, grid_n, samples) for active_count in counts]
     report = Dict(
         "meta" => merge(
-            benchmark_metadata(run_tag="card_00_dm_projection", backend=:cpu),
-            Dict("card" => "00", "benchmark" => "dm_projection"),
+            benchmark_metadata(run_tag="dm_projection", backend=:cpu),
+            Dict("benchmark" => "dm_projection"),
         ),
-        "policy" => "Card 00 steady-state CPU DM projection benchmarks via BenchmarkTools with evals=1 after warmup; TTFx excluded. Active actuator counts are embedded in the smallest square storage grid with centered deterministic active masks.",
+        "policy" => "Steady-state CPU DM projection benchmarks via BenchmarkTools with evals=1 after warmup; TTFx excluded. Active actuator counts are embedded in the smallest square storage grid with centered deterministic active masks.",
         "cases" => cases,
     )
-    out = joinpath(@__DIR__, "..", "..", "reports", "card_00_dm_projection.json")
+    out = joinpath(@__DIR__, "..", "..", "reports", "dm_projection.json")
     write_json_report(out, report)
 end
 

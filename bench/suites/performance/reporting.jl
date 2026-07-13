@@ -1,4 +1,4 @@
-module Card00Reporting
+module BenchmarkReporting
 
 using BenchmarkTools
 using JSON3
