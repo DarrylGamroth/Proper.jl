@@ -403,6 +403,12 @@ end
             @test Proper.ka_rotate_enabled(typeof(a), 16, 16)
             @test Proper.ka_geometry_enabled(typeof(a), 16, 16)
             @test Proper.ka_sampling_enabled(typeof(a), 16, 16)
+            @test Proper.qphase_workspace(ctx).xphase isa CUDA.CuArray
+            @test Proper.qphase_workspace(ctx).yphase isa CUDA.CuArray
+            @test !Proper.ka_separable_phase_enabled(typeof(a), 16, 16)
+            @test Proper.ka_separable_phase_enabled(typeof(a), 256, 256)
+            @test !Proper.ka_separable_qphase_enabled(typeof(a), 256, 256)
+            @test Proper.ka_separable_qphase_enabled(CUDA.CuMatrix{ComplexF64}, 128, 128)
 
             m = prop_magnify(a, 1.1, 16, ctx; QUICK=true)
             r = prop_rotate(a, 5.0, ctx)
@@ -507,6 +513,28 @@ end
             @test Proper.ka_cubic_grid_enabled(typeof(a), 16, 16)
             @test Proper.ka_geometry_enabled(typeof(a), 16, 16)
             @test Proper.ka_sampling_enabled(typeof(a), 16, 16)
+            @test Proper.qphase_workspace(ctx).xphase isa AMDGPU.ROCArray
+            @test Proper.qphase_workspace(ctx).yphase isa AMDGPU.ROCArray
+            @test !Proper.ka_separable_phase_enabled(typeof(a), 16, 16)
+            @test Proper.ka_separable_phase_enabled(typeof(a), 256, 256)
+            @test !Proper.ka_separable_qphase_enabled(typeof(a), 256, 256)
+            @test Proper.ka_separable_qphase_enabled(AMDGPU.ROCMatrix{ComplexF64}, 128, 128)
+
+            promoted_c = 10.0
+            promoted_wf_gpu = Proper.WaveFront(AMDGPU.fill(ComplexF32(1), 16, 16), 500f-9, 1f-6, 0f0, 1f0)
+            promoted_ctx = RunContext(promoted_wf_gpu)
+            promoted_k = pi / (promoted_wf_gpu.wavelength_m * promoted_c)
+            promoted_ref = Matrix{ComplexF32}(undef, 16, 16)
+            for j in axes(promoted_ref, 2), i in axes(promoted_ref, 1)
+                x = Float32(Proper._ka_shifted_index_0based(j - 1, 16)) * promoted_wf_gpu.sampling_m
+                y = Float32(Proper._ka_shifted_index_0based(i - 1, 16)) * promoted_wf_gpu.sampling_m
+                promoted_ref[i, j] = cis(promoted_k * (x * x + y * y))
+            end
+            prop_qphase(promoted_wf_gpu, promoted_c, promoted_ctx)
+            AMDGPU.synchronize()
+            @test isapprox(Array(promoted_wf_gpu.field), promoted_ref; atol=3f-6, rtol=3f-6)
+            @test isempty(Proper.qphase_workspace(promoted_ctx).xphase)
+            @test isempty(Proper.qphase_workspace(promoted_ctx).yphase)
 
             p = Proper._prop_pixellate_factor(a, 2)
             @test_throws ArgumentError Proper.prop_cubic_conv(a, 1.5f0, 1.5f0)
@@ -541,6 +569,33 @@ end
             wf_ref.reference_surface = Proper.PLANAR
             prop_ptp(wf_ref, 0.01f0)
             @test isapprox(Array(wf.field), wf_ref.field; atol=3f-4, rtol=1f-3)
+
+            phase_n = 256
+            phase_rng = MersenneTwister(20260712)
+            phase_input = rand(phase_rng, ComplexF64, phase_n, phase_n)
+            wf_phase_ref = Proper.WaveFront(copy(phase_input), 500e-9, 1e-6, 0.0, 1.0)
+            wf_phase_gpu = Proper.WaveFront(AMDGPU.ROCArray(phase_input), 500e-9, 1e-6, 0.0, 1.0)
+            ctx_phase = RunContext(wf_phase_gpu)
+            prop_qphase(wf_phase_ref, 10.0)
+            prop_qphase(wf_phase_gpu, 10.0, ctx_phase)
+            AMDGPU.synchronize()
+            @test isapprox(Array(wf_phase_gpu.field), wf_phase_ref.field; atol=3e-10, rtol=3e-10)
+            @test length(Proper.qphase_workspace(ctx_phase).xphase) == phase_n
+            @test length(Proper.qphase_workspace(ctx_phase).yphase) == phase_n
+
+            ptp_input = rand(phase_rng, ComplexF32, phase_n, phase_n)
+            wf_ptp_ref = Proper.WaveFront(copy(ptp_input), 500f-9, 1f-4, 0f0, 1f0)
+            wf_ptp_gpu = Proper.WaveFront(AMDGPU.ROCArray(ptp_input), 500f-9, 1f-4, 0f0, 1f0)
+            ctx_ptp = RunContext(wf_ptp_gpu)
+            wf_ptp_ref.reference_surface = Proper.PLANAR
+            wf_ptp_gpu.reference_surface = Proper.PLANAR
+            prop_ptp(wf_ptp_ref, 0.01f0)
+            prop_ptp(wf_ptp_gpu, 0.01f0, ctx_ptp)
+            AMDGPU.synchronize()
+            @test isapprox(Array(wf_ptp_gpu.field), wf_ptp_ref.field; atol=3f-4, rtol=1f-3)
+            @test length(Proper.qphase_workspace(ctx_ptp).xphase) == phase_n
+            @test length(Proper.qphase_workspace(ctx_ptp).yphase) == phase_n
+
             wf_mask = Proper.WaveFront(AMDGPU.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
             wf_mask_ref = Proper.WaveFront(fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
             mask = prop_8th_order_mask(wf_mask, 3f0; circular=true)
