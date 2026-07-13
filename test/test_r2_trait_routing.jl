@@ -122,6 +122,88 @@ const GPU_WARM_END_REAL_ALLOC_MAX = 16_384
 const GPU_WARM_END_COMPLEX_ALLOC_MAX = 16_384
 const GPU_WARM_8TH_MASK_ALLOC_MAX = 16_384
 
+function _gpu_propagate_to_fft_scratch!(wf, ctx, dz, propagation::Symbol)
+    if propagation === :ptp
+        wf.reference_surface = Proper.PLANAR
+        prop_ptp(wf, dz, ctx)
+    elseif propagation === :wts
+        wf.reference_surface = Proper.PLANAR
+        prop_wts(wf, dz, ctx)
+    elseif propagation === :stw
+        wf.reference_surface = Proper.SPHERICAL
+        prop_stw(wf, dz, ctx)
+    else
+        throw(ArgumentError("unsupported propagation path: $propagation"))
+    end
+    return wf
+end
+
+function _gpu_8th_mask_scratch_alias_regression!(
+    device_array,
+    sync!,
+    ::Type{T},
+    propagation::Symbol;
+    n::Int=16,
+) where {T<:AbstractFloat}
+    field = device_array(fill(complex(one(T), T(0.125)), n, n))
+    wf_alias = Proper.WaveFront(field, T(500e-9), T(1e-3), zero(T), one(T))
+    ctx = RunContext(wf_alias)
+    _gpu_propagate_to_fft_scratch!(wf_alias, ctx, T(0.01), propagation)
+    sync!()
+
+    # Planned FFT paths intentionally publish the workspace buffer as the
+    # current field. The mask reduction must not use that live field as temp.
+    @test wf_alias.field === wf_alias.workspace.fft.scratch
+    fft_scratch = wf_alias.workspace.fft.scratch
+    forward_plan = wf_alias.workspace.fft.forward_plan
+    backward_plan = wf_alias.workspace.fft.backward_plan
+    snapshot = copy(wf_alias.field)
+    sync!()
+
+    wf_oracle = Proper.WaveFront(
+        copy(snapshot),
+        wf_alias.wavelength_m,
+        wf_alias.sampling_m,
+        wf_alias.z_m,
+        wf_alias.beam_diameter_m,
+    )
+    wf_oracle.current_fratio = wf_alias.current_fratio
+    @test wf_oracle.field !== wf_oracle.workspace.fft.scratch
+    @test wf_oracle.workspace.fft.scratch !== wf_alias.workspace.fft.scratch
+
+    mask_alias = similar(wf_alias.field, T, n, n)
+    mask_oracle = similar(wf_oracle.field, T, n, n)
+    prop_8th_order_mask!(
+        mask_alias,
+        wf_alias,
+        T(3);
+        circular=true,
+        min_transmission=T(0.1),
+        max_transmission=T(0.9),
+    )
+    prop_8th_order_mask!(
+        mask_oracle,
+        wf_oracle,
+        T(3);
+        circular=true,
+        min_transmission=T(0.1),
+        max_transmission=T(0.9),
+    )
+    sync!()
+
+    # Both paths start from one device snapshot and run the same mask kernels;
+    # a small epsilon allowance covers backend contraction without masking any
+    # corruption of the live field by the reduction temporary.
+    tolerance = T(16) * eps(T)
+    @test isapprox(Array(mask_alias), Array(mask_oracle); atol=tolerance, rtol=tolerance)
+    @test isapprox(Array(wf_alias.field), Array(wf_oracle.field); atol=tolerance, rtol=tolerance)
+    @test wf_alias.workspace.fft.scratch === fft_scratch
+    @test wf_alias.workspace.fft.forward_plan === forward_plan
+    @test wf_alias.workspace.fft.backward_plan === backward_plan
+    @test wf_alias.workspace.fft.plans_valid
+    return nothing
+end
+
 function _gpu_map_apply_smoke!(
     wf_gpu,
     gpu_real_matrix,
@@ -499,6 +581,7 @@ end
             @test mask isa CUDA.CuArray
             @test isapprox(Array(mask), mask_ref; atol=1f-5, rtol=1f-5)
             @test isapprox(Array(wf_mask.field), wf_mask_ref.field; atol=1f-5, rtol=1f-5)
+            @test wf_mask.workspace.mask.reduction_scratch isa CUDA.CuVector{ComplexF32}
             rect = prop_rectangle(wf, 5f-4, 4f-4)
             round = prop_rounded_rectangle(wf, 2f-4, 5f-4, 4f-4)
             out, sampling = prop_end(wf)
@@ -520,6 +603,20 @@ end
             @test _warmed_gpu_end_complex_alloc(similar(wf_alloc.field), wf_alloc, CUDA.synchronize) <= GPU_WARM_END_COMPLEX_ALLOC_MAX
             _gpu_direct_dm_smoke!(wf_alloc, CUDA.zeros(Float32, 16, 16), CUDA.CuArray, CUDA.synchronize)
             _gpu_map_apply_smoke!(wf_alloc, CUDA.zeros(Float32, 16, 16), CUDA.CuArray, CUDA.synchronize)
+            @testset "8th-order mask after planned FFT" begin
+                for T in (Float32, Float64), propagation in (:ptp, :wts, :stw)
+                    @testset "$propagation $T" begin
+                        n = T === Float32 && propagation === :ptp ? 256 : 16
+                        _gpu_8th_mask_scratch_alias_regression!(
+                            CUDA.CuArray,
+                            CUDA.synchronize,
+                            T,
+                            propagation;
+                            n,
+                        )
+                    end
+                end
+            end
         else
             @test true
         end
@@ -695,7 +792,7 @@ end
 
                 @test isapprox(Array(mask_gpu), mask_cpu; atol=3f-5, rtol=3f-5)
                 @test isapprox(Array(wf_mask_gpu.field), wf_mask_cpu.field; atol=3f-5, rtol=3f-5)
-                @test wf_mask_gpu.workspace.fft.scratch isa AMDGPU.ROCArray
+                @test wf_mask_gpu.workspace.mask.reduction_scratch isa AMDGPU.ROCArray
             end
 
             wf_mask_alloc = Proper.WaveFront(
@@ -712,10 +809,12 @@ end
                 AMDGPU.synchronize,
             )
             @test mask_alloc_bytes <= GPU_WARM_8TH_MASK_ALLOC_MAX
-            reduction_scratch = wf_mask_alloc.workspace.fft.scratch
+            reduction_scratch = wf_mask_alloc.workspace.mask.reduction_scratch
+            @test reduction_scratch isa AMDGPU.ROCVector{ComplexF32}
+            @test length(reduction_scratch) == Proper._mask_extrema_temp_length(length(mask_alloc))
             prop_8th_order_mask!(mask_alloc, wf_mask_alloc, 3f0; circular=true)
             AMDGPU.synchronize()
-            @test wf_mask_alloc.workspace.fft.scratch === reduction_scratch
+            @test wf_mask_alloc.workspace.mask.reduction_scratch === reduction_scratch
 
             prop_circular_aperture(wf, 2.5f-4)
             @test wf.workspace.mask.mask isa AMDGPU.ROCArray
@@ -736,6 +835,20 @@ end
             @test _warmed_gpu_end_real_alloc(out_alloc, wf_alloc, AMDGPU.synchronize) <= GPU_WARM_END_REAL_ALLOC_MAX
             @test _warmed_gpu_end_complex_alloc(similar(wf_alloc.field), wf_alloc, AMDGPU.synchronize) <= GPU_WARM_END_COMPLEX_ALLOC_MAX
             _gpu_direct_dm_smoke!(wf_alloc, AMDGPU.zeros(Float32, 16, 16), AMDGPU.ROCArray, AMDGPU.synchronize)
+            @testset "8th-order mask after planned FFT" begin
+                for T in (Float32, Float64), propagation in (:ptp, :wts, :stw)
+                    @testset "$propagation $T" begin
+                        n = T === Float32 && propagation === :ptp ? 256 : 16
+                        _gpu_8th_mask_scratch_alias_regression!(
+                            AMDGPU.ROCArray,
+                            AMDGPU.synchronize,
+                            T,
+                            propagation;
+                            n,
+                        )
+                    end
+                end
+            end
         else
             @test true
         end

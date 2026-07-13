@@ -3,6 +3,10 @@ struct LinearMaskShape <: EighthOrderMaskShape end
 struct CircularMaskShape <: EighthOrderMaskShape end
 struct EllipticalMaskShape <: EighthOrderMaskShape end
 
+const MASK_EXTREMA_BLOCK_SIZE = 256
+
+@inline _mask_extrema_temp_length(n::Integer) = 2 * cld(n, 2 * MASK_EXTREMA_BLOCK_SIZE)
+
 @inline _mask_shape_style(circular::Bool, elliptical::Nothing) = circular ? CircularMaskShape() : LinearMaskShape()
 @inline _mask_shape_style(circular::Bool, elliptical::Real) = EllipticalMaskShape()
 
@@ -163,8 +167,10 @@ end
 @inline function _mask_squared_extrema(mask::AbstractMatrix{T}, wf::WaveFront) where {T<:AbstractFloat}
     length(mask) <= 1 && return complex(zero(T), zero(T))
 
-    ny, nx = size(mask)
-    reduction_scratch = vec(ensure_fft_scratch!(wf.workspace.fft, ny, nx))
+    # Planned FFT paths publish `workspace.fft.scratch` as the live field, so
+    # mask reductions must use separately owned storage.
+    required_temp = _mask_extrema_temp_length(length(mask))
+    reduction_scratch = ensure_mask_reduction_scratch!(wf.workspace.mask, required_temp)
     neutral = complex(typemax(T), typemin(T))
     return AK.mapreduce(
         _mask_squared_extrema_map,
@@ -173,6 +179,7 @@ end
         init=neutral,
         neutral=neutral,
         temp=reduction_scratch,
+        block_size=MASK_EXTREMA_BLOCK_SIZE,
     )
 end
 
