@@ -1,9 +1,9 @@
-include(joinpath(@__DIR__, "..", "bench", "cards", "card00", "benchmark_helpers.jl"))
-using .Card00BenchmarkHelpers
+include(joinpath(@__DIR__, "..", "bench", "suites", "performance", "benchmark_helpers.jl"))
+using .PerformanceBenchmarkHelpers
 
-@testset "Card 00 benchmark helpers" begin
+@testset "Benchmark helper defaults" begin
     expected_sides = Dict(277 => 17, 468 => 22, 1024 => 32, 4096 => 64)
-    for active_count in CARD00_DM_ACTIVE_COUNTS
+    for active_count in DEFAULT_DM_ACTIVE_COUNTS
         cmd = active_dm_command(active_count)
         @test cmd.grid_side == expected_sides[active_count]
         @test size(cmd.values) == (cmd.grid_side, cmd.grid_side)

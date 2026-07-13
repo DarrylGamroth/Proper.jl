@@ -4,12 +4,12 @@ using Proper
 using .WFIRSTPhaseBProper
 
 include(joinpath(@__DIR__, "..", "..", "common", "metadata.jl"))
-include(joinpath(@__DIR__, "..", "..", "cards", "card00", "benchmark_helpers.jl"))
-include(joinpath(@__DIR__, "..", "..", "cards", "card00", "reporting.jl"))
+include(joinpath(@__DIR__, "..", "..", "suites", "performance", "benchmark_helpers.jl"))
+include(joinpath(@__DIR__, "..", "..", "suites", "performance", "reporting.jl"))
 
 using .BenchMetadata
-using .Card00BenchmarkHelpers
-using .Card00Reporting
+using .PerformanceBenchmarkHelpers
+using .BenchmarkReporting
 
 function bench_wfirst_case(case_name::AbstractString, data_root::AbstractString, samples::Integer, threaded::Bool, skip_missing::Bool)
     cases = phaseb_case_definitions()
@@ -52,18 +52,18 @@ function main()
     data_root = String(arg_value("--data-root", phaseb_default_data_root()))
     threaded = String(arg_value("--threaded", "true")) != "false"
     skip_missing = String(arg_value("--skip-missing", "true")) != "false"
-    case_names = parse_string_list(arg_value("--cases", nothing), CARD00_WFIRST_CASES)
+    case_names = parse_string_list(arg_value("--cases", nothing), DEFAULT_WFIRST_CASES)
 
     cases = [bench_wfirst_case(case_name, data_root, samples, threaded, skip_missing) for case_name in case_names]
     report = Dict(
         "meta" => merge(
-            benchmark_metadata(run_tag="card_00_wfirst_prepared_models", backend=:cpu, baseline="wfirst_phaseb_julia"),
-            Dict("card" => "00", "benchmark" => "wfirst_prepared_models", "data_root" => abspath(data_root)),
+            benchmark_metadata(run_tag="wfirst_prepared_models", backend=:cpu, baseline="wfirst_phaseb_julia"),
+            Dict("benchmark" => "wfirst_prepared_models", "data_root" => abspath(data_root)),
         ),
-        "policy" => "Card 00 steady-state CPU WFIRST/Roman prepared-model benchmarks via BenchmarkTools with evals=1 after warmup; TTFx excluded. Data assets are read from the external cache path and are not bundled into the package.",
+        "policy" => "Steady-state CPU WFIRST/Roman prepared-model benchmarks via BenchmarkTools with evals=1 after warmup; TTFx excluded. Data assets are read from the external cache path and are not bundled into the package.",
         "cases" => cases,
     )
-    out = joinpath(@__DIR__, "..", "..", "reports", "card_00_wfirst_prepared_models.json")
+    out = joinpath(@__DIR__, "..", "..", "reports", "wfirst_prepared_models.json")
     write_json_report(out, report)
 end
 
