@@ -107,7 +107,11 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Date: 2026-03-04
 - Status: Accepted
 - Decision:
-  - Default execution model: shared-memory threading (Julia `Threads`).
+  - CPU runs use shared-memory threading (Julia `Threads`) when their run
+    contexts and workspaces are independent.
+  - Accelerator and unknown backends use ordered serial host submission by
+    default. Device kernels remain asynchronous where supported, but multiple
+    Julia tasks do not concurrently submit whole prescriptions to one device.
   - Optional distributed execution may be added behind explicit keyword.
   - Output ordering must match input ordering deterministically.
 

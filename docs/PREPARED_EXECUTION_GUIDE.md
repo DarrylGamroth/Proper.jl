@@ -152,6 +152,10 @@ parallelism with single-thread FFTW as the first configuration to benchmark:
 PROPER_FFTW_THREADS=1 julia --threads=4 --project=. my_batch_run.jl
 ```
 
+This outer threading applies to independent CPU contexts. AMDGPU, CUDA, and
+unknown backends use ordered serial host submission by default so Julia tasks
+do not contend while submitting whole prescriptions to a single device.
+
 Thread counts are machine- and grid-size-dependent. Benchmark representative
 256, 512, and 1024 grids before choosing a production value. Changing
 `prop_fftw_threads` affects newly created FFTW plans only; call
