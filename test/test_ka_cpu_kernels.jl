@@ -60,6 +60,48 @@ using Random
     end
     @test qfield ≈ qfield_ref
     @test Proper.ka_apply_frequency_phase!(qfield, 0.25f0, 0.1f0) === qfield
+    @test !Proper.ka_separable_phase_enabled(Matrix{ComplexF32}, 256, 256)
+    @test !Proper.ka_separable_qphase_enabled(Matrix{ComplexF64}, 256, 256)
+
+    promoted_field = fill(ComplexF32(1), 5, 5)
+    promoted_wf = Proper.WaveFront(promoted_field, 500f-9, 1f-6, 0f0, 1f0)
+    promoted_ctx = RunContext(promoted_wf)
+    promoted_c = 10.0
+    promoted_k = pi / (promoted_wf.wavelength_m * promoted_c)
+    @test promoted_k isa Float64
+    promoted_ref = Matrix{ComplexF32}(undef, size(promoted_field))
+    for j in axes(promoted_ref, 2), i in axes(promoted_ref, 1)
+        x = Float32(Proper._ka_shifted_index_0based(j - 1, size(promoted_ref, 2))) * promoted_wf.sampling_m
+        y = Float32(Proper._ka_shifted_index_0based(i - 1, size(promoted_ref, 1))) * promoted_wf.sampling_m
+        promoted_ref[i, j] = cis(promoted_k * (x * x + y * y))
+    end
+    @test Proper._prop_qphase_ka!(promoted_wf, promoted_c, promoted_ctx) === promoted_wf
+    @test promoted_wf.field ≈ promoted_ref
+
+    sep_ws = Proper.QPhaseWorkspace(Float32)
+    sep_k = 0.5f0
+    sep_sy = 0.2f0
+    sep_sx = 0.1f0
+    for sep_scale in (1.0f0, inv(7.0f0))
+        sep_field = fill(ComplexF32(1 + 0.25im), 7, 9)
+        sep_ref = copy(sep_field)
+        xphase_ref = Vector{ComplexF32}(undef, size(sep_ref, 2))
+        yphase_ref = Vector{ComplexF32}(undef, size(sep_ref, 1))
+        Proper._fill_fft_order_axis_phase!(xphase_ref, length(xphase_ref), sep_sx, sep_k)
+        Proper._fill_fft_order_axis_phase!(yphase_ref, length(yphase_ref), sep_sy, sep_k)
+        Proper._apply_separable_phase!(sep_ref, xphase_ref, yphase_ref, sep_scale)
+        @test Proper._apply_separable_quadratic_phase_ka!(
+            sep_field,
+            sep_k,
+            sep_sy,
+            sep_sx,
+            sep_ws,
+            sep_scale,
+        ) === sep_field
+        @test sep_field ≈ sep_ref
+        @test length(sep_ws.xphase) == size(sep_field, 2)
+        @test length(sep_ws.yphase) == size(sep_field, 1)
+    end
 
     xaxis = zeros(Float32, 5)
     yaxis = zeros(Float32, 3)

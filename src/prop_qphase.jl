@@ -55,6 +55,39 @@ end
     return field
 end
 
+@inline function _apply_separable_quadratic_phase_ka!(
+    field::AbstractMatrix{Complex{T}},
+    k::Real,
+    spacing_y::T,
+    spacing_x::T,
+    ws::QPhaseWorkspace{T},
+    scale::T=one(T),
+) where {T<:AbstractFloat}
+    ny, nx = size(field)
+    xphase, yphase = ensure_qphase_vectors!(ws, nx, ny)
+    ka_fill_fft_order_axis_phases!(xphase, yphase, k, spacing_y, spacing_x)
+    ka_apply_separable_phase!(field, xphase, yphase, scale)
+    return field
+end
+
+@inline function _apply_fft_quadratic_phase_ka!(
+    field::AbstractMatrix{Complex{T}},
+    kphase::Real,
+    dx::T,
+    ws::QPhaseWorkspace{T},
+    scale::T=one(T),
+) where {T<:AbstractFloat}
+    ny, nx = size(field)
+    if ka_separable_phase_enabled(typeof(field), ny, nx)
+        inv_dy = inv(T(ny) * dx)
+        inv_dx = inv(T(nx) * dx)
+        return _apply_separable_quadratic_phase_ka!(field, kphase, inv_dy, inv_dx, ws, scale)
+    end
+    ka_scale_field!(field, scale)
+    ka_apply_frequency_phase!(field, kphase, dx)
+    return field
+end
+
 @inline function _prop_qphase_generic!(wf::WaveFront, c::Real)
     c == 0 && return wf
     ny, nx = size(wf.field)
@@ -63,10 +96,17 @@ end
     return wf
 end
 
-@inline function _prop_qphase_ka!(wf::WaveFront, c::Real)
+@inline function _prop_qphase_ka!(wf::WaveFront, c::Real, ctx::RunContext)
     c == 0 && return wf
+    T = float(real(eltype(wf.field)))
     k = pi / (wf.wavelength_m * float(c))
-    ka_apply_qphase!(wf.field, k, wf.sampling_m)
+    dx = T(wf.sampling_m)
+    ny, nx = size(wf.field)
+    if ka_separable_qphase_enabled(typeof(wf.field), ny, nx)
+        _apply_separable_quadratic_phase_ka!(wf.field, k, dx, dx, qphase_workspace(ctx))
+    else
+        ka_apply_qphase!(wf.field, k, dx)
+    end
     return wf
 end
 
@@ -81,7 +121,7 @@ struct QPhaseBroadcastExecStyle <: QPhaseExecStyle end
 @inline qphase_exec_style(::ArrayLayoutStyle, ::BackendStyle) = QPhaseBroadcastExecStyle()
 
 @inline _prop_qphase!(::QPhaseLoopExecStyle, wf::WaveFront, c::Real, ctx::RunContext) = _prop_qphase_strided!(wf, c, qphase_workspace(ctx))
-@inline _prop_qphase!(::QPhaseKAExecStyle, wf::WaveFront, c::Real, ctx::RunContext) = _prop_qphase_ka!(wf, c)
+@inline _prop_qphase!(::QPhaseKAExecStyle, wf::WaveFront, c::Real, ctx::RunContext) = _prop_qphase_ka!(wf, c, ctx)
 @inline _prop_qphase!(::QPhaseBroadcastExecStyle, wf::WaveFront, c::Real, ctx::RunContext) = _prop_qphase_generic!(wf, c)
 
 """Apply quadratic phase for curvature c (meters)."""

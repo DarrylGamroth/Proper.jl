@@ -17,6 +17,7 @@ Proper.geometry_kernel_style(::Type{<:AMDGPU.ROCArray}) = Proper.GeometryKAStyle
 Proper.sampling_kernel_style(::Type{<:AMDGPU.ROCArray}) = Proper.SamplingKAStyle()
 Proper.interp_kernel_style(::Type{<:AMDGPU.ROCArray}) = Proper.InterpKAStyle()
 Proper.workspace_vector(::Type{<:AMDGPU.ROCArray}, ::Type{T}, n::Integer=0) where {T<:AbstractFloat} = AMDGPU.ROCVector{T}(undef, n)
+Proper.workspace_complex_vector(::Type{<:AMDGPU.ROCArray}, ::Type{T}, n::Integer=0) where {T<:AbstractFloat} = AMDGPU.ROCVector{Complex{T}}(undef, n)
 Proper.workspace_matrix(::Type{<:AMDGPU.ROCArray}, ::Type{T}, ny::Integer=0, nx::Integer=0) where {T<:AbstractFloat} = AMDGPU.ROCMatrix{T}(undef, ny, nx)
 Proper.workspace_complex_matrix(::Type{<:AMDGPU.ROCArray}, ::Type{T}, ny::Integer=0, nx::Integer=0) where {T<:AbstractFloat} = AMDGPU.ROCMatrix{Complex{T}}(undef, ny, nx)
 Proper.fft_plan_exec_style(::Type{<:AMDGPU.ROCArray}) = Proper.FFTPlanAvailableStyle()
@@ -66,5 +67,9 @@ end
 @inline Proper.ka_sampling_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AMDGPU.ROCArray} = ny > 0 && nx > 0
 @inline Proper.ka_cubic_grid_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AMDGPU.ROCArray} = ny > 0 && nx > 0
 @inline Proper.ka_rotate_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AMDGPU.ROCArray} = ny > 0 && nx > 0
+@inline Proper.ka_separable_phase_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AMDGPU.ROCArray} =
+    ny * nx >= Proper.KA_SEPARABLE_PHASE_MIN_ELEMS
+@inline Proper.ka_separable_qphase_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AMDGPU.ROCArray} =
+    real(eltype(A)) === Float64 && ny * nx >= Proper.KA_SEPARABLE_QPHASE_MIN_ELEMS
 
 end

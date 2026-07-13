@@ -706,3 +706,25 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     normalization, but that work belongs outside hot propagation kernels.
   - Prepared and benchmark paths should avoid repeated dictionary lookup or
     string comparison inside the steady-state propagation path.
+
+## D-0056: GPU Phase Factorization Uses Device-Native Workspace
+- Date: 2026-07-12
+- Status: Accepted
+- Context:
+  - CPU quadratic-phase paths already factor a two-dimensional phase into
+    reusable one-dimensional x/y vectors, reducing transcendental evaluations
+    from `O(nx*ny)` to `O(nx+ny)`.
+  - GPU paths evaluated `cis` independently at every pixel, and GPU
+    `QPhaseWorkspace` vectors were accidentally allocated as host `Vector`s.
+- Decision:
+  - CUDA and AMDGPU contexts allocate quadratic-phase vectors on the device.
+  - Planar-to-planar frequency phase uses the separable path from 256×256 and
+    folds its existing normalization scale into the phase-application kernel.
+  - Direct quadratic phase retains the single-kernel FP32 path; FP64 uses the
+    separable path from 128×128, where measured transcendental cost outweighs
+    the additional launch.
+- Consequences:
+  - Large GPU propagation reuses context-owned buffers and performs fewer
+    transcendental evaluations and kernel launches than the previous sequence.
+  - Factorization changes floating-point operation ordering but follows the
+    existing CPU algorithm and remains covered by backend parity tests.

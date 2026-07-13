@@ -473,6 +473,46 @@ end
     end
 end
 
+@kernel function _ka_fill_fft_order_axis_phases_kernel!(
+    xphase,
+    yphase,
+    k,
+    spacing_y,
+    spacing_x,
+    ny::Int,
+    nx::Int,
+)
+    p = @index(Global, Linear)
+
+    if p <= nx
+        T = typeof(spacing_x)
+        x = T(_ka_shifted_index_0based(p - 1, nx)) * spacing_x
+        @inbounds xphase[p] = cis(k * x * x)
+    end
+    if p <= ny
+        T = typeof(spacing_y)
+        y = T(_ka_shifted_index_0based(p - 1, ny)) * spacing_y
+        @inbounds yphase[p] = cis(k * y * y)
+    end
+end
+
+@kernel function _ka_apply_separable_phase_kernel!(
+    field,
+    xphase,
+    yphase,
+    scale,
+    ny::Int,
+    nx::Int,
+)
+    I = @index(Global, NTuple)
+    i = I[1]
+    j = I[2]
+
+    if i <= ny && j <= nx
+        @inbounds field[i, j] *= (scale * xphase[j]) * yphase[i]
+    end
+end
+
 @kernel function _ka_fill_affine_axis_kernel!(
     out,
     origin,
@@ -1203,6 +1243,51 @@ end
     inv_dx_x = inv(T(nx) * T(dx))
     backend = AK.get_backend(field)
     _ka_apply_frequency_phase_kernel!(backend, (16, 16))(field, kphase, inv_dx_y, inv_dx_x, ny, nx; ndrange=(ny, nx))
+    return field
+end
+
+@inline function ka_fill_fft_order_axis_phases!(
+    xphase::AbstractVector{<:Complex},
+    yphase::AbstractVector{<:Complex},
+    k,
+    spacing_y,
+    spacing_x,
+)
+    ny = length(yphase)
+    nx = length(xphase)
+    backend = AK.get_backend(xphase)
+    _ka_fill_fft_order_axis_phases_kernel!(backend, 256)(
+        xphase,
+        yphase,
+        k,
+        spacing_y,
+        spacing_x,
+        ny,
+        nx;
+        ndrange=max(ny, nx),
+    )
+    return xphase, yphase
+end
+
+@inline function ka_apply_separable_phase!(
+    field::AbstractMatrix{Complex{T}},
+    xphase::AbstractVector{Complex{T}},
+    yphase::AbstractVector{Complex{T}},
+    scale::T=one(T),
+) where {T<:AbstractFloat}
+    ny, nx = size(field)
+    length(xphase) == nx || throw(ArgumentError("x phase length must match field width"))
+    length(yphase) == ny || throw(ArgumentError("y phase length must match field height"))
+    backend = AK.get_backend(field)
+    _ka_apply_separable_phase_kernel!(backend, (16, 16))(
+        field,
+        xphase,
+        yphase,
+        scale,
+        ny,
+        nx;
+        ndrange=(ny, nx),
+    )
     return field
 end
 

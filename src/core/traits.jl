@@ -53,6 +53,8 @@ shift_kernel_style(::Type{<:StridedMatrix}) = ShiftKAStyle()
 const KA_MASK_MIN_ELEMS = 16_384
 const KA_END_MIN_ELEMS = 200_000
 const KA_SHIFT_MIN_ELEMS = typemax(Int)
+const KA_SEPARABLE_PHASE_MIN_ELEMS = 65_536
+const KA_SEPARABLE_QPHASE_MIN_ELEMS = 16_384
 
 abstract type InterpKernelStyle end
 struct InterpLoopStyle <: InterpKernelStyle end
@@ -109,6 +111,9 @@ end
 @inline function ka_shift_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
     return ka_enabled(shift_kernel_style(A), ny, nx, KA_SHIFT_MIN_ELEMS)
 end
+
+@inline ka_separable_phase_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray} = false
+@inline ka_separable_qphase_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray} = false
 
 abstract type GeometryKernelStyle end
 struct GeometryLoopStyle <: GeometryKernelStyle end

@@ -47,8 +47,7 @@ function _prop_ptp_fft!(
     pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
     T = typeof(float(dx))
     LinearAlgebra.mul!(f, pfft, f)
-    ka_scale_field!(f, inv(T(n)))
-    ka_apply_frequency_phase!(f, kphase, dx)
+    _apply_fft_quadratic_phase_ka!(f, kphase, T(dx), qphase_workspace(ctx), inv(T(n)))
     LinearAlgebra.mul!(f, pbfft, f)
     ka_scale_field!(f, inv(T(n)))
     wf.field = f
@@ -70,8 +69,7 @@ function _prop_ptp_fft!(
     pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
     T = typeof(float(dx))
     pfft * f
-    ka_scale_field!(f, inv(T(n)))
-    ka_apply_frequency_phase!(f, kphase, dx)
+    _apply_fft_quadratic_phase_ka!(f, kphase, T(dx), qphase_workspace(ctx), inv(T(n)))
     pbfft * f
     ka_scale_field!(f, inv(T(n)))
     wf.field = f

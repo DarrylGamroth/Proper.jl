@@ -17,6 +17,7 @@ Proper.geometry_kernel_style(::Type{<:CUDA.CuArray}) = Proper.GeometryKAStyle()
 Proper.sampling_kernel_style(::Type{<:CUDA.CuArray}) = Proper.SamplingKAStyle()
 Proper.interp_kernel_style(::Type{<:CUDA.CuArray}) = Proper.InterpKAStyle()
 Proper.workspace_vector(::Type{<:CUDA.CuArray}, ::Type{T}, n::Integer=0) where {T<:AbstractFloat} = CUDA.CuVector{T}(undef, n)
+Proper.workspace_complex_vector(::Type{<:CUDA.CuArray}, ::Type{T}, n::Integer=0) where {T<:AbstractFloat} = CUDA.CuVector{Complex{T}}(undef, n)
 Proper.workspace_matrix(::Type{<:CUDA.CuArray}, ::Type{T}, ny::Integer=0, nx::Integer=0) where {T<:AbstractFloat} = CUDA.CuMatrix{T}(undef, ny, nx)
 Proper.workspace_complex_matrix(::Type{<:CUDA.CuArray}, ::Type{T}, ny::Integer=0, nx::Integer=0) where {T<:AbstractFloat} = CUDA.CuMatrix{Complex{T}}(undef, ny, nx)
 Proper.fft_plan_exec_style(::Type{<:CUDA.CuArray}) = Proper.FFTPlanAvailableStyle()
@@ -66,5 +67,9 @@ end
 @inline Proper.ka_sampling_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:CUDA.CuArray} = ny > 0 && nx > 0
 @inline Proper.ka_cubic_grid_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:CUDA.CuArray} = ny > 0 && nx > 0
 @inline Proper.ka_rotate_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:CUDA.CuArray} = ny > 0 && nx > 0
+@inline Proper.ka_separable_phase_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:CUDA.CuArray} =
+    ny * nx >= Proper.KA_SEPARABLE_PHASE_MIN_ELEMS
+@inline Proper.ka_separable_qphase_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:CUDA.CuArray} =
+    real(eltype(A)) === Float64 && ny * nx >= Proper.KA_SEPARABLE_QPHASE_MIN_ELEMS
 
 end
