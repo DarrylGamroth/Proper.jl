@@ -62,6 +62,42 @@ using FFTW
         Proper.prop_ptp(wfmeasure, 0.01, ctx_measure)
         @test Proper.fft_workspace(ctx_measure).plan_flags == FFTW.MEASURE
 
+        # FFTW.MEASURE may overwrite the array used to create a plan. Planning
+        # must never overwrite the live field, including when a prior planned
+        # propagation made the workspace scratch the wavefront's storage.
+        plan_rng = MersenneTwister(0x5eed)
+        initial_field = randn(plan_rng, ComplexF64, 37, 37)
+        wf_replan = prop_begin(1.0, 500e-9, 37)
+        wf_reference = prop_begin(1.0, 500e-9, 37)
+        wf_replan.field .= initial_field
+        wf_reference.field .= initial_field
+
+        estimate_replan = RunContext(
+            typeof(wf_replan.field),
+            wf_replan.workspace;
+            fft_planning=Proper.FFTEstimateStyle(),
+        )
+        estimate_reference = RunContext(
+            typeof(wf_reference.field),
+            wf_reference.workspace;
+            fft_planning=Proper.FFTEstimateStyle(),
+        )
+        Proper.prop_ptp(wf_replan, 0.01, estimate_replan)
+        Proper.prop_ptp(wf_reference, 0.01, estimate_reference)
+        @test wf_replan.field === Proper.fft_workspace(estimate_replan).scratch
+
+        measure_replan = RunContext(
+            typeof(wf_replan.field),
+            wf_replan.workspace;
+            fft_planning=Proper.FFTMeasureStyle(),
+        )
+        FFTW.forget_wisdom()
+        Proper.prop_ptp(wf_replan, 0.015, measure_replan)
+        Proper.prop_ptp(wf_reference, 0.015, estimate_reference)
+        @test sum(abs2, wf_replan.field) > 0
+        @test isapprox(wf_replan.field, wf_reference.field; atol=2e-13, rtol=2e-13)
+        @test Proper.fft_workspace(measure_replan).plan_flags == FFTW.MEASURE
+
         # Wavefront-owned mask buffer is reused by aperture wrappers.
         wfmask = prop_begin(1.0, 500e-9, 32)
         Proper.prop_circular_aperture(wfmask, 0.2)

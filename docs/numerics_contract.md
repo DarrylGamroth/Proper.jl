@@ -95,12 +95,14 @@ Freeze numerical conventions used by propagation, transforms, and coordinate sys
 | Centered field addition | Input form | scalar, centered matrix | `test/test_public_helper_coverage.jl` | Covered | Matrix extraction and reinsertion compose on odd and even axes. |
 | Backend preservation | Backend/shape/layout | CPU; CUDA and AMDGPU on odd, even, mixed rectangular, and stepped `SubArray` inputs | `test/test_r2_trait_routing.jl` | Covered | GPU checks run when the corresponding CI runner is enabled, prohibit scalar indexing, and assert KA routing for stepped views. |
 | FFT-scratch safety | Operation/backend | multiply and divide on CPU, CUDA, AMDGPU | `test/test_complex_map_scratch_alias.jl` | Covered | Regression reproduces a planned point-to-point propagation before applying an asymmetric complex map. |
-| Executable upstream parity | Python 3.3.4 accessor/add path | centered field, amplitude, phase, scalar add, matrix add | `test/parity/generate_python_baseline.py`, `test/parity/compare.jl` | Covered | Exact pixelwise threshold for field/add outputs on the even-grid upstream-compatible case. |
+| FFT planning equivalence | Policy/transform/direction | `ESTIMATE`, `MEASURE`; PTP/WTS/STW; positive and negative distance; live-scratch replan | `test/test_run_context_correctness.jl`, `test/test_r3_mutating_workspace.jl` | Covered | Numerical complex-field assertions prove planning cannot mutate live input. |
+| Coherent carrier phase | Path/execution/backend | PTP/WTS/STW, split propagation, two-arm null; direct/prepared/batch/model/hot/multi; CPU and optional CUDA/AMDGPU | `test/test_run_context_correctness.jl`, `test/test_r2_trait_routing.jl` | Covered | Default remains envelope-only; enabled mode asserts complex fields and half-wave destructive interference. |
+| Prepared RNG ownership | RNG source/scheduling/planning | implicit context RNG, explicit override, serial slots, threaded batch, Estimate/Measure | `test/test_run_context_correctness.jl`; CI package tests use `-t4` | Covered | Identically seeded context trees produce exact ordered stacks; explicit RNG leaves context RNG untouched. |
+| Executable upstream parity | Python 3.3.4 accessor/add and carrier paths | centered field, amplitude, phase, scalar add, matrix add; quarter-wave carrier and two-arm null | `test/parity/generate_python_baseline.py`, `test/parity/compare.jl` | Covered | Exact pixelwise threshold for field/add outputs plus complex-field and null-intensity thresholds for opt-in carrier tracking. |
 | Threaded stack assembly | Packed output storage | `BitMatrix` outputs into `BitArray{3}` | `test/test_multi_run_scheduling.jl`; CI package tests use `-t4` | Covered | Repeated yields expose logical slices that share packed storage words. |
 
 Additional contract areas retained for follow-up:
 
-- [ ] FFT normalization regression tests
+- [ ] Independent FFT normalization oracle beyond planning-policy equivalence
 - [ ] Coordinate convention tests
 - [ ] Unit conversion tests
-- [ ] Seeded PSD/error-map reproducibility tests

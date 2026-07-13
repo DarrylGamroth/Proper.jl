@@ -281,12 +281,16 @@ function prepare_prescription(
     PASSVALUE=nothing,
     context::Union{Nothing,RunContext}=nothing,
     precision::Union{Nothing,Type{<:AbstractFloat}}=nothing,
+    PHASE_OFFSET=nothing,
+    phase_offset=nothing,
     kwargs...,
 )
     WT = isnothing(precision) ? float(typeof(lambda0_microns)) : precision
     λm = WT(lambda0_microns) * WT(1e-6)
     fn = resolve_prescription_routine(routine_name)
-    ctx = _prepared_context_with_precision(context, precision)
+    precision_context = _prepared_context_with_precision(context, precision)
+    phase_override = kw_resolve_optional_bool(PHASE_OFFSET, phase_offset)
+    ctx = context_with_phase_override(precision_context, phase_override, WT)
     return PreparedPrescription(fn, λm, Int(gridsize), ctx, (; kwargs...), PASSVALUE)
 end
 
@@ -328,11 +332,20 @@ context=...)`, `prop_lens(..., ctx)`, and `prop_propagate(..., ctx)`.
 """
 function prepare_hot_call(
     prepared::PreparedPrescription;
-    context=prepared.context,
+    context::Union{Nothing,RunContext}=prepared.context,
     activate_context::Bool=true,
+    PHASE_OFFSET=nothing,
+    phase_offset=nothing,
     kwargs...,
 )
-    return _prepared_hot_call(hot_call_context_activation(activate_context), prepared, context, (; kwargs...))
+    phase_override = kw_resolve_optional_bool(PHASE_OFFSET, phase_offset)
+    call_context = context_with_phase_override(context, phase_override, typeof(prepared.wavelength_m))
+    return _prepared_hot_call(
+        hot_call_context_activation(activate_context),
+        prepared,
+        call_context,
+        (; kwargs...),
+    )
 end
 
 function prepare_hot_call(

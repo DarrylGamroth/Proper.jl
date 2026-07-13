@@ -23,6 +23,17 @@ compat_bool(v) = throw(ArgumentError("Expected Bool or 0/1 integer, got $(typeof
 @inline kw_resolve_bool(primary, secondary, default::Bool=false)::Bool =
     compat_bool(kw_resolve(primary, secondary, default))
 
+@inline function kw_resolve_optional_bool(primary, secondary)::Union{Nothing,Bool}
+    primary === nothing && secondary === nothing && return nothing
+    if primary !== nothing && secondary !== nothing
+        primary_bool = compat_bool(primary)
+        secondary_bool = compat_bool(secondary)
+        primary_bool == secondary_bool || throw(ArgumentError("Conflicting values for equivalent boolean keywords"))
+        return primary_bool
+    end
+    return compat_bool(primary === nothing ? secondary : primary)
+end
+
 @inline kw_resolve_float(primary, secondary, default::Real)::Float64 =
     float(kw_resolve(primary, secondary, default))
 

@@ -13,8 +13,12 @@ struct PSDErrorMapOptions{T<:AbstractFloat,R}
     amplitude_target::Union{Nothing,T}
 end
 
-@inline function PSDErrorMapOptions(::Type{T}, kwargs::Base.Iterators.Pairs) where {T<:AbstractFloat}
-    rng = kw_lookup(kwargs, :RNG, Random.default_rng())
+@inline function PSDErrorMapOptions(
+    ::Type{T},
+    kwargs::Base.Iterators.Pairs,
+    default_rng::R,
+) where {T<:AbstractFloat,R}
+    rng = kw_lookup(kwargs, :RNG, default_rng)
     fv = kw_lookup_string(kwargs, :FILE, nothing)
     inc = T(deg2rad(kw_lookup_float(kwargs, :INCLINATION, 0.0)))
     rot = T(deg2rad(kw_lookup_float(kwargs, :ROTATION, 0.0)))
@@ -31,7 +35,10 @@ end
     return PSDErrorMapOptions{T,typeof(rng)}(rng, fv, inc, rot, tpfv, maxf, rmsv, noap, mir, atarget)
 end
 
-@inline PSDErrorMapOptions(kwargs::Base.Iterators.Pairs) = PSDErrorMapOptions(Float64, kwargs)
+@inline PSDErrorMapOptions(::Type{T}, kwargs::Base.Iterators.Pairs) where {T<:AbstractFloat} =
+    PSDErrorMapOptions(T, kwargs, Random.default_rng())
+@inline PSDErrorMapOptions(kwargs::Base.Iterators.Pairs) =
+    PSDErrorMapOptions(Float64, kwargs, Random.default_rng())
 
 @inline _psd_maptype(opts::PSDErrorMapOptions) =
     opts.amplitude_target === nothing ? (opts.mirror ? :mirror_surface : :wavefront) : :amplitude
@@ -198,8 +205,9 @@ function _build_psd_map_shifted!(
     b::Real,
     c::Real,
     opts::PSDErrorMapOptions{T},
-    ws::FFTWorkspace{T},
+    ctx::RunContext,
 ) where {T<:AbstractFloat}
+    ws = fft_workspace(ctx)
     n = size(wf.field, 1)
     size(dmap) == (n, n) || throw(ArgumentError("output size must match wavefront grid"))
     center = n ÷ 2
@@ -231,7 +239,7 @@ function _build_psd_map_shifted!(
     spectrum = ensure_fft_scratch!(ws, n, n)
     phase_u = ensure_fft_real_scratch!(ws, n, n)
     rand!(opts.rng, phase_u)
-    pfft, _ = ensure_fft_plans!(ws, n, n)
+    pfft, _ = ensure_fft_plans!(ws, n, n, fft_planning_style(ctx))
     sum_psd = zero(T)
 
     @inbounds for j in 1:n
@@ -310,9 +318,10 @@ end
     b::Real,
     c::Real,
     opts::PSDErrorMapOptions{T},
+    ctx::RunContext,
 ) where {T<:AbstractFloat}
     if wf.field isa StridedMatrix{Complex{T}}
-        _build_psd_map_shifted!(dmap, wf, amp, b, c, opts, wf.workspace.fft)
+        _build_psd_map_shifted!(dmap, wf, amp, b, c, opts, ctx)
         return true
     end
     copyto!(dmap, _build_psd_map_unshifted(wf, amp, b, c, opts))
@@ -327,6 +336,7 @@ end
     b::Real,
     c::Real,
     opts::PSDErrorMapOptions{T},
+    ::RunContext,
 ) where {T<:AbstractFloat}
     copyto!(dmap, _build_psd_map_unshifted(wf, amp, b, c, opts))
     return false
@@ -339,6 +349,7 @@ function _prop_psd_errormap!(
     b::Real,
     c::Real,
     opts::PSDErrorMapOptions{T},
+    ctx::RunContext,
 ) where {T<:AbstractFloat}
     n = size(wf.field, 1)
     size(dmap) == (n, n) || throw(ArgumentError("output size must match wavefront grid"))
@@ -347,7 +358,16 @@ function _prop_psd_errormap!(
     map_is_shifted::Bool = false
 
     if fpath === nothing
-        map_is_shifted = _build_psd_map_default!(backend_style(typeof(wf.field)), dmap, wf, amp, b, c, opts)
+        map_is_shifted = _build_psd_map_default!(
+            backend_style(typeof(wf.field)),
+            dmap,
+            wf,
+            amp,
+            b,
+            c,
+            opts,
+            ctx,
+        )
     else
         copyto!(dmap, _read_psd_map(wf, fpath, T))
     end
@@ -409,10 +429,11 @@ function _prop_psd_errormap!(
     b::Real,
     c::Real,
     opts::PSDErrorMapOptions{T},
+    ctx::RunContext,
 ) where {T<:AbstractFloat}
     tmp = Matrix{T}(undef, size(dmap)...)
     build_opts = opts.no_apply ? opts : _with_no_apply(opts, true)
-    _prop_psd_errormap!(tmp, wf, amp, b, c, build_opts)
+    _prop_psd_errormap!(tmp, wf, amp, b, c, build_opts, ctx)
     copyto!(dmap, tmp)
     if !opts.no_apply
         maptype = _psd_maptype(opts)
@@ -426,10 +447,17 @@ function _prop_psd_errormap!(
     return dmap
 end
 
-function _prop_psd_errormap!(wf::WaveFront, amp::Real, b::Real, c::Real, opts::PSDErrorMapOptions{T}) where {T<:AbstractFloat}
+function _prop_psd_errormap!(
+    wf::WaveFront,
+    amp::Real,
+    b::Real,
+    c::Real,
+    opts::PSDErrorMapOptions{T},
+    ctx::RunContext,
+) where {T<:AbstractFloat}
     n = size(wf.field, 1)
     dmap = similar(wf.field, T, n, n)
-    return _prop_psd_errormap!(dmap, wf, amp, b, c, opts)
+    return _prop_psd_errormap!(dmap, wf, amp, b, c, opts, ctx)
 end
 
 """
@@ -452,8 +480,20 @@ function prop_psd_errormap!(
 ) where {T<:AbstractFloat}
     Twf = real(eltype(wf.field))
     T == Twf || throw(ArgumentError("output element type must match wavefront real type ($Twf)"))
-    opts = PSDErrorMapOptions(T, kwargs)
-    return _prop_psd_errormap!(dmap, wf, amp, b, c, opts)
+    return _prop_psd_errormap_resolved!(dmap, wf, amp, b, c, kwargs, resolve_run_context(wf))
+end
+
+@inline function _prop_psd_errormap_resolved!(
+    dmap::AbstractMatrix{T},
+    wf::WaveFront,
+    amp::Real,
+    b::Real,
+    c::Real,
+    kwargs::Base.Iterators.Pairs,
+    ctx::RunContext,
+) where {T<:AbstractFloat}
+    opts = PSDErrorMapOptions(T, kwargs, ctx.rng)
+    return _prop_psd_errormap!(dmap, wf, amp, b, c, opts, ctx)
 end
 
 """
@@ -472,7 +512,18 @@ function prop_psd_errormap(
     c::Real;
     kwargs...,
 )
+    return _prop_psd_errormap_resolved(wf, amp, b, c, kwargs, resolve_run_context(wf))
+end
+
+@inline function _prop_psd_errormap_resolved(
+    wf::WaveFront,
+    amp::Real,
+    b::Real,
+    c::Real,
+    kwargs::Base.Iterators.Pairs,
+    ctx::RunContext,
+)
     T = real(eltype(wf.field))
-    opts = PSDErrorMapOptions(T, kwargs)
-    return _prop_psd_errormap!(wf, amp, b, c, opts)
+    opts = PSDErrorMapOptions(T, kwargs, ctx.rng)
+    return _prop_psd_errormap!(wf, amp, b, c, opts, ctx)
 end

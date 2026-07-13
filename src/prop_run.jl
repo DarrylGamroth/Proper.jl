@@ -137,6 +137,8 @@ Execute a PROPER prescription and return `(psf, pixscale)`.
   arguments before the prescription is called; other values are forwarded using
   the legacy positional/`PASSVALUE` calling style.
 - `context`: explicit `RunContext` to reuse workspace and backend state
+- `PHASE_OFFSET` / `phase_offset`: opt in to carrier-phase tracking for
+  coherent multi-arm propagation; the default keeps envelope-only behavior
 - additional keyword arguments are passed through to the prescription
 
 # Returns
@@ -171,10 +173,21 @@ function prop_run(
     prepared::PreparedPrescription;
     PASSVALUE=prepared.passvalue,
     context::Union{Nothing,RunContext}=prepared.context,
+    PHASE_OFFSET=nothing,
+    phase_offset=nothing,
     kwargs...,
 )
+    phase_override = kw_resolve_optional_bool(PHASE_OFFSET, phase_offset)
+    run_context = context_with_phase_override(context, phase_override, typeof(prepared.wavelength_m))
     merged_kwargs = merge(prepared.kwargs, (; kwargs...))
-    return _prop_run_resolved(prepared.routine, prepared.wavelength_m, prepared.gridsize, PASSVALUE, context, merged_kwargs)
+    return _prop_run_resolved(
+        prepared.routine,
+        prepared.wavelength_m,
+        prepared.gridsize,
+        PASSVALUE,
+        run_context,
+        merged_kwargs,
+    )
 end
 
 function prop_run(

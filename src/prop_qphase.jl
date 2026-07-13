@@ -132,5 +132,5 @@ end
 
 """Apply quadratic phase for curvature c (meters)."""
 function prop_qphase(wf::WaveFront, c::Real)
-    return prop_qphase(wf, c, RunContext(wf))
+    return prop_qphase(wf, c, resolve_run_context(wf))
 end

@@ -6,6 +6,7 @@ This document defines executable parity acceptance thresholds for Python 3.3.4 b
 - `D-0001`: Python 3.3.4 executable baseline
 - `D-0030`: physics-equivalent parity goal
 - `D-0031`: idiomatic Julia implementation style
+- `D-0060`: opt-in carrier-phase parity
 
 ## Policy
 - Use both relative and absolute criteria.
@@ -17,6 +18,8 @@ This document defines executable parity acceptance thresholds for Python 3.3.4 b
 - Machine-readable thresholds live in:
   - `test/parity/thresholds/example_metrics_thresholds.json`
   - `test/parity/cases/simple_case.toml` for the full-array simple case
+  - `test/parity/cases/wavefront_accessors_even.toml` for centered accessors
+  - `test/parity/cases/carrier_phase.toml` for coherent carrier tracking
 - Enforcement is implemented in:
   - `test/parity/compare.jl`
   - `test/parity/compare_examples.jl`
@@ -28,6 +31,14 @@ This document defines executable parity acceptance thresholds for Python 3.3.4 b
 - CI runs the comparison with four Julia threads from the `examples`
   environment so the parity-only JSON/TOML dependencies remain outside the
   runtime package.
+
+## Coherent Carrier Case
+
+- Quarter-wave enabled/disabled and half-wave differential-arm complex fields
+  use a maximum absolute error of `1e-14`.
+- The destructive-interference mean intensity uses an absolute error of
+  `1e-28`; an absolute gate is required because the expected value is near
+  machine zero.
 
 ## Notes
 - Relative-only thresholds are insufficient for coronagraph null regions where baseline values approach zero.

@@ -27,7 +27,7 @@ end
 end
 
 @inline function _prop_propagate!(wf::WaveFront, dz::Real, opts::PropagateOptions)
-    return _prop_propagate!(wf, dz, opts, RunContext(wf))
+    return _prop_propagate!(wf, dz, opts, resolve_run_context(wf))
 end
 
 @inline function _prop_propagate!(wf::WaveFront, dz::Real, opts::PropagateOptions, ctx::RunContext)

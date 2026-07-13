@@ -25,6 +25,11 @@ def complex_array_payload(array):
     }
 
 
+def complex_scalar_payload(value):
+    value = complex(value)
+    return {"real": float(value.real), "imag": float(value.imag)}
+
+
 def run_wavefront_accessors_even_case(proper):
     """Exercise centered field access and wavefront addition pixel by pixel."""
     n = 8
@@ -70,6 +75,39 @@ def run_wavefront_accessors_even_case(proper):
             "after_matrix_add": complex_array_payload(wf_matrix.wfarr),
         },
         "shape": [n, n],
+    }
+
+
+def run_carrier_phase_case(proper):
+    """Capture the upstream opt-in carrier phase used by interferometer arms."""
+    n = 4
+    wavelength = 500e-9
+    prior_phase_offset = getattr(proper, "phase_offset", False)
+
+    def propagated(distance, enabled):
+        proper.phase_offset = enabled
+        wf = proper.prop_begin(1.0, wavelength, n, beam_diam_fraction=0.5)
+        proper.prop_ptp(wf, distance)
+        return np.asarray(wf.wfarr)
+
+    try:
+        quarter_disabled = propagated(wavelength / 4, False)
+        quarter_enabled = propagated(wavelength / 4, True)
+        arm1 = propagated(wavelength, True)
+        arm2 = propagated(3 * wavelength / 2, True)
+    finally:
+        proper.phase_offset = prior_phase_offset
+
+    arm_sum = arm1 + arm2
+    return {
+        "gridsize": n,
+        "wavelength_m": wavelength,
+        "outputs": {
+            "quarter_disabled_mean": complex_scalar_payload(np.mean(quarter_disabled)),
+            "quarter_enabled_mean": complex_scalar_payload(np.mean(quarter_enabled)),
+            "arm_sum_mean": complex_scalar_payload(np.mean(arm_sum)),
+            "arm_mean_intensity": float(np.mean(np.abs(arm_sum) ** 2)),
+        },
     }
 
 
@@ -123,6 +161,20 @@ def main():
     (outdir / "wavefront_accessors_even.json").write_text(
         json.dumps(accessor_case, indent=2)
     )
+
+    carrier_case = run_carrier_phase_case(proper)
+    carrier_case.update(
+        {
+            "generator": "generate_python_baseline.py",
+            "python": sys.version,
+            "proper_version": getattr(proper, "__version__", "unknown"),
+            "case": "carrier_phase",
+            "format": "json",
+            "python_root": str(pyproper_root),
+            "venv": os.environ.get("VIRTUAL_ENV", ""),
+        }
+    )
+    (outdir / "carrier_phase.json").write_text(json.dumps(carrier_case, indent=2))
 
 
 if __name__ == "__main__":

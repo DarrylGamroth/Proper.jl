@@ -76,7 +76,7 @@ end
 
 """Alter the current wavefront as a perfect thin lens would."""
 function prop_lens(wf::WaveFront, lens_fl::Real, surface_name::AbstractString="")
-    return _prop_lens!(wf, lens_fl, LensOptions(surface_name), RunContext(wf))
+    return _prop_lens!(wf, lens_fl, LensOptions(surface_name), resolve_run_context(wf))
 end
 
 """Alter the current wavefront as a perfect thin lens would using the supplied run context."""
