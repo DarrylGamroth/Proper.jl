@@ -4,6 +4,7 @@ using Random
 using Proper
 
 include(joinpath(@__DIR__, "..", "example_loader.jl"))
+include(joinpath(@__DIR__, "gates.jl"))
 
 const EXDIR = joinpath(@__DIR__, "..", "..", "examples")
 const EXAMPLE_MODULES = Dict{Symbol,Module}(
@@ -79,8 +80,13 @@ function relerr_floor(a::Real, b::Real; floor::Float64=1e-12)
 end
 
 report = Dict{String,Any}()
+structural_failures = Dict{String,Vector{String}}()
 for (name, j) in jl
     p = py[name]
+    shape_failure = parity_shape_failure(Tuple(Int.(j["shape"])), Tuple(Int.(p["shape"])))
+    if !isnothing(shape_failure)
+        structural_failures[name] = [shape_failure]
+    end
     m = Dict{String,Any}()
     m["sampling_relerr"] = relerr(j["sampling"], Float64(p["sampling"]))
     if haskey(j, "sum")
@@ -133,17 +139,13 @@ for (name, m_any) in report
     m = Dict{String,Float64}(String(k) => Float64(v) for (k, v) in m_any)
     is_complex = haskey(m, "sum_re_relerr")
     th = merged_thresholds(name, is_complex)
-    bad = String[]
+    metric_thresholds = Dict{String,Float64}()
     for (kmax, vmax) in th
         metric = endswith(kmax, "_max") ? kmax[1:(end - 4)] : kmax
-        if !haskey(m, metric)
-            push!(bad, "missing metric $metric")
-            continue
-        end
-        if m[metric] > vmax
-            push!(bad, "$metric=$(m[metric]) > $vmax")
-        end
+        metric_thresholds[metric] = vmax
     end
+    bad = copy(get(structural_failures, name, String[]))
+    append!(bad, parity_threshold_failures(m, metric_thresholds))
     if !isempty(bad)
         failures[name] = bad
     end

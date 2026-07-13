@@ -16,8 +16,18 @@ This document defines executable parity acceptance thresholds for Python 3.3.4 b
 ## Threshold Source
 - Machine-readable thresholds live in:
   - `test/parity/thresholds/example_metrics_thresholds.json`
+  - `test/parity/cases/simple_case.toml` for the full-array simple case
 - Enforcement is implemented in:
+  - `test/parity/compare.jl`
   - `test/parity/compare_examples.jl`
+
+## Full-Array Simple Case
+- Relative L2 error must be at most `1e-12`.
+- Sampling relative error must be at most `1e-12`.
+- Non-finite or missing metrics fail the gate.
+- CI runs the comparison with four Julia threads from the `examples`
+  environment so the parity-only JSON/TOML dependencies remain outside the
+  runtime package.
 
 ## Notes
 - Relative-only thresholds are insufficient for coronagraph null regions where baseline values approach zero.
