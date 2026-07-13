@@ -20,9 +20,20 @@ mutable struct PreparedBatch{P,CV<:AbstractVector}
     contexts::CV
 end
 
-mutable struct PreparedAssetPool{F,CV<:AbstractVector}
+mutable struct PreparedAssetPool{A,F}
     factory::F
-    cache::CV
+    cache::Vector{Union{Nothing,A}}
+
+    function PreparedAssetPool{A,F}(
+        factory::F,
+        cache::Vector{Union{Nothing,A}},
+    ) where {A,F}
+        isconcretetype(A) || throw(ArgumentError(
+            "PreparedAssetPool asset type must be concrete, got $(A)",
+        ))
+        A === Nothing && throw(ArgumentError("PreparedAssetPool asset type cannot be Nothing"))
+        return new{A,F}(factory, cache)
+    end
 end
 
 mutable struct PreparedModel{ID,P,B,A}
@@ -84,11 +95,28 @@ end
     return context
 end
 
-function prepare_asset_pool(factory; pool_size::Integer=Base.Threads.nthreads())
+"""
+    prepare_asset_pool(factory, AssetType; pool_size=Threads.nthreads())
+
+Create a lazy per-slot cache whose entries have concrete type `AssetType`.
+The type is explicit because factories may depend on the eventual
+`PreparedModel`, so evaluating or inferring their result during pool
+construction would be unsound.
+"""
+function prepare_asset_pool(factory, ::Type{A}; pool_size::Integer=Base.Threads.nthreads()) where {A}
     pool_size > 0 || throw(ArgumentError("pool_size must be positive"))
-    cache = Vector{Any}(undef, pool_size)
+    isconcretetype(A) || throw(ArgumentError("PreparedAssetPool asset type must be concrete, got $(A)"))
+    A === Nothing && throw(ArgumentError("PreparedAssetPool asset type cannot be Nothing"))
+    cache = Vector{Union{Nothing,A}}(undef, pool_size)
     fill!(cache, nothing)
-    return PreparedAssetPool(factory, cache)
+    return PreparedAssetPool{A,typeof(factory)}(factory, cache)
+end
+
+function prepare_asset_pool(factory; pool_size::Integer=Base.Threads.nthreads())
+    throw(ArgumentError(
+        "prepare_asset_pool requires an explicit concrete asset type; " *
+        "call prepare_asset_pool(factory, AssetType; pool_size=...)"
+    ))
 end
 
 function prepared_contexts(prepared::PreparedPrescription, n::Integer)
@@ -184,15 +212,18 @@ end
 @inline _resolve_model_assets(::Nothing, ::PreparedModel, ::Integer) = nothing
 @inline _resolve_model_assets(assets, ::PreparedModel, ::Integer) = assets
 
-function _resolve_model_assets(pool::PreparedAssetPool, model::PreparedModel, slot::Integer)
+function _resolve_model_assets(pool::PreparedAssetPool{A}, model::PreparedModel, slot::Integer) where {A}
     slot > 0 || throw(ArgumentError("slot must be positive"))
     cache = ensure_prepared_asset_pool!(pool, slot)
     asset = cache[slot]
-    if asset === nothing
-        asset = _invoke_asset_factory(pool.factory, slot, model)
-        cache[slot] = asset
-    end
-    return asset
+    asset === nothing || return asset
+
+    created = _invoke_asset_factory(pool.factory, slot, model)
+    created isa A || throw(ArgumentError(
+        "PreparedAssetPool factory returned $(typeof(created)); expected $(A)"
+    ))
+    cache[slot] = created
+    return created
 end
 
 @inline prepared_assets(model::PreparedModel, slot::Integer) = _resolve_model_assets(model.assets, model, slot)

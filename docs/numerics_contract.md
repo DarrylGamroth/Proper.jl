@@ -96,6 +96,7 @@ Freeze numerical conventions used by propagation, transforms, and coordinate sys
 | Backend preservation | Backend/shape/layout | CPU; CUDA and AMDGPU on odd, even, mixed rectangular, and stepped `SubArray` inputs | `test/test_r2_trait_routing.jl` | Covered | GPU checks run when the corresponding CI runner is enabled, prohibit scalar indexing, and assert KA routing for stepped views. |
 | FFT-scratch safety | Operation/backend | multiply and divide on CPU, CUDA, AMDGPU | `test/test_complex_map_scratch_alias.jl` | Covered | Regression reproduces a planned point-to-point propagation before applying an asymmetric complex map. |
 | Executable upstream parity | Python 3.3.4 accessor/add path | centered field, amplitude, phase, scalar add, matrix add | `test/parity/generate_python_baseline.py`, `test/parity/compare.jl` | Covered | Exact pixelwise threshold for field/add outputs on the even-grid upstream-compatible case. |
+| Threaded stack assembly | Packed output storage | `BitMatrix` outputs into `BitArray{3}` | `test/test_multi_run_scheduling.jl`; CI package tests use `-t4` | Covered | Repeated yields expose logical slices that share packed storage words. |
 
 Additional contract areas retained for follow-up:
 

@@ -26,7 +26,7 @@ jobs:
       - name: Instantiate
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
       - name: Test
-        run: julia --project=. -e 'using Pkg; Pkg.test()'
+        run: julia -t4 --startup-file=no --project=. -e 'using Pkg; Pkg.test()'
 
   coverage:
     name: Coverage

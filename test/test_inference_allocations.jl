@@ -64,4 +64,28 @@ end
     stack, samplings = prop_run_multi(dummy, 0.55, 16; PASSVALUE=[1, 2, 3])
     @test size(stack) == (16, 16, 3)
     @test eltype(samplings) <: AbstractFloat
+
+    runner = (item, pass, slot) -> (fill(Float32(item + pass), 2, 3), Float32(slot))
+    inferred_stack, inferred_samplings = @inferred Proper._prop_run_multi_items(
+        Proper.MultiRunThreadedExecStyle(),
+        collect(1:3),
+        collect(10:12),
+        runner,
+    )
+    @test inferred_stack isa Array{Float32,3}
+    @test inferred_samplings isa Vector{Float32}
+
+    asset_type = NamedTuple{(:slot,),Tuple{Int}}
+    asset_pool = @inferred prepare_asset_pool((slot, _) -> (slot=slot,), asset_type; pool_size=2)
+    @test asset_pool isa PreparedAssetPool
+    @test eltype(asset_pool.cache) == Union{Nothing,asset_type}
+    asset_model = prepare_model(dummy, 0.55, 16; assets=asset_pool, pool_size=2)
+    @test (@inferred Proper.prepared_assets(asset_model, 1)) == (slot=1,)
+
+    @test_throws ArgumentError prepare_asset_pool((slot, _) -> (slot=slot,); pool_size=2)
+    @test_throws ArgumentError prepare_asset_pool((slot, _) -> (slot=slot,), Any; pool_size=2)
+
+    bad_asset_pool = prepare_asset_pool((slot, _) -> (slot=string(slot),), asset_type; pool_size=1)
+    bad_asset_model = prepare_model(dummy, 0.55, 16; assets=bad_asset_pool, pool_size=1)
+    @test_throws ArgumentError Proper.prepared_assets(bad_asset_model, 1)
 end
