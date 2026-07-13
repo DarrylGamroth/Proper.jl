@@ -96,9 +96,9 @@ export BackendStyle, CPUBackend, CUDABackend, AMDGPUBackend, UnknownBackend, FFT
 export InterpStyle, GenericInterpStyle, CubicInterpStyle, RNGStyle, GenericRNGStyle
 export ShiftKernelStyle, ShiftLoopStyle, ShiftKAStyle
 export RunContext, FFTEstimateStyle, FFTMeasureStyle, EnvelopeOnly, TrackCarrierPhase, ProperConfig, ProperRuntime, WaveFront
-export PreparedPrescription, PreparedBatch, PreparedAssetPool, PreparedModel, PreparedHotCall
+export PreparedPrescription, PreparedBatch, PreparedAssetPool, PreparedModel
 export prepare_prescription, prepare_prescription_batch, prepare_asset_pool, prepare_model
-export prepare_hot_call
+export prepare_run
 export prepared_context
 export reset_prepared_batch!, reset_prepared_assets!, reset_prepared_model!
 export prop_wavefront, prop_begin, prop_begin!, prop_end, prop_add_phase, prop_add_wavefront
@@ -128,7 +128,7 @@ export prop_get_sampling, prop_get_sampling_radians, prop_get_sampling_arcsec
 export prop_get_wavelength, prop_get_z, prop_get_gridsize
 export prop_get_beamradius, prop_get_distancetofocus, prop_get_fratio
 export prop_get_nyquistsampling, prop_get_refradius
-export prop_run, prop_run_hot, prop_run_multi
+export prop_run, prop_run_multi
 
 function __init__()
     configured_threads = get(ENV, "PROPER_FFTW_THREADS", nothing)

@@ -360,12 +360,12 @@ end
         @test_throws ArgumentError prop_run(prepared; PHASE_OFFSET=true, phase_offset=false)
 
         default_prepared = prepare_prescription(_carrier_strict_prescription, 0.5, 8)
-        hot = prepare_hot_call(default_prepared; phase_offset=true)
-        @test Proper.carrier_phase_style(hot.context) isa TrackCarrierPhase
-        @test !haskey(hot.kwargs, :phase_offset)
-        hot_out, _ = prop_run_hot(hot)
-        @test all(isapprox.(hot_out, im; atol=2e-12, rtol=0))
-        @test_throws ArgumentError prepare_hot_call(
+        prepared_run = prepare_run(default_prepared; phase_offset=true)
+        @test Proper.carrier_phase_style(prepared_context(prepared_run)) isa TrackCarrierPhase
+        @test !haskey(prepared_run.kwargs, :phase_offset)
+        run_out, _ = prop_run(prepared_run)
+        @test all(isapprox.(run_out, im; atol=2e-12, rtol=0))
+        @test_throws ArgumentError prepare_run(
             default_prepared;
             PHASE_OFFSET=true,
             phase_offset=false,

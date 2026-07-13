@@ -88,32 +88,32 @@ function _prop_run_resolved(
     return _prop_run_finalize(result)
 end
 
-@inline function _call_hot_prescription(fn::F, λm, gridsize::Integer, kwargs::NamedTuple) where {F<:Function}
+@inline function _call_prepared_run(fn::F, λm, gridsize::Integer, kwargs::NamedTuple) where {F<:Function}
     return fn(λm, gridsize; kwargs...)
 end
 
-@inline function _prop_run_hot(call::PreparedHotCall{F,T,CTX,KW,HotCallContextActive}) where {F,T,CTX,KW}
-    result = with_run_context(call.context) do
-        _call_hot_prescription(call.routine, call.wavelength_m, call.gridsize, call.kwargs)
+@inline function _prop_run_prepared(prepared::PreparedRun{F,T,CTX,KW,PreparedRunContextActive}) where {F,T,CTX,KW}
+    result = with_run_context(prepared.context) do
+        _call_prepared_run(prepared.routine, prepared.wavelength_m, prepared.gridsize, prepared.kwargs)
     end
     return _prop_run_finalize(result)
 end
 
-@inline function _prop_run_hot(call::PreparedHotCall{F,T,CTX,KW,HotCallContextInactive}) where {F,T,CTX,KW}
-    result = _call_hot_prescription(call.routine, call.wavelength_m, call.gridsize, call.kwargs)
+@inline function _prop_run_prepared(prepared::PreparedRun{F,T,CTX,KW,PreparedRunContextInactive}) where {F,T,CTX,KW}
+    result = _call_prepared_run(prepared.routine, prepared.wavelength_m, prepared.gridsize, prepared.kwargs)
     return _prop_run_finalize(result)
 end
 
 """
-    prop_run_hot(call::PreparedHotCall)
+    prop_run(prepared::PreparedRun)
 
-Execute a pre-bound native Julia prescription hot call.
+Execute a reusable prepared run for a native Julia prescription.
 
-This bypasses per-call model asset resolution, slot lookup, and keyword merging.
-Construct `call` with `prepare_hot_call`.
+This bypasses per-call model asset resolution, slot lookup, and keyword
+merging. Construct the run with `prepare_run`.
 """
-function prop_run_hot(call::PreparedHotCall)
-    return _prop_run_hot(call)
+function prop_run(prepared::PreparedRun)
+    return _prop_run_prepared(prepared)
 end
 
 """
@@ -212,5 +212,3 @@ function prop_run(
         (assets isa NamedTuple ? merge(assets, (; kwargs...)) : merge((; assets=assets), (; kwargs...)))
     return prop_run(model.batch; PASSVALUE=PASSVALUE, slot=slot, merged_kwargs...)
 end
-
-prop_run(call::PreparedHotCall) = prop_run_hot(call)

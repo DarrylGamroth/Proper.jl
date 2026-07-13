@@ -419,31 +419,31 @@ runs = [
 stack, samplings = prop_run_multi(runs)
 ```
 
-### Lower-Level Hot Calls
-Use `prepare_hot_call` only after the prescription call shape is stable and you
-need to remove repeated model asset resolution, slot lookup, and keyword
-merging from a hot loop.
+### Fully Prepared Single Runs
+Use `prepare_run` only after the prescription call shape is stable and you need
+to remove repeated model asset resolution, slot lookup, and keyword merging
+from a repeated execution loop.
 
 ```julia
 model = prepare_model(my_prescription, 0.55, 256; pool_size=1)
-hot = prepare_hot_call(model; payload=payload)
+prepared = prepare_run(model; payload=payload)
 
-psf, sampling = prop_run_hot(hot)
+psf, sampling = prop_run(prepared)
 ```
 
 For most users, `prop_run(model; kwargs...)` remains the right prepared API.
-`prop_run_hot(hot)` is a lower-level execution primitive for application loops
-where the same mutable payload and output buffers are reused frame after frame.
+`prop_run(prepared)` is the lower-level form for application loops where the
+same mutable payload and output buffers are reused frame after frame.
 
-`prepare_hot_call` intentionally supports native Julia keyword prescriptions
-only. `PASSVALUE` remains available through `prop_run` as the upstream
-compatibility adapter, but it is not part of this lower-level hot-loop surface.
+`prepare_run` intentionally supports native Julia keyword prescriptions only.
+`PASSVALUE` remains available through `prop_run` as the upstream compatibility
+adapter, but it is not part of this fully prepared surface.
 
-By default, hot calls still activate the stored `RunContext` around the
+By default, prepared runs still activate the stored `RunContext` around the
 prescription:
 
 ```julia
-hot = prepare_hot_call(model; payload=payload)
+prepared = prepare_run(model; payload=payload)
 ```
 
 Set `activate_context=false` only when the prescription explicitly passes the
@@ -466,7 +466,7 @@ wavefront = prop_begin!(field, payload.diam_m, 0.55f-6;
     context=run_context,
 )
 output = Matrix{Float32}(undef, 256, 256)
-hot = prepare_hot_call(
+prepared = prepare_run(
     model;
     slot=1,
     activate_context=false,
