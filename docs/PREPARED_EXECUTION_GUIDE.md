@@ -122,6 +122,46 @@ Reset reusable contexts with:
 reset_prepared_batch!(batch)
 ```
 
+## CPU Threading
+
+PROPER's CPU propagation path is usually FFT-bound. FFTW and Julia task
+threading are independent, and combining large counts can oversubscribe the
+machine.
+
+For one large serial prescription, a useful starting point is four FFTW
+threads and one Julia thread:
+
+```julia
+using Proper
+
+prop_fftw_threads(4)  # call before constructing or warming prepared contexts
+prepared = prepare_prescription(my_prescription, 0.55, 512)
+psf, sampling = prop_run(prepared)
+```
+
+The equivalent process-level configuration is:
+
+```sh
+PROPER_FFTW_THREADS=4 julia --threads=1 --project=. my_run.jl
+```
+
+For wavelength sweeps and other `prop_run_multi` workloads, prefer outer Julia
+parallelism with single-thread FFTW as the first configuration to benchmark:
+
+```sh
+PROPER_FFTW_THREADS=1 julia --threads=4 --project=. my_batch_run.jl
+```
+
+Thread counts are machine- and grid-size-dependent. Benchmark representative
+256, 512, and 1024 grids before choosing a production value. Changing
+`prop_fftw_threads` affects newly created FFTW plans only; call
+`reset_prepared_batch!` or recreate prepared contexts after changing it.
+
+The main propagation path is not BLAS-heavy. When Julia threads run independent
+prescriptions, `LinearAlgebra.BLAS.set_num_threads(1)` is a sensible starting
+point to avoid nested BLAS parallelism, but it should also be measured on the
+application's non-propagation workloads.
+
 ### `PreparedAssetPool`
 Use this when each slot should lazily create and retain its own asset bundle.
 

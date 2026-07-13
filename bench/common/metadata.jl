@@ -1,6 +1,8 @@
 module BenchMetadata
 
 using Dates
+using FFTW
+using LinearAlgebra
 
 export benchmark_metadata
 
@@ -26,6 +28,9 @@ function benchmark_metadata(; run_tag::String, backend::Symbol=:cpu, baseline::S
         "backend" => String(backend),
         "julia_version" => string(VERSION),
         "threads" => Threads.nthreads(),
+        "fftw_threads" => FFTW.get_num_threads(),
+        "blas_threads" => BLAS.get_num_threads(),
+        "blas_config" => sprint(show, BLAS.get_config()),
         "cpu_threads" => Sys.CPU_THREADS,
         "cpu_model" => _cpu_model(),
         "machine" => Sys.MACHINE,

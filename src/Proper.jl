@@ -114,7 +114,7 @@ export prop_magnify!, prop_rotate!, prop_resamplemap!, prop_cubic_conv_grid!, pr
 export prop_fits_read, prop_fits_write, prop_readmap, prop_writemap
 export prop_errormap, prop_psd_errormap, prop_psd_errormap!
 export prop_savestate, prop_state, prop_is_statesaved, prop_init_savestate, prop_end_savestate
-export prop_fftw_wisdom, prop_load_fftw_wisdom
+export prop_fftw_threads, prop_fftw_wisdom, prop_load_fftw_wisdom
 export prop_set_antialiasing
 export prop_dm, prop_sinc, prop_noll_zernikes, prop_zernikes, prop_fit_zernikes
 export prop_fit_dm, prop_pixellate, prop_polygon, prop_irregular_polygon, prop_rounded_rectangle
@@ -129,5 +129,11 @@ export prop_get_wavelength, prop_get_z, prop_get_gridsize
 export prop_get_beamradius, prop_get_distancetofocus, prop_get_fratio
 export prop_get_nyquistsampling, prop_get_refradius
 export prop_run, prop_run_hot, prop_run_multi
+
+function __init__()
+    configured_threads = get(ENV, "PROPER_FFTW_THREADS", nothing)
+    configured_threads === nothing || prop_fftw_threads(parse(Int, configured_threads))
+    return nothing
+end
 
 end # module Proper

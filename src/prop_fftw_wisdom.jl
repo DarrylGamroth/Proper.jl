@@ -3,6 +3,24 @@ function _wisdom_path(gridsize::Integer, nthreads::Integer)
 end
 
 """
+    prop_fftw_threads()
+    prop_fftw_threads(nthreads)
+
+Get or set the process-wide FFTW thread count used when new FFTW plans are
+created. Configure this before constructing or warming a `RunContext` or
+prepared model. Existing cached plans retain the thread count with which they
+were created; reset or recreate prepared contexts after changing it.
+"""
+@inline prop_fftw_threads() = FFTW.get_num_threads()
+
+function prop_fftw_threads(nthreads::Integer)
+    n = Int(nthreads)
+    n > 0 || throw(ArgumentError("FFTW thread count must be positive"))
+    FFTW.set_num_threads(n)
+    return FFTW.get_num_threads()
+end
+
+"""
     prop_fftw_wisdom(gridsize; nthreads=Threads.nthreads())
     prop_fftw_wisdom(path)
 

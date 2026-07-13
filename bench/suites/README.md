@@ -12,3 +12,8 @@ Benchmark entry points currently include:
 - `bench/julia/wfirst_phaseb/prepared_models.jl`
 
 Generated reports belong under ignored `bench/reports/`.
+
+All reports include Julia, FFTW, and BLAS thread counts. Set
+`PROPER_FFTW_THREADS` before launching a benchmark when comparing FFTW thread
+configurations, and keep outer Julia-thread and inner FFTW-thread experiments
+separate so oversubscription is visible.

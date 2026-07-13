@@ -48,12 +48,17 @@ using FFTW
 
         grid_wisdom = Proper._wisdom_path(2, 1)
         rm(grid_wisdom; force=true)
+        old_fftw_threads = prop_fftw_threads()
         try
+            @test prop_fftw_threads(1) == 1
+            @test prop_fftw_threads() == 1
+            @test_throws ArgumentError prop_fftw_threads(0)
             @test !prop_load_fftw_wisdom(3, 1)
             @test prop_fftw_wisdom(2; nthreads=1) == grid_wisdom
             @test isfile(grid_wisdom)
             @test prop_load_fftw_wisdom(2, 1)
         finally
+            prop_fftw_threads(old_fftw_threads)
             rm(grid_wisdom; force=true)
         end
 
