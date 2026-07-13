@@ -56,6 +56,7 @@ function bench_refactor_kernels()
 
     # PSD hotspot
     wf_psd = prop_begin(0.212, 0.55e-6, 128)
+    ctx_psd = RunContext(wf_psd)
     psd_out = zeros(Float64, 128, 128)
     psd_rng_wrap = MersenneTwister(3)
     psd_rng_mut = MersenneTwister(3)
@@ -79,8 +80,8 @@ function bench_refactor_kernels()
     prop_irregular_polygon(wf_geom, xverts, yverts; NORM=true)
     prop_irregular_polygon!(ipoly_out, wf_geom, xverts, yverts; NORM=true)
 
-    Proper._prop_psd_errormap!(wf_psd, 3.29e-23, 212.26, 7.8, psd_opts_wrap)
-    Proper._prop_psd_errormap!(psd_out, wf_psd, 3.29e-23, 212.26, 7.8, psd_opts_mut)
+    Proper._prop_psd_errormap!(wf_psd, 3.29e-23, 212.26, 7.8, psd_opts_wrap, ctx_psd)
+    Proper._prop_psd_errormap!(psd_out, wf_psd, 3.29e-23, 212.26, 7.8, psd_opts_mut, ctx_psd)
 
     samples_fast = 30
     samples_heavy = 15
@@ -120,8 +121,8 @@ function bench_refactor_kernels()
         run(@benchmarkable prop_irregular_polygon!($ipoly_out, $wf_geom, $xverts, $yverts; NORM=true) evals=1 samples=samples_fast),
     )
 
-    psd_wrap_trial = run(@benchmarkable Proper._prop_psd_errormap!($wf_psd, 3.29e-23, 212.26, 7.8, $psd_opts_wrap) evals=1 samples=samples_heavy)
-    psd_mut_trial = run(@benchmarkable Proper._prop_psd_errormap!($psd_out, $wf_psd, 3.29e-23, 212.26, 7.8, $psd_opts_mut) evals=1 samples=samples_heavy)
+    psd_wrap_trial = run(@benchmarkable Proper._prop_psd_errormap!($wf_psd, 3.29e-23, 212.26, 7.8, $psd_opts_wrap, $ctx_psd) evals=1 samples=samples_heavy)
+    psd_mut_trial = run(@benchmarkable Proper._prop_psd_errormap!($psd_out, $wf_psd, 3.29e-23, 212.26, 7.8, $psd_opts_mut, $ctx_psd) evals=1 samples=samples_heavy)
     psd_pair = pair_stats(psd_wrap_trial, psd_mut_trial)
 
     return Dict(
