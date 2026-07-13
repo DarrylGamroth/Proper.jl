@@ -58,6 +58,12 @@ end
     else
         ensure_fft_scratch!(wf.workspace.fft, size(a, 1), size(a, 2))
     end
+    # Planned FFT propagation publishes the complex FFT scratch as the live
+    # wavefront field. Centering a complex map into that same storage would
+    # destroy the field before the caller can apply the map.
+    if scratch === wf.field || scratch === a
+        return prop_shift_center(a; inverse=inverse)
+    end
     prop_shift_center!(scratch, a; inverse=inverse)
     return scratch
 end

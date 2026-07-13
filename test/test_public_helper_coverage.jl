@@ -2,22 +2,48 @@ using FFTW
 
 @testset "Public helper and branch coverage" begin
     @testset "small public wavefront helpers" begin
-        wf = prop_begin(1.0, 500e-9, 8)
-        wf.field .= reshape(ComplexF64.(1:64), 8, 8) .* cis(0.25)
+        for (ny, nx) in ((7, 7), (8, 8), (7, 8), (8, 7))
+            nsamples = ny * nx
+            raw = reshape(
+                ComplexF64.(1:nsamples) .+ im .* reverse(ComplexF64.(1:nsamples)),
+                ny,
+                nx,
+            )
+            wf = Proper.WaveFront(copy(raw), 500e-9, 1e-3, 0.0, 1.0)
 
-        @test prop_get_wavefront(wf) === wf.field
-        @test prop_get_amplitude(wf) ≈ abs.(wf.field)
-        @test prop_get_phase(wf) ≈ angle.(wf.field)
+            centered_field = @inferred prop_get_wavefront(wf)
+            centered_amplitude = @inferred prop_get_amplitude(wf)
+            centered_phase = @inferred prop_get_phase(wf)
+            @test centered_field == FFTW.fftshift(raw)
+            @test centered_field !== wf.field
+            @test centered_amplitude ≈ FFTW.fftshift(abs.(raw))
+            @test centered_phase ≈ FFTW.fftshift(angle.(raw))
+
+            centered_field[1, 1] = -1 - 2im
+            @test wf.field == raw
+
+            centered_addition = reshape(
+                reverse(ComplexF64.(1:nsamples)) .+ im .* ComplexF64.(1:nsamples),
+                ny,
+                nx,
+            )
+            before = copy(wf.field)
+            @test (@inferred prop_add_wavefront(wf, centered_addition)) === wf
+            @test wf.field == before .+ FFTW.ifftshift(centered_addition)
+
+            before_scalar = copy(wf.field)
+            scalar = 2 - 3im
+            @test (@inferred prop_add_wavefront(wf, scalar)) === wf
+            @test wf.field == before_scalar .+ scalar
+        end
+
+        wf = prop_begin(1.0, 500e-9, 8)
         @test prop_get_refradius(wf) == wf.z_m - wf.z_w0_m
         @test prop_get_distancetofocus(wf) == wf.z_w0_m - wf.z_m
         @test prop_get_nyquistsampling(wf) == wf.current_fratio * wf.wavelength_m / 2
         @test prop_get_nyquistsampling(wf, 600e-9) == wf.current_fratio * 600e-9 / 2
         @test prop_get_sampling_arcsec(wf) > 0
 
-        other = fill(ComplexF64(2, 3), 8, 8)
-        before = copy(wf.field)
-        @test prop_add_wavefront(wf, other) === wf
-        @test wf.field == before .+ other
         @test_throws ArgumentError prop_add_wavefront(wf, ones(4, 4))
     end
 

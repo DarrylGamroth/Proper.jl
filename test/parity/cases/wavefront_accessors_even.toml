@@ -1,0 +1,8 @@
+name = "wavefront_accessors_even"
+gridsize = 8
+
+[thresholds]
+# Shifts and additions use exactly representable dyadic inputs.
+field_max_abs = 0.0
+# Amplitude and phase exercise platform libm functions.
+derived_max_abs = 1e-14

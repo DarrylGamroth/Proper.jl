@@ -7,11 +7,13 @@ Freeze numerical conventions used by propagation, transforms, and coordinate sys
 - `D-0001` baseline/parity policy
 - `D-0035` remove runtime compatibility modes (accepted)
 - `D-0007` numerical convention contract (accepted)
+- `D-0057` centered public wavefront accessors (accepted)
 
 ## Status
 - [x] Draft pre-filled from proposed defaults
 - [x] Conventions frozen
-- [ ] Regression tests in place
+- [x] Regression tests in place for the centered-field and map-application
+  contracts changed by `D-0057`
 
 ## 1. Precision Policy
 - Default floating precision: `Float64`
@@ -38,6 +40,12 @@ Freeze numerical conventions used by propagation, transforms, and coordinate sys
   - must satisfy parity thresholds in plan (`rel L2` CPU/GPU)
 
 ## 3. Centering Convention
+- Internal/public ordering:
+  - `WaveFront.field` remains in raw FFT ordering for propagation and kernels
+  - `prop_get_wavefront`, `prop_get_amplitude`, and `prop_get_phase` return
+    centered backend-preserving arrays
+  - matrix inputs to `prop_add_wavefront` are centered public data and are
+    inverse-shifted before being added to the internal field
 - `prop_shift_center` semantics:
   - forward shift uses `floor(size/2)` on each axis
   - inverse shift uses `ceil(size/2)` on each axis
@@ -79,9 +87,19 @@ Freeze numerical conventions used by propagation, transforms, and coordinate sys
   - parity evidence and updated thresholds where relevant
   - regression tests covering the chosen behavior
 
-## 8. Contract Tests
+## 8. Correctness Coverage Matrix
+
+| Area | Axis | Permutations | Evidence | Status | Notes |
+| --- | --- | --- | --- | --- | --- |
+| Public field ordering | Grid shape/parity | `7x7`, `8x8`, `7x8`, `8x7` | `test/test_public_helper_coverage.jl` | Covered | Asymmetric complex values catch wrong shifts, transposes, and aliases. |
+| Centered field addition | Input form | scalar, centered matrix | `test/test_public_helper_coverage.jl` | Covered | Matrix extraction and reinsertion compose on odd and even axes. |
+| Backend preservation | Backend/shape/layout | CPU; CUDA and AMDGPU on odd, even, mixed rectangular, and stepped `SubArray` inputs | `test/test_r2_trait_routing.jl` | Covered | GPU checks run when the corresponding CI runner is enabled, prohibit scalar indexing, and assert KA routing for stepped views. |
+| FFT-scratch safety | Operation/backend | multiply and divide on CPU, CUDA, AMDGPU | `test/test_complex_map_scratch_alias.jl` | Covered | Regression reproduces a planned point-to-point propagation before applying an asymmetric complex map. |
+| Executable upstream parity | Python 3.3.4 accessor/add path | centered field, amplitude, phase, scalar add, matrix add | `test/parity/generate_python_baseline.py`, `test/parity/compare.jl` | Covered | Exact pixelwise threshold for field/add outputs on the even-grid upstream-compatible case. |
+
+Additional contract areas retained for follow-up:
+
 - [ ] FFT normalization regression tests
-- [ ] Centering tests (even and odd grid)
 - [ ] Coordinate convention tests
 - [ ] Unit conversion tests
 - [ ] Seeded PSD/error-map reproducibility tests

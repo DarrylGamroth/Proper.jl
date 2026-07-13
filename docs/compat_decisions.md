@@ -728,3 +728,36 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     transcendental evaluations and kernel launches than the previous sequence.
   - Factorization changes floating-point operation ordering but follows the
     existing CPU algorithm and remains covered by backend parity tests.
+
+## D-0057: Public Wavefront Accessors Use Centered External Ordering
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - PROPER stores the live wavefront in FFT ordering, but Python and MATLAB
+    public accessors return centered arrays.
+  - Python `prop_add_wavefront` applies its one-way, floor-sized center shift to
+    array inputs. That shift is not the inverse of its accessor shift on odd
+    grids.
+  - MATLAB's `prop_shift_center` provides an explicit `ifftshift` branch and
+    documents it as the odd-grid correction. However, MATLAB
+    `prop_add_wavefront` passes numeric `1` while that branch expects the string
+    `'inv'`; this appears to be a caller typo rather than executable evidence
+    for the inverse path.
+- Decision:
+  - Keep `WaveFront.field` in raw FFT ordering internally.
+  - `prop_get_wavefront`, `prop_get_amplitude`, and `prop_get_phase` return
+    centered, backend-preserving arrays; the complex-field accessor returns a
+    copy rather than exposing mutable internal storage.
+  - `prop_add_wavefront` accepts scalars directly and converts centered matrix
+    inputs to internal ordering with the true inverse shift.
+  - On odd grids, intentionally follow the frozen true-inverse centering
+    contract and MATLAB's documented inverse facility, correcting both Python's
+    non-invertible shift quirk and the apparent MATLAB caller typo.
+- Consequences:
+  - Public field extraction and reinsertion compose correctly for even and odd
+    grids without changing internal propagation ordering.
+  - Code that intentionally needs mutable raw storage continues to use
+    `wf.field`; public accessor results cannot mutate it by aliasing.
+  - CPU regression tests cover asymmetric fields and both grid parities;
+    accelerator tests additionally enforce backend preservation. Both cover
+    scalar and centered-matrix addition.
