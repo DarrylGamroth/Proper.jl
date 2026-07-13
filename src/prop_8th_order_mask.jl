@@ -83,6 +83,99 @@ end
     end
 end
 
+@kernel function _ka_normalize_apply_8th_mask_kernel!(
+    mask,
+    field,
+    squared_min,
+    squared_max,
+    min_transmission,
+    max_transmission,
+    sy::Int,
+    sx::Int,
+    ny::Int,
+    nx::Int,
+)
+    I = @index(Global, NTuple)
+    i = I[1]
+    j = I[2]
+
+    if i <= ny && j <= nx
+        @uniform begin
+            denominator = squared_max - squared_min
+            transmission_range = max_transmission - min_transmission
+        end
+        @inbounds raw = mask[i, j]
+        normalized = raw * raw - squared_min
+        if denominator > zero(denominator)
+            normalized /= denominator
+        elseif iszero(denominator)
+            normalized = zero(normalized)
+        end
+        normalized = sqrt(normalized * transmission_range + min_transmission)
+        @inbounds mask[i, j] = normalized
+
+        # Write to the shifted field index so every mask and field element is
+        # touched exactly once. This is equivalent to prop_shift_center(mask)
+        # for both odd and even rectangular grids.
+        is = i + sy
+        js = j + sx
+        is = ifelse(is > ny, is - ny, is)
+        js = ifelse(js > nx, js - nx, js)
+        @inbounds field[is, js] *= normalized
+    end
+end
+
+@inline function ka_normalize_apply_8th_mask!(
+    mask::AbstractMatrix{T},
+    field::AbstractMatrix{Complex{T}},
+    squared_min::T,
+    squared_max::T,
+    min_transmission::T,
+    max_transmission::T,
+) where {T<:AbstractFloat}
+    size(mask) == size(field) || throw(ArgumentError("mask size must match wavefront"))
+    ny, nx = size(mask)
+    backend = AK.get_backend(mask)
+    _ka_normalize_apply_8th_mask_kernel!(backend, (16, 16))(
+        mask,
+        field,
+        squared_min,
+        squared_max,
+        min_transmission,
+        max_transmission,
+        fld(ny, 2),
+        fld(nx, 2),
+        ny,
+        nx;
+        ndrange=(ny, nx),
+    )
+    return mask
+end
+
+@inline _mask_squared_extrema_map(x::T) where {T<:AbstractFloat} = complex(x * x, x * x)
+
+@inline function _mask_squared_extrema_combine(a::Complex{T}, b::Complex{T}) where {T<:AbstractFloat}
+    # Encode the minimum in the real component and the maximum in the
+    # imaginary component so AcceleratedKernels can reduce both in one pass.
+    return complex(min(real(a), real(b)), max(imag(a), imag(b)))
+end
+
+@inline function _mask_squared_extrema(mask::AbstractMatrix{T}, wf::WaveFront) where {T<:AbstractFloat}
+    length(mask) <= 1 && return complex(zero(T), zero(T))
+
+    ny, nx = size(mask)
+    reduction_scratch = vec(ensure_fft_scratch!(wf.workspace.fft, ny, nx))
+    neutral = complex(typemax(T), typemin(T))
+    return AK.mapreduce(
+        _mask_squared_extrema_map,
+        _mask_squared_extrema_combine,
+        mask;
+        init=neutral,
+        neutral=neutral,
+        temp=reduction_scratch,
+    )
+end
+
 function _fill_8th_mask!(::LinearMaskShape, mask::AbstractMatrix{T}, x::AbstractVector{T}, y::AbstractVector{T}, e::T, ll::T, mm::T, plml::T, y_axis::Bool) where {T<:AbstractFloat}
     if y_axis
         line = similar(y)
@@ -267,6 +360,47 @@ end
     return wf.field
 end
 
+@inline function _normalize_apply_8th_order_mask!(
+    backend::BackendStyle,
+    wf::WaveFront,
+    mask::AbstractMatrix,
+    min_transmission::Real,
+    max_transmission::Real,
+)
+    RT = real(eltype(wf.field))
+    mask .*= mask
+    mmin = AK.minimum(mask)
+    mask .-= mmin
+    mmax = AK.maximum(mask)
+    if mmax > 0
+        mask ./= mmax
+    end
+    mask .*= (RT(float(max_transmission)) - RT(float(min_transmission)))
+    mask .+= RT(float(min_transmission))
+    mask .= sqrt.(mask)
+    _apply_8th_order_mask!(backend, wf, mask)
+    return mask
+end
+
+@inline function _normalize_apply_8th_order_mask!(
+    ::Union{CUDABackend,AMDGPUBackend},
+    wf::WaveFront,
+    mask::AbstractMatrix{T},
+    min_transmission::Real,
+    max_transmission::Real,
+) where {T<:AbstractFloat}
+    squared_extrema = _mask_squared_extrema(mask, wf)
+    ka_normalize_apply_8th_mask!(
+        mask,
+        wf.field,
+        real(squared_extrema),
+        imag(squared_extrema),
+        T(float(min_transmission)),
+        T(float(max_transmission)),
+    )
+    return mask
+end
+
 """
     prop_8th_order_mask!(mask, wf, hwhm; kwargs...)
 
@@ -333,20 +467,10 @@ function prop_8th_order_mask!(
     backend = backend_style(typeof(wf.field))
     _fill_8th_mask_for_shape!(backend, shape, mask, e, ll, mm, plml, c, y_axis, elliptical)
 
-    # Renormalize in intensity space then convert back to amplitude.
-    mask .*= mask
-    mmin = AK.minimum(mask)
-    mask .-= mmin
-    mmax = AK.maximum(mask)
-    if mmax > 0
-        mask ./= mmax
-    end
-    mask .*= (RT(float(max_transmission)) - RT(float(min_transmission)))
-    mask .+= RT(float(min_transmission))
-    mask .= sqrt.(mask)
-
-    _apply_8th_order_mask!(backend, wf, mask)
-    return mask
+    # Renormalize in intensity space, convert back to amplitude, and apply the
+    # centered-to-origin shift. Accelerators fuse this work after one paired
+    # extrema reduction; the CPU path retains its established operations.
+    return _normalize_apply_8th_order_mask!(backend, wf, mask, min_transmission, max_transmission)
 end
 
 """
