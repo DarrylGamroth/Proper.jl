@@ -43,13 +43,13 @@ mutable struct PreparedModel{ID,P,B,A}
     assets::A
 end
 
-abstract type HotCallContextActivation end
-struct HotCallContextActive <: HotCallContextActivation end
-struct HotCallContextInactive <: HotCallContextActivation end
+abstract type PreparedRunContextActivation end
+struct PreparedRunContextActive <: PreparedRunContextActivation end
+struct PreparedRunContextInactive <: PreparedRunContextActivation end
 
-@inline hot_call_context_activation(active::Bool) = active ? HotCallContextActive() : HotCallContextInactive()
+@inline prepared_run_context_activation(active::Bool) = active ? PreparedRunContextActive() : PreparedRunContextInactive()
 
-struct PreparedHotCall{F,T<:AbstractFloat,CTX,KW,ACT<:HotCallContextActivation}
+struct PreparedRun{F,T<:AbstractFloat,CTX,KW,ACT<:PreparedRunContextActivation}
     routine::F
     wavelength_m::T
     gridsize::Int
@@ -62,7 +62,7 @@ end
 @inline prepared_prescription(model::PreparedModel) = model.prepared
 @inline prepared_batch(model::PreparedModel) = model.batch
 @inline prepared_assets(model::PreparedModel) = model.assets
-@inline prepared_context(call::PreparedHotCall) = call.context
+@inline prepared_context(prepared::PreparedRun) = prepared.context
 
 function prepared_context(batch::PreparedBatch, slot::Integer)
     slot > 0 || throw(ArgumentError("slot must be positive"))
@@ -294,16 +294,16 @@ function prepare_prescription(
     return PreparedPrescription(fn, λm, Int(gridsize), ctx, (; kwargs...), PASSVALUE)
 end
 
-@inline function _prepared_hot_call(
+@inline function _prepare_run(
     ::ACT,
     prepared::PreparedPrescription,
     context,
     kwargs::NamedTuple,
-) where {ACT<:HotCallContextActivation}
+) where {ACT<:PreparedRunContextActivation}
     prepared.passvalue === nothing ||
-        throw(ArgumentError("prepare_hot_call only supports native Julia keyword prescriptions; PASSVALUE remains supported through prop_run"))
+        throw(ArgumentError("prepare_run only supports native Julia keyword prescriptions; PASSVALUE remains supported through prop_run"))
     merged_kwargs = merge(prepared.kwargs, kwargs)
-    return PreparedHotCall{typeof(prepared.routine),typeof(prepared.wavelength_m),typeof(context),typeof(merged_kwargs),ACT}(
+    return PreparedRun{typeof(prepared.routine),typeof(prepared.wavelength_m),typeof(context),typeof(merged_kwargs),ACT}(
         prepared.routine,
         prepared.wavelength_m,
         prepared.gridsize,
@@ -313,15 +313,16 @@ end
 end
 
 """
-    prepare_hot_call(prepared; context=prepared.context, activate_context=true, kwargs...)
-    prepare_hot_call(batch; slot=1, activate_context=true, kwargs...)
-    prepare_hot_call(model; slot=1, activate_context=true, kwargs...)
+    prepare_run(prepared; context=prepared.context, activate_context=true, kwargs...)
+    prepare_run(batch; slot=1, activate_context=true, kwargs...)
+    prepare_run(model; slot=1, activate_context=true, kwargs...)
 
-Prepare a lower-level hot-loop call object for native Julia prescriptions.
+Prepare one reusable run for a native Julia prescription.
 
 Unlike `prop_run(model; kwargs...)`, this resolves slot context, model assets,
 and keyword merging once. Use it when the same prepared prescription is invoked
-many times with stable payload and workspace objects.
+many times with stable payload and workspace objects. Execute the result with
+`prop_run(prepared_run)`.
 
 `PASSVALUE` compatibility is intentionally excluded from this API; use
 `prop_run` for upstream-style compatibility adapters.
@@ -330,7 +331,7 @@ Set `activate_context=false` only when the prescription explicitly passes the
 stored context to context-aware operations such as `prop_begin!(...;
 context=...)`, `prop_lens(..., ctx)`, and `prop_propagate(..., ctx)`.
 """
-function prepare_hot_call(
+function prepare_run(
     prepared::PreparedPrescription;
     context::Union{Nothing,RunContext}=prepared.context,
     activate_context::Bool=true,
@@ -340,15 +341,15 @@ function prepare_hot_call(
 )
     phase_override = kw_resolve_optional_bool(PHASE_OFFSET, phase_offset)
     call_context = context_with_phase_override(context, phase_override, typeof(prepared.wavelength_m))
-    return _prepared_hot_call(
-        hot_call_context_activation(activate_context),
+    return _prepare_run(
+        prepared_run_context_activation(activate_context),
         prepared,
         call_context,
         (; kwargs...),
     )
 end
 
-function prepare_hot_call(
+function prepare_run(
     batch::PreparedBatch;
     slot::Integer=1,
     activate_context::Bool=true,
@@ -356,10 +357,10 @@ function prepare_hot_call(
 )
     slot > 0 || throw(ArgumentError("slot must be positive"))
     contexts = ensure_prepared_batch_contexts!(batch, slot)
-    return prepare_hot_call(batch.prepared; context=contexts[slot], activate_context=activate_context, kwargs...)
+    return prepare_run(batch.prepared; context=contexts[slot], activate_context=activate_context, kwargs...)
 end
 
-function prepare_hot_call(
+function prepare_run(
     model::PreparedModel;
     slot::Integer=1,
     activate_context::Bool=true,
@@ -368,5 +369,5 @@ function prepare_hot_call(
     assets = prepared_assets(model, slot)
     merged_kwargs = assets === nothing ? (; kwargs...) :
         (assets isa NamedTuple ? merge(assets, (; kwargs...)) : merge((; assets=assets), (; kwargs...)))
-    return prepare_hot_call(model.batch; slot=slot, activate_context=activate_context, merged_kwargs...)
+    return prepare_run(model.batch; slot=slot, activate_context=activate_context, merged_kwargs...)
 end

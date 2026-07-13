@@ -829,7 +829,7 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
 - Decision:
   - `RunContext` carries either `EnvelopeOnly()` or `TrackCarrierPhase()` as a
     concrete policy. `EnvelopeOnly()` remains the default, matching upstream.
-  - `PHASE_OFFSET` and `phase_offset` are reserved at run/prepared/hot-call
+  - `PHASE_OFFSET` and `phase_offset` are reserved at run/prepared-run
     boundaries, accept Bool or integer compatibility values, and reject
     conflicting aliases. They are never forwarded to the prescription.
   - Carrier phase uses the upstream positive sign and reduces `dz` modulo the
@@ -862,3 +862,28 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     including policy changes after the wavefront aliases FFT scratch.
   - Saved FFTW wisdom cannot mask the destructive-planning regression because
     the test explicitly clears wisdom before the critical replan.
+
+## D-0062: Fully Prepared Single Runs Use The Standard Run Interface
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - The Julia-only `PreparedHotCall`, `prepare_hot_call`, and `prop_run_hot`
+    names exposed implementation and performance terminology rather than the
+    object’s semantics.
+  - The object represents one prescription whose context, model assets, slot,
+    and native Julia keyword arguments have already been resolved.
+- Decision:
+  - Construct this object with `prepare_run(...)` and execute it with the
+    ordinary `prop_run(...)` generic.
+  - Keep the concrete `PreparedRun` type unexported so callers depend on the
+    behavioral interface rather than its representation.
+  - Remove the old names without aliases while the package is at version
+    `0.1.0`.
+- Consequences:
+  - Repeated single-run execution composes with the same `prop_run` interface
+    as prescriptions, batches, and models.
+  - `prepare_run` remains restricted to native Julia keyword prescriptions;
+    upstream `PASSVALUE` adaptation remains on the compatibility-facing
+    `prop_run` paths.
+  - Tests assert execution, context policy, and export behavior instead of the
+    concrete prepared-run type.

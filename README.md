@@ -42,6 +42,8 @@ upstream prescription.
   workloads
 - prepared execution (`PreparedPrescription`, `PreparedBatch`,
   `PreparedModel`) is available for repeated and parallel runs
+- `prepare_run(...)` resolves one stable single-run call shape for low-latency
+  loops without exposing a separate execution function
 
 ## Quick Migration Example
 
@@ -170,6 +172,14 @@ different optical model type.
 ```julia
 model = prepare_model(:simple_model, simple_prescription, 0.55, 128; pool_size=2)
 psf, sampling = prop_run(model; slot=1)
+```
+
+When the slot, assets, payload, and keyword shape are all stable, resolve them
+once and continue using the standard run interface:
+
+```julia
+prepared = prepare_run(model; slot=1, payload=payload)
+psf, sampling = prop_run(prepared)
 ```
 
 For a fuller explanation of prepared execution, see

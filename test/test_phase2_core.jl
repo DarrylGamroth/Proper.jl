@@ -192,11 +192,10 @@ end
     @test size(out_model) == (16, 16)
     @test s_model > 0
     @test prepared_context(prepared_model, 1) === prepared_model.batch.contexts[1]
-    hot_call = prepare_hot_call(prepared_model; slot=1)
-    hot_out, hot_sampling = prop_run_hot(hot_call)
-    @test hot_call isa PreparedHotCall
-    @test size(hot_out) == (16, 16)
-    @test hot_sampling == s_model
+    prepared_run = prepare_run(prepared_model; slot=1)
+    run_out, run_sampling = prop_run(prepared_run)
+    @test size(run_out) == (16, 16)
+    @test run_sampling == s_model
     stack_model, samplings_model = prop_run_multi(prepared_model; PASSVALUE=passvals)
     @test size(stack_model) == (16, 16, 3)
     @test length(samplings_model) == 3
@@ -211,7 +210,7 @@ end
     out_pass, s_pass = prop_run(prepared_pass)
     @test size(out_pass) == (16, 16)
     @test s_pass > 0
-    @test_throws ArgumentError prepare_hot_call(prepared_pass)
+    @test_throws ArgumentError prepare_run(prepared_pass)
 
     let ctx = RunContext(Matrix{Float32})
         function dummy_scoped(λm, n; kwargs...)

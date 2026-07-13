@@ -211,12 +211,12 @@ Concrete translation:
 For GPU-oriented throughput work, that last form is the intended public sweep
 surface.
 
-For fixed-payload real-time loops, prepare the model normally and then bind a
-lower-level hot call once:
+For fixed-payload real-time loops, prepare the model normally and then prepare
+one fully resolved run:
 
 | MATLAB | Python | Julia |
 | --- | --- | --- |
-| `prop_run('model', lambda_um, n, PASSVALUE)` | `proper.prop_run(model, lambda_um, n, PASSVALUE=passvalue)` | `model = prepare_model(my_model, lambda_um, n; pool_size=1)` then `hot = prepare_hot_call(model; payload=payload)` and `psf, sampling = prop_run_hot(hot)` |
+| `prop_run('model', lambda_um, n, PASSVALUE)` | `proper.prop_run(model, lambda_um, n, PASSVALUE=passvalue)` | `model = prepare_model(my_model, lambda_um, n; pool_size=1)` then `prepared = prepare_run(model; payload=payload)` and `psf, sampling = prop_run(prepared)` |
 
 Use this only when the prescription uses native Julia keywords and the payload
 objects are reused across frames. Keep `PASSVALUE` on `prop_run` for upstream

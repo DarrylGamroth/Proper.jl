@@ -38,6 +38,7 @@ Stable entry points:
 - `prepare_prescription_batch`
 - `prepare_asset_pool`
 - `prepare_model`
+- `prepare_run`
 - `reset_prepared_batch!`
 - `reset_prepared_assets!`
 - `reset_prepared_model!`
@@ -75,6 +76,7 @@ Notes:
   - `prop_run(prepare_prescription(...))`
   - `prop_run(prepare_prescription_batch(...); slot=1)`
   - `prop_run(prepare_model(...); slot=1)`
+  - `prop_run(prepare_run(...))`
   - `prop_begin(...; context=ctx)` / `prop_begin(...; workspace=ws)`
   - `prop_wavefront(...; context=ctx)` / `prop_wavefront(...; workspace=ws)`
 - Prepared parallel execution forks stored runtime state per pass:
@@ -110,6 +112,10 @@ Notes:
   - `prepare_prescription_batch(prepared_or_routine, ...; pool_size=..., precision=...)`
   - `prepare_asset_pool(factory, AssetType; pool_size=...)`
   - `prepare_model(prepared_or_routine, ...; pool_size=..., assets=..., precision=...)`
+  - `prepare_run(prepared_or_batch_or_model; slot=..., kwargs...)`
+- The concrete type returned by `prepare_run` is intentionally not exported;
+  callers execute it through `prop_run` and inspect its context through
+  `prepared_context`.
 - `prop_*` public APIs should consume `RunContext` (or equivalent typed config) without compatibility mode flags.
 
 Prepared precision contract:
@@ -139,6 +145,8 @@ Prepared-model asset contract:
 - Multi-run entry point:
   - `prop_run_multi(...) -> (stack, samplings)`
 - Prepared entry points preserve those same return shapes.
+- `prepare_run(...)` resolves one slot, its model assets, context, and native
+  Julia keywords once; `prop_run(prepared_run)` executes that resolved run.
 - `prop_run_multi(runs::AbstractVector{<:Union{PreparedPrescription,PreparedBatch,PreparedModel}})`
   is a stable prepared execution form for wavelength sweeps and mixed prepared
   run collections.
