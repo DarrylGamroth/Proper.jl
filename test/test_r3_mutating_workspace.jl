@@ -254,7 +254,9 @@ using FFTW
 
     @testset "KA pilot parity on large CPU arrays" begin
         n = 512
-        @test !Proper.ka_mask_enabled(Matrix{ComplexF64}, n, n)
+        @test !Proper.ka_mask_enabled(Matrix{ComplexF64}, 127, 128)
+        @test Proper.ka_mask_enabled(Matrix{ComplexF64}, 128, 128)
+        @test Proper.ka_mask_enabled(Matrix{ComplexF64}, n, n)
         @test Proper.ka_end_enabled(Matrix{ComplexF64}, n, n)
 
         wfmask = prop_begin(1.0, 500e-9, n)

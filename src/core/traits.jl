@@ -50,7 +50,7 @@ struct ShiftKAStyle <: ShiftKernelStyle end
 shift_kernel_style(::Type{<:AbstractArray}) = ShiftLoopStyle()
 shift_kernel_style(::Type{<:StridedMatrix}) = ShiftKAStyle()
 
-const KA_MASK_MIN_ELEMS = typemax(Int)
+const KA_MASK_MIN_ELEMS = 16_384
 const KA_END_MIN_ELEMS = 200_000
 const KA_SHIFT_MIN_ELEMS = typemax(Int)
 
