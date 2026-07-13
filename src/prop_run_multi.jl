@@ -90,8 +90,12 @@ function _prop_run_multi_items(
     end
 
     results = Vector{Any}(undef, n)
+    inner_min_elems = n >= Threads.nthreads() ? 262_144 : 0
+    inner_policy = CPUInnerKernelPolicy(true, inner_min_elems)
     @threads for i in eachindex(items, passes)
-        results[i] = runner(items[i], passes[i], i)
+        results[i] = with_cpu_inner_kernel_policy(inner_policy) do
+            runner(items[i], passes[i], i)
+        end
     end
 
     first_out, first_sampling = results[1]
