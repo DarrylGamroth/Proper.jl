@@ -93,3 +93,11 @@ end
 function WaveFront(field::A, wavelength_m::T, sampling_m::T, z_m::T, beam_diameter_m::T) where {T<:AbstractFloat,A<:AbstractMatrix{Complex{T}}}
     return WaveFront(field, wavelength_m, sampling_m, z_m, beam_diameter_m, ProperWorkspace(A, T))
 end
+
+@inline function _require_square_propagation_grid(wf::WaveFront, routine::Symbol)
+    ny, nx = size(wf.field)
+    ny > 0 && ny == nx || throw(ArgumentError(
+        "$(routine) requires a non-empty square wavefront field; got $(ny)x$(nx)",
+    ))
+    return ny
+end

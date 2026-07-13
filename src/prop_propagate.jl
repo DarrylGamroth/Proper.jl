@@ -31,6 +31,7 @@ end
 end
 
 @inline function _prop_propagate!(wf::WaveFront, dz::Real, opts::PropagateOptions, ctx::RunContext)
+    _require_square_propagation_grid(wf, :prop_propagate)
     prop_select_propagator(wf, dz)
 
     dzv = float(dz)

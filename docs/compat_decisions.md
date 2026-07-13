@@ -887,3 +887,32 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     `prop_run` paths.
   - Tests assert execution, context policy, and export behavior instead of the
     concrete prepared-run type.
+
+## D-0063: PROPER Propagation Requires A Square Wavefront Grid
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - `WaveFront` intentionally accepts rectangular matrices so centered access,
+    map, and array helpers can preserve general `AbstractMatrix` inputs.
+  - PTP, WTS, and STW nevertheless used the first dimension as their unitary
+    FFT normalization and represented sampling with one scalar. On a `4x6`
+    field, PTP changed total power by a factor of `2.25` without an error.
+  - Upstream PROPER propagation is defined on the square grid created by
+    `prop_begin`; inventing independent x/y sampling would be a new optical
+    model rather than a compatibility fix.
+- Decision:
+  - Require a non-empty square field at every public propagation entry point,
+    including zero-distance calls, and reject unsupported shapes before
+    mutating wavefront state.
+  - Continue allowing rectangular `WaveFront` storage for non-propagating
+    helpers that already have explicit two-axis semantics.
+  - Validate PTP/WTS/STW direction and normalization against a small direct DFT
+    implemented independently of FFTW, in addition to executable Python parity.
+- Consequences:
+  - Rectangular propagation now fails clearly instead of returning a
+    numerically plausible but power-incorrect result.
+  - Supporting rectangular physical propagation in the future requires an
+    explicit two-axis sampling model and a separate compatibility decision.
+  - Direct-DFT, power-conservation, inverse-roundtrip, coordinate, and unit
+    regressions make transform and convention drift visible without relying on
+    the implementation's FFT library as its own oracle.

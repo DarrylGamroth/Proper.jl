@@ -101,10 +101,10 @@ end
 
 """Planar-to-planar Fresnel propagation while keeping planar reference."""
 function prop_ptp(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
+    n = _require_square_propagation_grid(wf, :prop_ptp)
     abs(dz) < 1e-12 && return wf
     wf.reference_surface === PLANAR || throw(ArgumentError("PTP: input reference surface must be PLANAR"))
 
-    n = size(wf.field, 1)
     λ = wf.wavelength_m
     dx = wf.sampling_m
 
