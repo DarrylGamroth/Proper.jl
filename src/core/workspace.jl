@@ -62,11 +62,13 @@ mutable struct MaskWorkspace{
     M<:AbstractMatrix{T},
     VX<:AbstractVector{T},
     VY<:AbstractVector{T},
+    RV<:AbstractVector{Complex{T}},
 }
     mask::M
     valid::Bool
     xverts::VX
     yverts::VY
+    reduction_scratch::RV
 end
 
 MaskWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} = MaskWorkspace(Matrix, T)
@@ -77,7 +79,14 @@ function MaskWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:
     # CPU vectors even when the reusable mask buffer itself is backend-native.
     xverts = Vector{T}(undef, 0)
     yverts = Vector{T}(undef, 0)
-    return MaskWorkspace{T,typeof(mask),typeof(xverts),typeof(yverts)}(mask, false, xverts, yverts)
+    reduction_scratch = workspace_complex_vector(A, T, 0)
+    return MaskWorkspace{T,typeof(mask),typeof(xverts),typeof(yverts),typeof(reduction_scratch)}(
+        mask,
+        false,
+        xverts,
+        yverts,
+        reduction_scratch,
+    )
 end
 
 @inline function ensure_mask_buffer!(ws::MaskWorkspace{T}, ny::Integer, nx::Integer) where {T}
@@ -92,6 +101,13 @@ end
     ws.xverts = _ensure_workspace_vector(ws.xverts, nverts)
     ws.yverts = _ensure_workspace_vector(ws.yverts, nverts)
     return ws.xverts, ws.yverts
+end
+
+@inline function ensure_mask_reduction_scratch!(ws::MaskWorkspace{T}, n::Integer) where {T}
+    if length(ws.reduction_scratch) < n
+        ws.reduction_scratch = _ensure_workspace_vector(ws.reduction_scratch, n)
+    end
+    return ws.reduction_scratch
 end
 
 const FFTWFwdPlan2D{T} = FFTW.cFFTWPlan{Complex{T},-1,true,2,Tuple{Int,Int}}

@@ -77,6 +77,14 @@ using FFTW
         @test pointer(mws.mask) == mptr
         Proper.prop_rectangular_obscuration(wfmask, 0.25, 0.18)
         @test pointer(mws.mask) == mptr
+        reduction_scratch = @inferred Proper.ensure_mask_reduction_scratch!(mws, 17)
+        @test length(reduction_scratch) == 17
+        @test Proper.ensure_mask_reduction_scratch!(mws, 9) === reduction_scratch
+        @test length(reduction_scratch) == 17
+        Proper.reset_workspace!(wfmask.workspace)
+        @test mws.reduction_scratch === reduction_scratch
+        @test Proper.ensure_mask_reduction_scratch!(mws, 33) === reduction_scratch
+        @test length(reduction_scratch) == 33
         Proper.prop_circular_aperture(wfmask, 0.2) # warmup
         @test (@allocated Proper.prop_circular_aperture(wfmask, 0.2)) < 50_000
         Proper.prop_elliptical_aperture(wfmask, 0.2, 0.15) # warmup
