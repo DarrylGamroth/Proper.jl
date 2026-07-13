@@ -1,0 +1,6 @@
+case = "carrier_phase"
+baseline = "python334/carrier_phase.json"
+
+[thresholds]
+field_max_abs = 1.0e-14
+intensity_max_abs = 1.0e-28

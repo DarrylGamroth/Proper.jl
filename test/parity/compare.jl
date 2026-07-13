@@ -2,6 +2,7 @@ using DelimitedFiles
 using JSON3
 using LinearAlgebra
 using Proper
+using Statistics
 using TOML
 
 include(joinpath(@__DIR__, "gates.jl"))
@@ -28,6 +29,11 @@ function json_complex_matrix(payload)
     size(real_part) == size(imag_part) || error("Complex parity components must have equal shapes")
     return complex.(real_part, imag_part)
 end
+
+@inline json_complex_scalar(payload) = complex(
+    Float64(payload["real"]),
+    Float64(payload["imag"]),
+)
 
 function record_pixelwise_comparison!(metrics, failures, label, actual, expected, max_abs)
     if size(actual) != size(expected)
@@ -133,6 +139,70 @@ function compare_wavefront_accessors_even(base)
     return report
 end
 
+function compare_carrier_phase(base)
+    baseline = JSON3.read(read(joinpath(base, "carrier_phase.json"), String))
+    config = TOML.parsefile(joinpath(@__DIR__, "cases", "carrier_phase.toml"))
+    field_threshold = Float64(config["thresholds"]["field_max_abs"])
+    intensity_threshold = Float64(config["thresholds"]["intensity_max_abs"])
+    n = Int(baseline["gridsize"])
+    λ = Float64(baseline["wavelength_m"])
+
+    function propagated(distance, carrier_phase)
+        wf = prop_begin(1.0, λ, n)
+        ctx = RunContext(
+            typeof(wf.field),
+            wf.workspace;
+            carrier_phase=carrier_phase,
+        )
+        prop_ptp(wf, distance, ctx)
+        return wf.field
+    end
+
+    quarter_disabled = propagated(λ / 4, EnvelopeOnly())
+    quarter_enabled = propagated(λ / 4, TrackCarrierPhase())
+    arm1 = propagated(λ, TrackCarrierPhase())
+    arm2 = propagated(3λ / 2, TrackCarrierPhase())
+    arm_sum = arm1 .+ arm2
+
+    actual = Dict(
+        "quarter_disabled_mean" => mean(quarter_disabled),
+        "quarter_enabled_mean" => mean(quarter_enabled),
+        "arm_sum_mean" => mean(arm_sum),
+        "arm_mean_intensity" => mean(abs2, arm_sum),
+    )
+    outputs = baseline["outputs"]
+    expected = Dict(
+        "quarter_disabled_mean" => json_complex_scalar(outputs["quarter_disabled_mean"]),
+        "quarter_enabled_mean" => json_complex_scalar(outputs["quarter_enabled_mean"]),
+        "arm_sum_mean" => json_complex_scalar(outputs["arm_sum_mean"]),
+        "arm_mean_intensity" => Float64(outputs["arm_mean_intensity"]),
+    )
+
+    metric_type = @NamedTuple{max_abs::Float64, threshold::Float64}
+    metrics = Dict{String,metric_type}()
+    failures = String[]
+    for label in keys(actual)
+        threshold = label == "arm_mean_intensity" ? intensity_threshold : field_threshold
+        max_abs = Float64(abs(actual[label] - expected[label]))
+        metrics[label] = (max_abs=max_abs, threshold=threshold)
+        max_abs <= threshold || push!(failures, "$label max_abs=$max_abs exceeds $threshold")
+    end
+
+    report = (
+        case="carrier_phase",
+        metrics=metrics,
+        failures=failures,
+        pass=isempty(failures),
+    )
+    mkpath(joinpath(@__DIR__, "reports"))
+    open(joinpath(@__DIR__, "reports", "carrier_phase_report.json"), "w") do io
+        JSON3.write(io, report)
+    end
+    println(report)
+    isempty(failures) || error("Carrier-phase parity failed: $(join(failures, "; "))")
+    return report
+end
+
 base = joinpath(@__DIR__, "baseline", "python334")
 psf_py = readdlm(joinpath(base, "simple_case_psf.csv"), ',')
 meta = JSON3.read(read(joinpath(base, "simple_case_meta.json"), String))
@@ -179,3 +249,4 @@ println(report)
 isempty(failures) || error("Simple-case parity threshold check failed: $(join(failures, "; "))")
 
 compare_wavefront_accessors_even(base)
+compare_carrier_phase(base)

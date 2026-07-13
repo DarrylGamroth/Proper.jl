@@ -93,8 +93,13 @@ Notes:
 - MATLAB/manual references are used to evaluate suspected translation defects.
 
 ### 3.1 Context Constructor Contract
-- Canonical constructor entry point (name subject to implementation details):
-  - `RunContext(; backend=..., rng=..., workspace=..., fft_planning=...)`
+- Canonical constructor entry points:
+  - `RunContext(ArrayType; rng=..., verbose=..., fft_planning=..., carrier_phase=...)`
+  - `RunContext(ArrayType, workspace; ...)`
+  - `RunContext(wf; ...)`
+- Carrier policy is concrete and defaults to `EnvelopeOnly()`; coherent
+  multi-arm execution opts in with `TrackCarrierPhase()` or the reserved
+  `phase_offset=true` run keyword.
 - Prepared execution object:
   - `PreparedPrescription`
   - `PreparedBatch`

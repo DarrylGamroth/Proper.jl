@@ -786,3 +786,79 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     lazy and are not executed during setup.
   - Prepared asset lookup preserves a small concrete `Union{Nothing,A}` until
     initialization and returns `A` thereafter.
+
+## D-0059: Prepared Calls Preserve Their Active Run Context
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - Prepared prescriptions install a task-local `RunContext`, but several
+    convenience propagation and map methods immediately reconstructed
+    `RunContext(wf)`.
+  - Reconstruction retained the wavefront workspace but silently reset FFT
+    planning, RNG, verbosity, and future typed policies.
+  - `prop_psd_errormap` separately defaulted to the task-global RNG and ignored
+    the seeded RNG and FFT planning policy already carried by the active
+    context.
+- Decision:
+  - Wavefront convenience methods reuse the active context only when its
+    workspace is identical to `wf.workspace`; otherwise they construct a safe
+    wavefront-local context.
+  - PSD generation uses the matching context RNG and planning policy unless an
+    explicit `rng` / `RNG` keyword overrides the RNG.
+  - Prepared child contexts retain all typed policies while receiving distinct
+    deterministic child RNG streams.
+- Consequences:
+  - Seeded prepared PSD runs are reproducible and independent of thread
+    scheduling, while standalone runtime defaults remain non-deterministic.
+  - An unrelated active context can never lend foreign scratch storage or RNG
+    state to a wavefront.
+  - Resetting a prepared batch resets reusable workspaces; it does not rewind
+    RNG streams. Reproducible replay requires reconstructing or explicitly
+    reseeding contexts.
+
+## D-0060: Carrier Phase Is An Opt-In Typed Run Policy
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - Python and MATLAB PROPER optionally multiply `prop_ptp`, `prop_wts`, and
+    `prop_stw` results by `exp(+im*2π*dz/λ)` for coherent interferometer arms.
+  - Julia had no equivalent. `PHASE_OFFSET` was forwarded to prescriptions and
+    either caused a `MethodError` or was silently ignored.
+  - Intensity-only tests cannot detect the missing uniform complex phase, but a
+    FAST-SCC/reference-arm recombination depends on it.
+- Decision:
+  - `RunContext` carries either `EnvelopeOnly()` or `TrackCarrierPhase()` as a
+    concrete policy. `EnvelopeOnly()` remains the default, matching upstream.
+  - `PHASE_OFFSET` and `phase_offset` are reserved at run/prepared/hot-call
+    boundaries, accept Bool or integer compatibility values, and reject
+    conflicting aliases. They are never forwarded to the prescription.
+  - Carrier phase uses the upstream positive sign and reduces `dz` modulo the
+    wavelength before `cispi` evaluation to improve numerical accuracy over
+    very long optical paths.
+- Consequences:
+  - Coherent multi-arm models must explicitly enable carrier tracking, for
+    example with `phase_offset=true` or a `TrackCarrierPhase()` context.
+  - Default envelope propagation and intensity results remain unchanged.
+  - Complex-field and destructive-interference regressions cover direct,
+    prepared, threaded, CPU, and optional accelerator execution.
+
+## D-0061: FFTW Planning Never Uses Live Wavefront Storage
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - FFTW may overwrite its input while constructing non-`ESTIMATE` plans.
+  - The Julia planned propagation path created `MEASURE` plans directly on the
+    workspace scratch, which can already be the live `WaveFront.field`.
+  - The result was a zeroed or corrupted field even though the transform plans
+    themselves were valid.
+- Decision:
+  - Build CPU FFTW plans on disposable dense storage with the same layout as
+    the package-owned scratch, then transactionally install both completed
+    plans in the workspace cache.
+  - Treat FFT planning as setup work; preserving numerical state takes
+    precedence over avoiding this one-time allocation.
+- Consequences:
+  - `ESTIMATE` and `MEASURE` produce numerically equivalent PTP/WTS/STW fields,
+    including policy changes after the wavefront aliases FFT scratch.
+  - Saved FFTW wisdom cannot mask the destructive-planning regression because
+    the test explicitly clears wisdom before the critical replan.

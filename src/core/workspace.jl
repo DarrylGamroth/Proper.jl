@@ -239,8 +239,15 @@ struct FFTPlanUnavailableStyle <: FFTPlanExecStyle end
     ensure_fft_scratch!(ws, ny, nx)
     flags = fftw_flags(planning)
     if !(ws.plans_valid && ws.forward_plan !== nothing && ws.backward_plan !== nothing && ws.plan_flags == flags)
-        ws.forward_plan = FFTW.plan_fft!(ws.scratch; flags=flags)
-        ws.backward_plan = FFTW.plan_bfft!(ws.scratch; flags=flags)
+        # FFTW is allowed to overwrite its planning input for non-ESTIMATE
+        # planners. In particular, MEASURE would otherwise destroy a live
+        # wavefront whenever `ws.scratch` already owns the field.
+        planning_scratch = similar(ws.scratch)
+        fill!(planning_scratch, zero(eltype(planning_scratch)))
+        forward_plan = FFTW.plan_fft!(planning_scratch; flags=flags)
+        backward_plan = FFTW.plan_bfft!(planning_scratch; flags=flags)
+        ws.forward_plan = forward_plan
+        ws.backward_plan = backward_plan
         ws.plan_flags = flags
         ws.plans_valid = true
     end

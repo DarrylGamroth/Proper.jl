@@ -145,6 +145,8 @@ end
     @test Base.isexported(Proper, :prepare_hot_call)
     @test Base.isexported(Proper, :prepared_context)
     @test Base.isexported(Proper, :prop_run_hot)
+    @test Base.isexported(Proper, :EnvelopeOnly)
+    @test Base.isexported(Proper, :TrackCarrierPhase)
 
     @test Base.isexported(Proper, :prop_dftidefs)
 

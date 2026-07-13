@@ -113,7 +113,8 @@ function prop_ptp(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
     ny, nx = size(wf.field)
     kphase = -pi * λ * float(dz)
     sty = ptp_exec_style(array_layout_style(typeof(wf.field)), ctx.backend, fft_style(ctx))
-    return _prop_ptp_fft!(sty, wf, ctx, ws, n, ny, nx, dx, kphase)
+    _prop_ptp_fft!(sty, wf, ctx, ws, n, ny, nx, dx, kphase)
+    return apply_carrier_phase!(wf, dz, ctx)
 end
 
 @inline function prop_ptp(wf::WaveFront, dz::Real, ctx::RunContext)
@@ -121,5 +122,5 @@ end
 end
 
 @inline function prop_ptp(wf::WaveFront, dz::Real)
-    return prop_ptp(wf, dz, RunContext(wf))
+    return prop_ptp(wf, dz, resolve_run_context(wf))
 end

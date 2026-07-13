@@ -8,9 +8,9 @@ include("core/traits.jl")
 include("core/ka_kernels.jl")
 include("core/workspace.jl")
 include("core/types.jl")
+include("core/keywords.jl")
 include("core/context.jl")
 include("core/prepared.jl")
-include("core/keywords.jl")
 include("core/grid.jl")
 include("core/resample.jl")
 include("core/centered_ops.jl")
@@ -95,7 +95,7 @@ include("switch_set.jl")
 export BackendStyle, CPUBackend, CUDABackend, AMDGPUBackend, UnknownBackend, FFTStyle, FFTWStyle, CUFFTStyle, ROCFFTStyle, GenericFFTStyle
 export InterpStyle, GenericInterpStyle, CubicInterpStyle, RNGStyle, GenericRNGStyle
 export ShiftKernelStyle, ShiftLoopStyle, ShiftKAStyle
-export RunContext, FFTEstimateStyle, FFTMeasureStyle, ProperConfig, ProperRuntime, WaveFront
+export RunContext, FFTEstimateStyle, FFTMeasureStyle, EnvelopeOnly, TrackCarrierPhase, ProperConfig, ProperRuntime, WaveFront
 export PreparedPrescription, PreparedBatch, PreparedAssetPool, PreparedModel, PreparedHotCall
 export prepare_prescription, prepare_prescription_batch, prepare_asset_pool, prepare_model
 export prepare_hot_call

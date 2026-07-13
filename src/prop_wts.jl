@@ -97,6 +97,7 @@ function prop_wts(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
     prop_qphase(wf, d, ctx)
 
     _prop_wts_fft_step!(fft_style(ctx), wf, d, n, ctx, ws)
+    apply_carrier_phase!(wf, d, ctx)
 
     wf.sampling_m = wf.wavelength_m * abs(d) / (n * wf.sampling_m)
     return wf
@@ -109,5 +110,5 @@ end
 
 """Propagate from a waist/planar regime to a spherical-reference regime."""
 @inline function prop_wts(wf::WaveFront, dz::Real)
-    return prop_wts(wf, dz, RunContext(wf))
+    return prop_wts(wf, dz, resolve_run_context(wf))
 end

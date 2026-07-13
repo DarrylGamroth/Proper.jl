@@ -68,11 +68,18 @@ end
     return opts.amplitude ? :amplitude : (opts.mirror_surface ? :mirror_surface : :wavefront)
 end
 
-function _prop_errormap!(wf::WaveFront, filename::AbstractString, xshift::Real, yshift::Real, opts::ErrorMapOptions)
-    ctx = RunContext(wf)
+function _prop_errormap!(
+    wf::WaveFront,
+    filename::AbstractString,
+    xshift::Real,
+    yshift::Real,
+    opts::ErrorMapOptions,
+    ctx::RunContext,
+)
     dmap = prop_readmap(
         wf,
         filename,
+        ctx,
         xshift,
         yshift;
         SAMPLING=opts.sampling,
@@ -120,5 +127,17 @@ function prop_errormap(
     kwargs...,
 )
     opts = ErrorMapOptions(kwargs)
-    return _prop_errormap!(wf, filename, xshift, yshift, opts)
+    return _prop_errormap!(wf, filename, xshift, yshift, opts, resolve_run_context(wf))
+end
+
+function prop_errormap(
+    wf::WaveFront,
+    filename::AbstractString,
+    ctx::RunContext,
+    xshift::Real=0.0,
+    yshift::Real=0.0;
+    kwargs...,
+)
+    opts = ErrorMapOptions(kwargs)
+    return _prop_errormap!(wf, filename, xshift, yshift, opts, ctx)
 end

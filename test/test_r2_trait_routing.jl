@@ -122,6 +122,45 @@ const GPU_WARM_END_REAL_ALLOC_MAX = 16_384
 const GPU_WARM_END_COMPLEX_ALLOC_MAX = 16_384
 const GPU_WARM_8TH_MASK_ALLOC_MAX = 16_384
 
+function _gpu_carrier_phase_smoke!(device_array, sync!; atol, rtol)
+    T = Float32
+    λ = T(500e-9)
+    n = 16
+    envelope_wf = Proper.WaveFront(
+        device_array(fill(complex(one(T)), n, n)),
+        λ,
+        T(1e-3),
+        zero(T),
+        one(T),
+    )
+    carrier_wf = Proper.WaveFront(
+        device_array(fill(complex(one(T)), n, n)),
+        λ,
+        T(1e-3),
+        zero(T),
+        one(T),
+    )
+    envelope_ctx = RunContext(
+        typeof(envelope_wf.field),
+        envelope_wf.workspace;
+        carrier_phase=EnvelopeOnly(),
+    )
+    carrier_ctx = RunContext(
+        typeof(carrier_wf.field),
+        carrier_wf.workspace;
+        carrier_phase=TrackCarrierPhase(),
+    )
+
+    prop_ptp(envelope_wf, λ / T(4), envelope_ctx)
+    prop_ptp(carrier_wf, λ / T(4), carrier_ctx)
+    sync!()
+    envelope = Array(envelope_wf.field)
+    carrier = Array(carrier_wf.field)
+    @test isapprox(carrier, envelope .* Complex{T}(im); atol=atol, rtol=rtol)
+    @test isapprox(abs2.(carrier), abs2.(envelope); atol=atol, rtol=rtol)
+    return nothing
+end
+
 function _gpu_propagate_to_fft_scratch!(wf, ctx, dz, propagation::Symbol)
     if propagation === :ptp
         wf.reference_surface = Proper.PLANAR
@@ -621,6 +660,7 @@ end
             @test Proper.ka_separable_phase_enabled(typeof(a), 256, 256)
             @test !Proper.ka_separable_qphase_enabled(typeof(a), 256, 256)
             @test Proper.ka_separable_qphase_enabled(CUDA.CuMatrix{ComplexF64}, 128, 128)
+            _gpu_carrier_phase_smoke!(CUDA.CuArray, CUDA.synchronize; atol=1f-5, rtol=1f-5)
 
             m = prop_magnify(a, 1.1, 16, ctx; QUICK=true)
             r = prop_rotate(a, 5.0, ctx)
@@ -747,6 +787,7 @@ end
             @test Proper.ka_separable_phase_enabled(typeof(a), 256, 256)
             @test !Proper.ka_separable_qphase_enabled(typeof(a), 256, 256)
             @test Proper.ka_separable_qphase_enabled(AMDGPU.ROCMatrix{ComplexF64}, 128, 128)
+            _gpu_carrier_phase_smoke!(AMDGPU.ROCArray, AMDGPU.synchronize; atol=3f-4, rtol=1f-3)
 
             promoted_c = 10.0
             promoted_wf_gpu = Proper.WaveFront(AMDGPU.fill(ComplexF32(1), 16, 16), 500f-9, 1f-6, 0f0, 1f0)

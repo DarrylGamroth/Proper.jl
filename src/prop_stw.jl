@@ -100,6 +100,7 @@ function prop_stw(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
     _prop_stw_fft_step!(fft_style(ctx), wf, d, n, ctx, ws)
 
     prop_qphase(wf, d, ctx)
+    apply_carrier_phase!(wf, d, ctx)
     wf.reference_surface = PLANAR
     return wf
 end
@@ -111,5 +112,5 @@ end
 
 """Propagate from a spherical-reference regime back to a waist/planar regime."""
 @inline function prop_stw(wf::WaveFront, dz::Real=0.0)
-    return prop_stw(wf, dz, RunContext(wf))
+    return prop_stw(wf, dz, resolve_run_context(wf))
 end

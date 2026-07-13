@@ -122,6 +122,36 @@ Reset reusable contexts with:
 reset_prepared_batch!(batch)
 ```
 
+This clears reusable workspace caches but intentionally does not rewind RNG
+streams. Recreate the prepared contexts (or supply freshly seeded contexts) for
+an exact stochastic replay.
+
+## Coherent Carrier Phase
+
+PROPER normally propagates the slowly varying complex envelope. For coherent
+instrument arms such as an SCC reference beam, opt in to the uniform carrier
+phase so path-length differences survive recombination:
+
+```julia
+prepared = prepare_prescription(
+    my_prescription,
+    0.55,
+    512;
+    phase_offset=true,
+)
+```
+
+The equivalent typed context is:
+
+```julia
+ctx = RunContext(Matrix{Float64}; carrier_phase=TrackCarrierPhase())
+```
+
+`PHASE_OFFSET=true` is also accepted for upstream compatibility. The default is
+`EnvelopeOnly()`, matching Python/MATLAB PROPER. Intensity from a single arm is
+unchanged either way, so coherent simulations should validate the complex field
+or the recombined-arm intensity.
+
 ## CPU Threading
 
 PROPER's CPU propagation path is usually FFT-bound. FFTW and Julia task

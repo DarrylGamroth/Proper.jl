@@ -32,6 +32,10 @@ abstract type FFTPlanningStyle end
 struct FFTEstimateStyle <: FFTPlanningStyle end
 struct FFTMeasureStyle <: FFTPlanningStyle end
 
+abstract type CarrierPhaseStyle end
+struct EnvelopeOnly <: CarrierPhaseStyle end
+struct TrackCarrierPhase <: CarrierPhaseStyle end
+
 abstract type InterpStyle end
 struct GenericInterpStyle <: InterpStyle end
 struct CubicInterpStyle <: InterpStyle end

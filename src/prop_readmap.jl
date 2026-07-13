@@ -1,24 +1,12 @@
-"""
-    prop_readmap(wf, filename, xshift=0, yshift=0; kwargs...)
-
-Read a FITS map on the host, resample it to the wavefront sampling, and return
-the shifted map.
-
-# Notes
-- FITS decoding happens on the host via `FITSIO.jl`.
-- The decoded map is then promoted to the backend of `wf.field` before the
-  resampling/apply path continues.
-- The returned array preserves the backend of `wf.field` where feasible.
-"""
-function prop_readmap(
+function _prop_readmap(
     wf::WaveFront,
     filename::AbstractString,
-    xshift::Real=0,
-    yshift::Real=0;
-    kwargs...,
+    xshift::Real,
+    yshift::Real,
+    ctx::RunContext,
+    kwargs::Base.Iterators.Pairs,
 )
     dmap, header = prop_fits_read_with_header(filename)
-    ctx = RunContext(wf)
     sampling = kw_lookup_float(kwargs, :SAMPLING, nothing)
     xc_map = kw_lookup_float(kwargs, :XC_MAP, nothing)
     yc_map = kw_lookup_float(kwargs, :YC_MAP, nothing)
@@ -44,4 +32,38 @@ function prop_readmap(
     shifted = shift_center_for_wavefront!(wf, out; inverse=true)
     out === shifted || copyto!(out, shifted)
     return out
+end
+
+"""
+    prop_readmap(wf, filename, xshift=0, yshift=0; kwargs...)
+    prop_readmap(wf, filename, ctx, xshift=0, yshift=0; kwargs...)
+
+Read a FITS map on the host, resample it to the wavefront sampling, and return
+the shifted map.
+
+# Notes
+- FITS decoding happens on the host via `FITSIO.jl`.
+- The decoded map is then promoted to the backend of `wf.field` before the
+  resampling/apply path continues.
+- The returned array preserves the backend of `wf.field` where feasible.
+"""
+function prop_readmap(
+    wf::WaveFront,
+    filename::AbstractString,
+    xshift::Real=0,
+    yshift::Real=0;
+    kwargs...,
+)
+    return _prop_readmap(wf, filename, xshift, yshift, resolve_run_context(wf), kwargs)
+end
+
+function prop_readmap(
+    wf::WaveFront,
+    filename::AbstractString,
+    ctx::RunContext,
+    xshift::Real=0,
+    yshift::Real=0;
+    kwargs...,
+)
+    return _prop_readmap(wf, filename, xshift, yshift, ctx, kwargs)
 end
