@@ -1,2 +1,2 @@
-"""Return the wavefront phase, `angle.(wf.field)`."""
-prop_get_phase(wf::WaveFront) = angle.(wf.field)
+"""Return a centered wavefront-phase array in radians."""
+prop_get_phase(wf::WaveFront) = prop_shift_center(angle.(wf.field))

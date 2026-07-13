@@ -1,2 +1,2 @@
-"""Return the complex field array stored in the wavefront."""
-prop_get_wavefront(wf::WaveFront) = wf.field
+"""Return a centered copy of the complex wavefront field."""
+prop_get_wavefront(wf::WaveFront) = prop_shift_center(wf.field)

@@ -272,6 +272,103 @@ function _gpu_map_apply_smoke!(
     @test isapprox(Array(wf_psd_apply_gpu.field), wf_psd_apply_cpu.field; atol=3f-4, rtol=1f-3)
 end
 
+function _gpu_centered_wavefront_helpers_smoke!(wf_gpu, expected_backend_array_type, sync!)
+    for (ny, nx) in ((7, 7), (8, 8), (7, 8), (8, 7))
+        nsamples = ny * nx
+        raw = reshape(
+            ComplexF32.(1:nsamples) .+ im .* reverse(ComplexF32.(1:nsamples)),
+            ny,
+            nx,
+        )
+        field_gpu = copyto!(similar(wf_gpu.field, ComplexF32, ny, nx), raw)
+        wf = Proper.WaveFront(
+            field_gpu,
+            wf_gpu.wavelength_m,
+            wf_gpu.sampling_m,
+            wf_gpu.z_m,
+            wf_gpu.beam_diameter_m,
+        )
+
+        centered_field = prop_get_wavefront(wf)
+        centered_amplitude = prop_get_amplitude(wf)
+        centered_phase = prop_get_phase(wf)
+        sync!()
+
+        @test centered_field isa expected_backend_array_type
+        @test centered_amplitude isa expected_backend_array_type
+        @test centered_phase isa expected_backend_array_type
+        @test Array(centered_field) == prop_shift_center(raw)
+        @test isapprox(Array(centered_amplitude), prop_shift_center(abs.(raw)); atol=2f-6, rtol=2f-6)
+        @test isapprox(Array(centered_phase), prop_shift_center(angle.(raw)); atol=2f-6, rtol=2f-6)
+
+        fill!(centered_field, 0)
+        sync!()
+        @test Array(wf.field) == raw
+
+        centered_addition = reverse(raw; dims=1)
+        addition_gpu = copyto!(similar(wf.field), centered_addition)
+        scalar = ComplexF32(2, -3)
+        @test prop_add_wavefront(wf, addition_gpu) === wf
+        @test prop_add_wavefront(wf, scalar) === wf
+        sync!()
+        @test Array(wf.field) == raw .+ prop_shift_center(centered_addition; inverse=true) .+ scalar
+    end
+
+    ny, nx = 7, 8
+    parent_cpu = reshape(
+        ComplexF32.(1:(2 * ny * nx)) .+ im .* reverse(ComplexF32.(1:(2 * ny * nx))),
+        2 * ny,
+        nx,
+    )
+    view_cpu = parent_cpu[1:2:end, :]
+    parent_gpu = copyto!(similar(wf_gpu.field, ComplexF32, size(parent_cpu)...), parent_cpu)
+    view_gpu = @view parent_gpu[1:2:end, :]
+    shifted_gpu = prop_shift_center(view_gpu)
+    @test Proper.backend_style(typeof(view_gpu)) == Proper.backend_style(typeof(parent_gpu))
+    @test Proper._shift_center_exec_style(
+        typeof(shifted_gpu),
+        typeof(view_gpu),
+        ny,
+        nx,
+    ) isa Proper.ShiftKAStyle
+    sync!()
+    @test shifted_gpu isa expected_backend_array_type
+    @test Array(shifted_gpu) == prop_shift_center(view_cpu)
+
+    roundtrip_gpu = prop_shift_center(shifted_gpu; inverse=true)
+    sync!()
+    @test Array(roundtrip_gpu) == view_cpu
+
+    output_parent_gpu = similar(parent_gpu)
+    fill!(output_parent_gpu, 0)
+    output_view_gpu = @view output_parent_gpu[1:2:end, :]
+    @test Proper._shift_center_exec_style(
+        typeof(output_view_gpu),
+        typeof(view_gpu),
+        ny,
+        nx,
+    ) isa Proper.ShiftKAStyle
+    prop_shift_center!(output_view_gpu, view_gpu)
+    sync!()
+    output_parent_cpu = Array(output_parent_gpu)
+    @test output_parent_cpu[1:2:end, :] == prop_shift_center(view_cpu)
+    @test all(iszero, @view output_parent_cpu[2:2:end, :])
+
+    field_cpu = reverse(view_cpu; dims=2)
+    field_gpu = copyto!(similar(wf_gpu.field, ComplexF32, ny, nx), field_cpu)
+    wf_view_add = Proper.WaveFront(
+        field_gpu,
+        wf_gpu.wavelength_m,
+        wf_gpu.sampling_m,
+        wf_gpu.z_m,
+        wf_gpu.beam_diameter_m,
+    )
+    @test prop_add_wavefront(wf_view_add, view_gpu) === wf_view_add
+    sync!()
+    @test Array(wf_view_add.field) == field_cpu .+ prop_shift_center(view_cpu; inverse=true)
+    return nothing
+end
+
 function _gpu_direct_dm_smoke!(wf_gpu, gpu_real_matrix, expected_backend_array_type, sync!)
     n = size(wf_gpu.field, 1)
     dm_cpu = fill(Float32(1f-9), n, n)
@@ -603,6 +700,7 @@ end
             @test _warmed_gpu_end_complex_alloc(similar(wf_alloc.field), wf_alloc, CUDA.synchronize) <= GPU_WARM_END_COMPLEX_ALLOC_MAX
             _gpu_direct_dm_smoke!(wf_alloc, CUDA.zeros(Float32, 16, 16), CUDA.CuArray, CUDA.synchronize)
             _gpu_map_apply_smoke!(wf_alloc, CUDA.zeros(Float32, 16, 16), CUDA.CuArray, CUDA.synchronize)
+            _gpu_centered_wavefront_helpers_smoke!(wf_alloc, CUDA.CuArray, CUDA.synchronize)
             @testset "8th-order mask after planned FFT" begin
                 for T in (Float32, Float64), propagation in (:ptp, :wts, :stw)
                     @testset "$propagation $T" begin
@@ -835,6 +933,7 @@ end
             @test _warmed_gpu_end_real_alloc(out_alloc, wf_alloc, AMDGPU.synchronize) <= GPU_WARM_END_REAL_ALLOC_MAX
             @test _warmed_gpu_end_complex_alloc(similar(wf_alloc.field), wf_alloc, AMDGPU.synchronize) <= GPU_WARM_END_COMPLEX_ALLOC_MAX
             _gpu_direct_dm_smoke!(wf_alloc, AMDGPU.zeros(Float32, 16, 16), AMDGPU.ROCArray, AMDGPU.synchronize)
+            _gpu_centered_wavefront_helpers_smoke!(wf_alloc, AMDGPU.ROCArray, AMDGPU.synchronize)
             @testset "8th-order mask after planned FFT" begin
                 for T in (Float32, Float64), propagation in (:ptp, :wts, :stw)
                     @testset "$propagation $T" begin

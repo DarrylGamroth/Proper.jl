@@ -5,6 +5,7 @@ struct AMDGPUBackend <: BackendStyle end
 struct UnknownBackend <: BackendStyle end
 
 backend_style(::Type{<:AbstractArray}) = CPUBackend()
+backend_style(::Type{<:SubArray{T,N,P}}) where {T,N,P<:AbstractArray} = backend_style(P)
 
 abstract type FeatureFlagStyle end
 struct FeatureEnabled <: FeatureFlagStyle end
@@ -110,6 +111,14 @@ end
 
 @inline function ka_shift_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray}
     return ka_enabled(shift_kernel_style(A), ny, nx, KA_SHIFT_MIN_ELEMS)
+end
+
+@inline function ka_shift_enabled(
+    ::Type{<:SubArray{T,N,P}},
+    ny::Integer,
+    nx::Integer,
+) where {T,N,P<:AbstractArray}
+    return ka_shift_enabled(P, ny, nx)
 end
 
 @inline ka_separable_phase_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:AbstractArray} = false
