@@ -101,6 +101,26 @@ In particular:
 
 Parity-first does not mean transliteration-first.
 
+### Keep Plotting Outside Reusable Prescriptions
+Some upstream Python and MATLAB examples display intermediate planes from inside
+the optical prescription. New or refactored Julia prescriptions should separate
+those concerns:
+
+- return the final array and sampling without opening figures
+- keep Plots or Makie imports in demo or application code
+- expose intermediate planes as optional raw diagnostic data when they are
+  genuinely useful
+- preserve device arrays during propagation and perform any `Array(...)`
+  conversion explicitly at the visualization boundary
+- validate unscaled arrays before applying crops, roots, logarithms, or color
+  limits for display
+
+`prop_end(wf)` returns centered real intensity by default. Use
+`prop_end(wf; noabs=true)` when downstream code needs the centered complex field;
+the display layer can then choose `abs2` for intensity or `angle` for phase.
+Collecting intermediate diagnostics may require copies because the wavefront is
+mutated as it propagates, so only collect them when requested.
+
 ### Keyword Translation
 Compatibility keywords remain accepted in uppercase form, but Julia code should
 prefer ordinary keyword arguments where practical.

@@ -1,4 +1,7 @@
+ENV["GKSwstype"] = get(ENV, "GKSwstype", "100")
+
 using Proper
+using Plots
 using Random
 using Test
 
@@ -35,6 +38,11 @@ const UPSTREAM_EXAMPLE_EXPORTS = (
     ("testmulti1.jl", :testmulti1),
     ("testmulti2.jl", :testmulti2),
 )
+const PLOTTING_DEMO_FILES = Set((
+    "coronagraph_demo.jl",
+    "talbot_correct_demo.jl",
+    "talbot_demo.jl",
+))
 
 @testset "Upstream example file and entry-point coverage" begin
     @test length(UPSTREAM_EXAMPLE_EXPORTS) == 23
@@ -43,6 +51,8 @@ const UPSTREAM_EXAMPLE_EXPORTS = (
         @test isfile(path)
         mod = load_example_module(path)
         @test isdefined(mod, entrypoint)
+        eagerly_loads_plots = occursin(r"(?m)^using Plots$", read(path, String))
+        @test eagerly_loads_plots == (file in PLOTTING_DEMO_FILES)
     end
 
     for file in filter(
@@ -108,10 +118,16 @@ end
     @test all(output -> all(isfinite, output), occulter_outputs)
 
     talbot_mod = load_example_module(joinpath(EXAMPLE_DIR, "talbot_demo.jl"))
-    @test isnothing(talbot_mod.talbot_demo(; n=32, nseg=3, show_plot=false))
+    talbot_profiles = talbot_mod.talbot_demo(; n=32, nseg=3, show_plot=false)
+    @test length(talbot_profiles) == 3
+    @test all(profile -> length(profile.amplitude) == 32, talbot_profiles)
+    @test all(profile -> all(isfinite, profile.phase), talbot_profiles)
 
     talbot_correct_mod = load_example_module(joinpath(EXAMPLE_DIR, "talbot_correct_demo.jl"))
-    @test isnothing(talbot_correct_mod.talbot_correct_demo(; n=32, nseg=3, show_plot=false))
+    corrected_profiles = talbot_correct_mod.talbot_correct_demo(; n=32, nseg=3, show_plot=false)
+    @test length(corrected_profiles) == 3
+    @test all(profile -> length(profile.amplitude) == 32, corrected_profiles)
+    @test all(profile -> all(isfinite, profile.phase), corrected_profiles)
 
     coronagraph_mod = load_example_module(joinpath(EXAMPLE_DIR, "coronagraph_demo.jl"))
     mktempdir() do dir
@@ -124,5 +140,20 @@ end
         )
         @test all(output -> size(output) == (64, 64), outputs)
         @test all(output -> all(isfinite, output), outputs)
+    end
+end
+
+@testset "Headless plotting smoke" begin
+    talbot_mod = load_example_module(joinpath(EXAMPLE_DIR, "talbot_demo.jl"))
+    profiles = talbot_mod.talbot_demo(; n=16, nseg=2, show_plot=true)
+    @test length(profiles) == 2
+
+    image = reshape(range(0.0, 1.0; length=16 * 16), 16, 16)
+    plt = heatmap(image; aspect_ratio=:equal, color=:grays, title="headless smoke")
+    mktempdir() do dir
+        path = joinpath(dir, "heatmap.png")
+        savefig(plt, path)
+        @test isfile(path)
+        @test filesize(path) > 0
     end
 end

@@ -193,6 +193,9 @@ Prepared-model asset contract:
 - `prop_end(...) -> (wavefront_or_intensity, sampling)` where:
   - `NOABS=false`: real intensity matrix
   - `NOABS=true`: complex field matrix
+  - both forms use the public centered output layout
+  - the allocating form preserves the wavefront array backend; host transfer for
+    plotting or I/O is an explicit caller responsibility
 - `prop_run_multi(...) -> (stacked_psf, sampling_vector)` where:
   - `stacked_psf`: `AbstractArray{<:Number,3}`
   - `sampling_vector`: `Vector{T}` for the run precision
@@ -200,6 +203,8 @@ Prepared-model asset contract:
   `AbstractArray{ComplexF32,3}`, `AbstractArray{Float32,3}`, or the analogous
   `Float64` / `ComplexF64` forms depending on the called surface and `NOABS`
   choice
+- display-only roots, logarithms, crops, and color limits are not part of the
+  return-value contract and should not be used as numerical validation data
 
 Additional stable return conventions:
 - `prop_rotate(image, ...) -> array same size as input`

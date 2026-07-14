@@ -1,5 +1,4 @@
 using Proper
-using Plots
 
 abstract type AbstractOcculter end
 struct GaussianOcculter <: AbstractOcculter end
@@ -23,28 +22,58 @@ function normalize_occulter(occulter::AbstractString)
     throw(ArgumentError("Unknown occulter selector: $(occulter)"))
 end
 
-_coronagraph_plot_title(::GaussianOcculter) = "Gaussian spot"
-_coronagraph_plot_title(::SolidOcculter) = "Solid spot"
-_coronagraph_plot_title(::EighthOrderOcculter) = "8th order band limited spot"
+"""Caller-owned, centered amplitude snapshots from the coronagraph example."""
+struct CoronagraphDiagnostics{T<:Real,A<:AbstractMatrix{T}}
+    after_occulter_amplitude::A
+    before_lyot_amplitude::A
 
-function _plot_coronagraph_planes(after_occulter::AbstractMatrix, before_lyot::AbstractMatrix, occulter::AbstractOcculter)
-    p1 = heatmap(
-        after_occulter;
-        aspect_ratio=:equal,
-        color=:grays,
-        colorbar=true,
-        title="After Occulter",
+    function CoronagraphDiagnostics(
+        after_occulter_amplitude::A,
+        before_lyot_amplitude::A,
+    ) where {T<:Real,A<:AbstractMatrix{T}}
+        size(after_occulter_amplitude) == size(before_lyot_amplitude) ||
+            throw(ArgumentError("coronagraph diagnostic buffers must have matching sizes"))
+        return new{T,A}(after_occulter_amplitude, before_lyot_amplitude)
+    end
+end
+
+function CoronagraphDiagnostics(wfo::WaveFront{T}) where {T}
+    after_occulter_amplitude = similar(wfo.field, T)
+    before_lyot_amplitude = similar(wfo.field, T)
+    return CoronagraphDiagnostics(after_occulter_amplitude, before_lyot_amplitude)
+end
+
+@inline _capture_after_occulter!(::Nothing, ::WaveFront) = nothing
+@inline _capture_before_lyot!(::Nothing, ::WaveFront) = nothing
+
+function _check_coronagraph_diagnostic_buffer(buffer::AbstractMatrix, wfo::WaveFront{T}, label::AbstractString) where {T}
+    size(buffer) == size(wfo.field) ||
+        throw(ArgumentError("$(label) diagnostic buffer must match the wavefront size"))
+    eltype(buffer) === T ||
+        throw(ArgumentError("$(label) diagnostic buffer must use wavefront precision $(T)"))
+    Proper.same_backend_style(typeof(buffer), typeof(wfo.field)) ||
+        throw(ArgumentError("$(label) diagnostic buffer must use the wavefront array backend"))
+    return nothing
+end
+
+function _capture_after_occulter!(diagnostics::CoronagraphDiagnostics, wfo::WaveFront)
+    _check_coronagraph_diagnostic_buffer(
+        diagnostics.after_occulter_amplitude,
+        wfo,
+        "after-occulter",
     )
-    p2 = heatmap(
-        before_lyot;
-        aspect_ratio=:equal,
-        color=:grays,
-        colorbar=true,
-        title="Before Lyot Stop",
+    copyto!(diagnostics.after_occulter_amplitude, prop_get_amplitude(wfo))
+    return nothing
+end
+
+function _capture_before_lyot!(diagnostics::CoronagraphDiagnostics, wfo::WaveFront)
+    _check_coronagraph_diagnostic_buffer(
+        diagnostics.before_lyot_amplitude,
+        wfo,
+        "before-Lyot",
     )
-    plt = plot(p1, p2; layout=(1, 2), size=(1200, 500), plot_title=_coronagraph_plot_title(occulter))
-    display(plt)
-    return plt
+    copyto!(diagnostics.before_lyot_amplitude, prop_get_amplitude(wfo))
+    return nothing
 end
 
 function _apply_occulter!(wfo::WaveFront, ::GaussianOcculter, occrad::Real, occrad_m::Real)
@@ -81,9 +110,14 @@ function _apply_lyot_stop!(wfo::WaveFront, ::EighthOrderOcculter)
     return wfo
 end
 
-function coronagraph(wfo::WaveFront, f_lens::Real, occulter, diam::Real; PLOT::Bool=true, plot::Union{Nothing,Bool}=nothing)
+function coronagraph(
+    wfo::WaveFront,
+    f_lens::Real,
+    occulter,
+    diam::Real;
+    diagnostics::Union{Nothing,CoronagraphDiagnostics}=nothing,
+)
     occulter = normalize_occulter(occulter)
-    do_plot = plot === nothing ? PLOT : plot
 
     prop_lens(wfo, f_lens, "coronagraph imaging lens")
     prop_propagate(wfo, f_lens, "occulter")
@@ -96,17 +130,12 @@ function coronagraph(wfo::WaveFront, f_lens::Real, occulter, diam::Real; PLOT::B
     occrad_m = occrad_rad * dx_m / dx_rad
 
     _apply_occulter!(wfo, occulter, occrad, occrad_m)
-
-    after_occulter = do_plot ? sqrt.(prop_get_amplitude(wfo)) : nothing
+    _capture_after_occulter!(diagnostics, wfo)
 
     prop_propagate(wfo, f_lens, "pupil reimaging lens")
     prop_lens(wfo, f_lens, "pupil reimaging lens")
     prop_propagate(wfo, 2f_lens, "lyot stop")
-
-    if do_plot
-        before_lyot = prop_get_amplitude(wfo) .^ 0.2
-        _plot_coronagraph_planes(after_occulter, before_lyot, occulter)
-    end
+    _capture_before_lyot!(diagnostics, wfo)
 
     _apply_lyot_stop!(wfo, occulter)
 

@@ -38,7 +38,12 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   - Use `Plots.jl` as the default plotting package for PROPER Julia examples/demos.
 - Consequences:
   - Example ports should target `Plots.jl` APIs by default.
-  - Alternate plotting stacks (e.g., Makie/PyPlot) are optional and out of default scope unless explicitly requested.
+  - Alternate plotting stacks (e.g., Makie/PyPlot) are optional and out of
+    default scope unless explicitly requested.
+  - Plotting remains an example/application concern rather than a core runtime
+    dependency or exported `Proper` API.
+  - Public propagation results remain arrays plus sampling and can be passed
+    directly to the caller's plotting stack.
 
 ## D-0004: Package and Module Naming
 - Date: 2026-03-04
@@ -1260,3 +1265,36 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   - FAST-SCC arrival schedules, queueing, frame deadlines, bursts, and overload
     remain application- or `AdaptiveOpticsSim.jl`-level benchmarks rather than
     implicit claims made by this closed-loop package harness.
+
+## D-0076: Reusable Example Prescriptions Do Not Plot
+- Date: 2026-07-14
+- Status: Accepted
+- Context:
+  - Upstream Python/MATLAB plotting is confined to four example families, but
+    the Python and MATLAB `coronagraph` helper opens figures from inside the
+    optical propagation sequence.
+  - The Julia ports had expanded eager `Plots.jl` imports to fourteen example
+    files, including reusable prescriptions whose display code only ran when
+    the file was executed as a script.
+  - Embedded plotting adds package-load latency, prevents plotting-stack choice,
+    and can introduce an implicit GPU synchronization without contributing to
+    numerical parity.
+- Decision:
+  - Keep eager `Plots.jl` imports only in explicit demo and test code. Directly
+    executed prescription scripts may load Plots inside their command-line
+    block, but including the prescription must not load a plotting package.
+  - Remove plotting side effects and plotting keywords from the reusable
+    `coronagraph` example. Optional caller-owned `CoronagraphDiagnostics`
+    buffers capture centered, unscaled amplitude at the post-occulter and
+    pre-Lyot planes without changing the final propagated output.
+  - Return computed profile data from the Talbot demos so callers may render it
+    with Plots, Makie, or another stack.
+  - Validate numerical behavior before display transforms and keep one
+    headless rendering smoke test in the examples environment.
+- Consequences:
+  - Core, benchmark, and backend-test environments no longer need Plots; the
+    dependency remains in `examples/Project.toml` where it is consumed.
+  - Example runners are headless by construction unless an explicit demo or
+    direct-execution block requests rendering.
+  - Capturing diagnostics allocates caller-visible buffers only when requested;
+    the default coronagraph path performs no diagnostic copies.

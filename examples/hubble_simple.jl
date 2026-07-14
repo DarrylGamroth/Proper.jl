@@ -1,6 +1,4 @@
 using Proper
-using Plots
-include(joinpath(@__DIR__, "_shared.jl"))
 include(joinpath(@__DIR__, "_passvalue.jl"))
 
 function hubble_simple(wavelength::Real, gridsize::Integer, passvalue; kwargs...)
@@ -33,7 +31,9 @@ function hubble_simple(wavelength::Real, gridsize::Integer; delta_sec::Real=0.0)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
+    using Plots
+
     psf, sampling = hubble_simple(0.55e-6, 512)
     println("hubble_simple: sampling = ", sampling)
-    plot_psf(psf; title="hubble_simple")
+    display(heatmap(psf .^ 0.25; aspect_ratio=:equal, color=:grays, title="hubble_simple"))
 end

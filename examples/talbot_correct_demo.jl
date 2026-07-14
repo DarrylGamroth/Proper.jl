@@ -39,7 +39,7 @@ function talbot_correct_demo(
         ]
         display(plot(plots...; layout=(nseg, 2), size=(900, 1800)))
     end
-    return nothing
+    return profiles
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__

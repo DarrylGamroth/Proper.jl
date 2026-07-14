@@ -6,7 +6,13 @@ function run_occulter(wavelength::Real, grid_size::Integer, passvalue; kwargs...
     return run_occulter(wavelength, grid_size; passvalue_kwargs(passvalue)..., kwargs...)
 end
 
-function run_occulter(wavelength::Real, grid_size::Integer; occulter=:gaussian, occulter_type=nothing, plot::Bool=false)
+function run_occulter(
+    wavelength::Real,
+    grid_size::Integer;
+    occulter=:gaussian,
+    occulter_type=nothing,
+    diagnostics::Union{Nothing,CoronagraphDiagnostics}=nothing,
+)
     diam = 0.1
     f_lens = 24 * diam
     beam_ratio = 0.3
@@ -20,7 +26,7 @@ function run_occulter(wavelength::Real, grid_size::Integer; occulter=:gaussian, 
         f_lens,
         occulter_type === nothing ? occulter : occulter_type,
         diam;
-        plot=plot,
+        diagnostics,
     )
     return prop_end(wfo)
 end

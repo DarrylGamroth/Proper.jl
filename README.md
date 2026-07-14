@@ -455,10 +455,17 @@ Then in Julia:
 using Proper
 ```
 
-## Plotting Output
+## Visualizing Output
 
 Plotting is intentionally not part of the core `Proper.jl` runtime dependency
-set. Example scripts use `Plots.jl` through `examples/Project.toml`.
+set, and `Proper` does not export plotting functions. Example scripts use
+`Plots.jl` through `examples/Project.toml`, while applications can pass the
+returned arrays directly to Plots, Makie, or another visualization package.
+
+By default, `prop_end` returns a centered real intensity matrix and the sampling
+in meters per pixel. With `noabs=true`, it returns the centered complex field
+instead. Display scaling is a presentation choice and does not change either
+output contract.
 
 For local examples from a checkout:
 
@@ -467,13 +474,24 @@ julia --project=examples -e 'using Pkg; Pkg.develop(path=pwd()); Pkg.instantiate
 julia --project=examples examples/simple_prescription.jl
 ```
 
-For your own application code, choose the plotting stack you prefer. With
-`Plots.jl`, a typical PSF display is:
+With `Plots.jl`, a typical log-scaled PSF display is:
 
 ```julia
 using Plots
-heatmap(log10.(abs.(psf) .+ eps()); aspect_ratio=:equal, title="PSF")
+
+image = psf
+# For a CUDA or AMDGPU result, make the visualization boundary explicit instead:
+# image = Array(psf)
+
+log_psf = log10.(max.(image, eps(eltype(image))))
+heatmap(log_psf; aspect_ratio=:equal, color=:grays, title="PSF")
 ```
+
+The same `image` or `log_psf` matrix can be passed directly to Makie's
+`heatmap`; no Proper-specific adapter is required. For a complex field, use
+`abs2.(field)` to display intensity or `angle.(field)` to display phase. Keep
+these transformations outside numerical comparisons and correctness tests,
+which should operate on the unscaled returned arrays.
 
 ## Writing FITS Output
 

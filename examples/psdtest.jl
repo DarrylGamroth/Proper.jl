@@ -1,6 +1,4 @@
 using Proper
-using Plots
-include(joinpath(@__DIR__, "_shared.jl"))
 include(joinpath(@__DIR__, "_passvalue.jl"))
 
 function psdtest(wavelength::Real, gridsize::Integer, passvalue; kwargs...)
@@ -45,7 +43,9 @@ function psdtest(wavelength::Real, gridsize::Integer; usepsdmap::Bool=true)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
+    using Plots
+
     psf, sampling = psdtest(0.55e-6, 256)
     println("psdtest: sampling = ", sampling)
-    plot_psf(psf; title="psdtest")
+    display(heatmap(psf .^ 0.25; aspect_ratio=:equal, color=:grays, title="psdtest"))
 end

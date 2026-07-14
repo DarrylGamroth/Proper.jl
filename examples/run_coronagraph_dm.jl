@@ -15,7 +15,7 @@ function run_coronagraph_dm(
     use_dm::Bool=false,
     occulter=:gaussian,
     occulter_type=nothing,
-    plot::Bool=false,
+    diagnostics::Union{Nothing,CoronagraphDiagnostics}=nothing,
     map_file::AbstractString="telescope_obj.fits",
     rng::AbstractRNG=Random.default_rng(),
 )
@@ -41,7 +41,7 @@ function run_coronagraph_dm(
         f_lens,
         occulter_type === nothing ? occulter : occulter_type,
         diam;
-        plot=plot,
+        diagnostics,
     )
 
     return prop_end(wfo)

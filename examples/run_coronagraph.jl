@@ -13,7 +13,7 @@ function run_coronagraph(
     use_errors::Bool=false,
     occulter=:gaussian,
     occulter_type=nothing,
-    plot::Bool=false,
+    diagnostics::Union{Nothing,CoronagraphDiagnostics}=nothing,
 )
     diam = 0.1
     f_lens = 24 * diam
@@ -29,7 +29,7 @@ function run_coronagraph(
         f_lens,
         occulter_type === nothing ? occulter : occulter_type,
         diam;
-        plot=plot,
+        diagnostics,
     )
 
     return prop_end(wfo)

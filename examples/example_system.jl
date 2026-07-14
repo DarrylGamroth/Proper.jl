@@ -1,6 +1,4 @@
 using Proper
-using Plots
-include(joinpath(@__DIR__, "_shared.jl"))
 include(joinpath(@__DIR__, "_passvalue.jl"))
 
 function example_system(wavelength::Real, gridsize::Integer, passvalue; kwargs...)
@@ -30,7 +28,9 @@ function example_system(wavelength::Real, gridsize::Integer; state_path=tempname
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
+    using Plots
+
     psf, sampling = example_system(0.55e-6, 256)
     println("example_system: sampling = ", sampling)
-    plot_psf(psf; title="example_system")
+    display(heatmap(psf .^ 0.25; aspect_ratio=:equal, color=:grays, title="example_system"))
 end

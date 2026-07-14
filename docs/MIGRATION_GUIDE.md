@@ -71,6 +71,26 @@ What does not change:
 - the prescription still returns `prop_end(wf)` or `(psf, sampling)`
 - the familiar `prop_*` surface remains the main way to write the prescription
 
+## Plotting Migration
+
+MATLAB `imagesc` and Python Matplotlib `imshow` calls do not require a
+Proper-specific Julia replacement. `prop_end` returns a centered array plus its
+sampling, so pass that array directly to the plotting package selected by the
+application. The checked-in demos use Plots, but Plots is not a core dependency
+and Makie can consume the same data.
+
+The default `prop_end(wf)` result is real intensity. Common upstream displays
+such as `psf .^ 0.25` or a log-scaled PSF are display transformations only; do
+not apply `abs` as though the default result were a complex field. When a
+prescription intentionally calls `prop_end(wf; noabs=true)`, use `abs2.(field)`
+for intensity or `angle.(field)` for phase.
+
+Keep plotting outside reusable prescriptions. If an upstream prescription plots
+an intermediate plane, expose or collect that plane as optional diagnostic data
+and let a demo render it. For CUDA or AMDGPU output, make the host transfer
+explicit with `Array(result)` in the visualization code rather than hiding a
+device synchronization in the propagation path.
+
 ## DM / FITS / Map-Driven Prescription Pattern
 
 This is the common nontrivial migration shape many upstream users care about.

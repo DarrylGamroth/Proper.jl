@@ -1,6 +1,4 @@
 using Proper
-using Plots
-include(joinpath(@__DIR__, "_shared.jl"))
 
 function simple_prescription(wavelength::Real, gridsize::Integer)
     diam = 1.0
@@ -17,7 +15,9 @@ function simple_prescription(wavelength::Real, gridsize::Integer)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
+    using Plots
+
     psf, sampling = simple_prescription(0.55e-6, 256)
     println("simple_prescription: sampling = ", sampling)
-    plot_psf(psf; title="simple_prescription")
+    display(heatmap(psf .^ 0.25; aspect_ratio=:equal, color=:grays, title="simple_prescription"))
 end

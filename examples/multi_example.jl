@@ -1,5 +1,4 @@
 using Proper
-using Plots
 include(joinpath(@__DIR__, "_passvalue.jl"))
 
 function multi_example(lambda_m::Real, n::Integer, passvalue; kwargs...)
@@ -31,6 +30,8 @@ function multi_example(lambda_m::Real, n::Integer; use_dm::Bool=false, dm=nothin
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
+    using Plots
+
     model = prepare_model(
         multi_example,
         0.55,
@@ -41,5 +42,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     )
     stack, samplings = prop_run_multi(model)
     println("multi_example: samplings = ", samplings)
-    heatmap(log10.(abs.(stack[:, :, 1]) .+ eps()); aspect_ratio=:equal, title="multi_example [0]")
+    intensity = abs2.(@view stack[:, :, 1])
+    log_intensity = log10.(max.(intensity, eps(eltype(intensity))))
+    display(heatmap(log_intensity; aspect_ratio=:equal, color=:grays, title="multi_example [0]"))
 end

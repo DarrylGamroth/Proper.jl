@@ -1,7 +1,4 @@
 using Proper
-using Plots
-using Statistics
-include(joinpath(@__DIR__, "_shared.jl"))
 include(joinpath(@__DIR__, "_passvalue.jl"))
 
 function talbot(wavelength::Real, gridsize::Integer, passvalue; kwargs...)
@@ -22,7 +19,11 @@ function talbot(wavelength::Real, gridsize::Integer; period::Real=0.0, diam::Rea
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
+    using Plots
+    using Statistics
+
     wavefront, sampling = talbot(0.5e-6, 128; period=0.04, diam=0.1, dist=0.0)
     println("talbot: sampling = ", sampling)
-    plot(abs.(wavefront[:, size(wavefront, 2) ÷ 2 + 1]) .- mean(abs.(wavefront[:, size(wavefront, 2) ÷ 2 + 1])); title="talbot amplitude")
+    amplitude = abs.(@view wavefront[:, size(wavefront, 2) ÷ 2 + 1])
+    display(plot(amplitude .- mean(amplitude); title="talbot amplitude"))
 end

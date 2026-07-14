@@ -1,6 +1,4 @@
 using Proper
-using Plots
-include(joinpath(@__DIR__, "_shared.jl"))
 include(joinpath(@__DIR__, "_passvalue.jl"))
 
 function microscope(wavelength::Real, gridsize::Integer, passvalue; kwargs...)
@@ -38,7 +36,9 @@ function microscope(wavelength::Real, gridsize::Integer; focus_offset::Real=0.0)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
+    using Plots
+
     psf, sampling = microscope(0.55e-6, 256)
     println("microscope: sampling = ", sampling)
-    plot_psf(psf; title="microscope")
+    display(heatmap(psf .^ 0.25; aspect_ratio=:equal, color=:grays, title="microscope"))
 end

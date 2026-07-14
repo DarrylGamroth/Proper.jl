@@ -1,6 +1,4 @@
 using Proper
-using Plots
-include(joinpath(@__DIR__, "_shared.jl"))
 
 function simple_telescope(wavelength::Real, gridsize::Integer)
     d_objective = 0.060
@@ -25,7 +23,9 @@ function simple_telescope(wavelength::Real, gridsize::Integer)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
+    using Plots
+
     psf, sampling = simple_telescope(0.55e-6, 256)
     println("simple_telescope: sampling = ", sampling)
-    plot_psf(psf; title="simple_telescope")
+    display(heatmap(psf .^ 0.25; aspect_ratio=:equal, color=:grays, title="simple_telescope"))
 end
