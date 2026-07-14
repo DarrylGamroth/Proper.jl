@@ -1,8 +1,3 @@
-"""Placeholder DM fit returning input map and zero residual."""
-function prop_fit_dm(dm_map::AbstractMatrix; kwargs...)
-    return copy(dm_map), zero(eltype(dm_map))
-end
-
 @inline function _convolve_same_zero(a::AbstractMatrix{T}, k::AbstractMatrix{T}) where {T<:AbstractFloat}
     ny, nx = size(a)
     ky, kx = size(k)

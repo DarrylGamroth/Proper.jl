@@ -45,6 +45,9 @@ end
 
     dm = zeros(32, 32)
     @test prop_dm(wf2, dm, 16.0, 16.0, 0.05; NO_APPLY=true) isa AbstractMatrix
+    @test !applicable(prop_fit_dm, dm)
+    @test_throws MethodError prop_fit_dm(dm)
+    @test applicable(prop_fit_dm, dm, ones(3, 3))
 
     img = rand(TEST_RNG, 32, 32)
     @test size(prop_rotate(img, 0.0)) == size(img)
