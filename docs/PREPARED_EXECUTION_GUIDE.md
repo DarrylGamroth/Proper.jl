@@ -158,8 +158,8 @@ PROPER's CPU propagation path is usually FFT-bound. FFTW and Julia task
 threading are independent, and combining large counts can oversubscribe the
 machine.
 
-For one large serial prescription, a useful starting point is four FFTW
-threads and one Julia thread:
+For one large serial prescription, a useful starting point is one Julia thread
+and a modest FFTW count:
 
 ```julia
 using Proper
@@ -194,6 +194,28 @@ Thread counts are machine- and grid-size-dependent. Benchmark representative
 256, 512, and 1024 grids before choosing a production value. Changing
 `prop_fftw_threads` affects newly created FFTW plans only; call
 `reset_prepared_batch!` or recreate prepared contexts after changing it.
+
+The repository includes a fresh-process matrix benchmark that rejects a
+configuration if its complex field differs from the matrix reference before
+timing it:
+
+```sh
+PROPER_THREAD_TOPOLOGY_WORKLOAD=core \
+  PROPER_THREAD_TOPOLOGY_MATRIX="1:1 1:4 1:8 1:16" \
+  PROPER_BENCH_GRID_N=512 scripts/benchmark_thread_topology.sh
+```
+
+Entries are `JULIA_THREADS:FFTW_THREADS`. On a Threadripper, include serial
+outer/multithreaded FFTW points in the `core` workload. Then repeat with
+`PROPER_THREAD_TOPOLOGY_WORKLOAD=batch`, including multithreaded
+outer/single-thread FFTW and a few hybrid points whose product is near the
+number of physical cores. Set `PROPER_BENCH_BATCH_SIZE` to the representative
+number of independent runs; the default is four. Do not assume that all logical
+threads are optimal: FFT scaling and memory bandwidth often flatten first,
+while nested Julia and FFTW pools can oversubscribe the CPU. PROPER does not
+choose or mutate a global thread topology automatically because the optimum
+depends on grid size, prescription shape, concurrent runs, and other work in
+the process.
 
 The main propagation path is not BLAS-heavy. When Julia threads run independent
 prescriptions, `LinearAlgebra.BLAS.set_num_threads(1)` is a sensible starting

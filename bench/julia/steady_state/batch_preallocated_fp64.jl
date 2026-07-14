@@ -7,55 +7,6 @@ include(joinpath(@__DIR__, "..", "..", "common", "metadata.jl"))
 include(joinpath(@__DIR__, "..", "..", "common", "prepared_execution_workloads.jl"))
 using .BenchMetadata
 
-function preallocated_steady_state_prescription(
-    λm,
-    n;
-    wavefront,
-    output,
-    run_context,
-)
-    T = typeof(λm)
-    prop_begin!(wavefront, T(2.4), λm; beam_diam_fraction=T(0.5))
-    prop_circular_aperture(wavefront, T(0.6))
-    prop_lens(wavefront, T(20), run_context)
-    prop_propagate(wavefront, T(20), run_context)
-    return prop_end(wavefront, output)
-end
-
-function prepare_preallocated_cpu_sweep(
-    wavelengths,
-    grid_n::Integer,
-)
-    T = Float64
-    stack = zeros(T, grid_n, grid_n, length(wavelengths))
-    samplings = zeros(T, length(wavelengths))
-    runs = map(enumerate(wavelengths)) do (slot, wavelength_microns)
-        context = cpu_prepared_context(T, grid_n)
-        field = Matrix{Complex{T}}(undef, grid_n, grid_n)
-        wavefront = prop_begin!(
-            field,
-            T(2.4),
-            T(wavelength_microns) * T(1e-6);
-            beam_diam_fraction=T(0.5),
-            context=context,
-        )
-        prepared = prepare_prescription(
-            preallocated_steady_state_prescription,
-            T(wavelength_microns),
-            grid_n;
-            context=context,
-        )
-        return prepare_run(
-            prepared;
-            activate_context=false,
-            wavefront=wavefront,
-            output=@view(stack[:, :, slot]),
-            run_context=context,
-        )
-    end
-    return stack, samplings, runs
-end
-
 @inline function trial_stats(trial::BenchmarkTools.Trial)
     estimate = median(trial)
     return Dict(
