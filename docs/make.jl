@@ -23,6 +23,7 @@ makedocs(
             "Migration" => "MIGRATION_GUIDE.md",
             "Prescription Authoring" => "PRESCRIPTION_AUTHORING_GUIDE.md",
             "Prepared Execution" => "PREPARED_EXECUTION_GUIDE.md",
+            "Latency Benchmarking" => "LATENCY_BENCHMARKING.md",
             "Adaptive Optics Integration" => "ADAPTIVE_OPTICS_INTEGRATION.md",
         ],
         "Contracts" => [

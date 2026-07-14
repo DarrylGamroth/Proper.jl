@@ -1,0 +1,8 @@
+[deps]
+HdrHistogram = "d0b8ac25-3072-4075-acf5-4a93ba78f71f"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+HdrHistogram = "0.4"
+Test = "1.10"
+julia = "1.10"

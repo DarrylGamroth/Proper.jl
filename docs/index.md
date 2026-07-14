@@ -9,3 +9,7 @@ prescription, the [API examples](API_EXAMPLES.md) for executable usage, or the
 [prepared execution guide](PREPARED_EXECUTION_GUIDE.md) for repeated and
 threaded workloads. The [documentation map](README.md) indexes validation,
 benchmark, backend, and maintainer material.
+
+Use the [latency benchmarking guide](LATENCY_BENCHMARKING.md) when measuring
+prepared CPU or GPU service-time distributions; it defines the correctness,
+synchronization, sample-count, and artifact contracts.

@@ -24,6 +24,9 @@ This document is the current maintainer tracker for GPU-facing work in
 - CPU/CUDA/AMDGPU benchmark lanes use warmed steady-state `BenchmarkTools`
   measurements and report skipped GPU backends instead of failing when hardware
   is absent
+- CPU/CUDA/AMDGPU prepared-call latency lanes verify against a CPU oracle before
+  timing, synchronize GPU completion inside each sample, and retain raw
+  HdrHistogram logs
 - prepared vector-of-runs execution supports multi-wavelength throughput
 - explicit `Float32` prepared execution is documented and benchmarked
 - backend-native coordinate-grid cubic convolution supports arbitrary map
@@ -37,6 +40,8 @@ This document is the current maintainer tracker for GPU-facing work in
   justify it
 - keep benchmark reports split by steady-state runtime, cold-start / TTFx,
   precision, and batch throughput
+- collect prepared-call latency distributions on representative dedicated GPU
+  runners before defining any device-specific percentile regression gate
 - validate optional self-hosted CUDA/AMDGPU CI runners when those runners become
   part of the project infrastructure
 
@@ -90,7 +95,15 @@ The user-facing integration contract is documented in
 ./scripts/profile_core_cpu_gpu.sh
 ./scripts/benchmark_thread_topology.sh
 PROPER_THREAD_TOPOLOGY_WORKLOAD=batch ./scripts/benchmark_thread_topology.sh
+./scripts/benchmark_latency.sh cpu
+./scripts/benchmark_latency.sh amdgpu
+./scripts/benchmark_latency.sh cuda
 ```
+
+The latency commands use preallocated prepared execution, enforce numerical
+equivalence before timing, and include device synchronization in GPU samples.
+See [`LATENCY_BENCHMARKING.md`](LATENCY_BENCHMARKING.md) for the full load model,
+percentile support rule, and artifact contract.
 
 The current local hardware validates the AMDGPU lane. CUDA hardware is not
 available on this machine, so CUDA remains availability-gated and must be
