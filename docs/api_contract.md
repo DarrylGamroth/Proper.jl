@@ -187,13 +187,15 @@ Prepared-model asset contract:
 ## 5. Return Value Contract
 - `prop_run(...) -> (psf, sampling)` where:
   - `psf`: `AbstractMatrix{<:Number}` (typically real intensity, complex when requested)
-  - `sampling`: `Float64` (meters per pixel)
+  - `sampling`: `T<:AbstractFloat` (meters per pixel), with precision following
+    the run context/output precision; ordinary unprepared execution defaults to
+    `Float64`
 - `prop_end(...) -> (wavefront_or_intensity, sampling)` where:
   - `NOABS=false`: real intensity matrix
   - `NOABS=true`: complex field matrix
 - `prop_run_multi(...) -> (stacked_psf, sampling_vector)` where:
   - `stacked_psf`: `AbstractArray{<:Number,3}`
-  - `sampling_vector`: `Vector{Float64}`
+  - `sampling_vector`: `Vector{T}` for the run precision
 - prepared execution with explicit `precision=Float32` may therefore return
   `AbstractArray{ComplexF32,3}`, `AbstractArray{Float32,3}`, or the analogous
   `Float64` / `ComplexF64` forms depending on the called surface and `NOABS`

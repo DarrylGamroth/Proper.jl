@@ -8,6 +8,7 @@ Define how Julia outputs are compared against Python 3.3.4 baselines and how art
 - `D-0010` golden data workflow (accepted)
 - `D-0011` RNG determinism policy (accepted)
 - `D-0014` CI/support matrix (accepted)
+- `D-0070` tiered example validation evidence (accepted)
 
 ## Status
 - [x] Draft pre-filled from proposed defaults
@@ -30,20 +31,23 @@ Define how Julia outputs are compared against Python 3.3.4 baselines and how art
 - Semantic tie-breakers: MATLAB 3.3.1 + PROPER manual
 
 ## 2. Artifact Layout
-Recommended structure:
+Current structure:
 - `test/parity/cases/` case definitions (params, mode, backend)
 - `test/parity/baseline/python334/` generated baseline arrays + metadata
 - `test/parity/reports/` comparison summaries
 
 ## 3. Provenance Metadata Schema
-Each baseline artifact should capture:
-- python source snapshot identifier (commit/hash or equivalent)
-- script/example name
-- wavelength/grid/passvalue/config
-- RNG seed info (if applicable)
-- generation timestamp
-- baseline identifier
+Each metadata document uses schema version 1 and captures:
+- baseline name/version/source URL, local source root, and deterministic SHA-256
+  of the baseline source tree
+- generator entry point and generation timestamp
+- Python executable/version plus NumPy, SciPy, and Astropy versions
 - backend label and numeric precision
+- RNG seed (or an explicit null value)
+- per-case wavelength, grid size, and configuration
+- SHA-256 for every generated artifact
+
+`test/parity/validate_artifacts.jl` enforces the schema and artifact hashes.
 
 ## 4. Metrics And Thresholds
 Default gating approach:
@@ -54,17 +58,27 @@ Default gating approach:
 Additional metrics:
 - max absolute error with case-specific bounds
 - wrapped phase MAE bounds when phase comparisons apply
+- center values and four asymmetric pixel probes for example matrices, including
+  real and imaginary components for complex fields; these catch transposes,
+  reflections, and centering errors that aggregate norms can hide
 
 Executable threshold source:
 - `test/parity/thresholds/example_metrics_thresholds.json`
 
 ## 5. Case Matrix
-Minimum coverage:
-- all 23 examples
+Minimum coverage is tiered by what each upstream source actually exposes:
+- filename, load, and expected-entry-point coverage for all 23 upstream example
+  source files: one package marker plus 22 executable/helper/demo modules
+- headless reduced-grid CPU execution for every user-facing runner
+- numerical parity at meaningful prescription/runner output boundaries; the
+  current executable matrix contains 16 cases, including broadband
+  `testmulti1` and all three `testmulti2` ripple patterns
+- helper and plotting wrappers covered transitively or by execution smoke when
+  they do not expose a distinct numerical return
 - output mode (`NOABS=true/false`)
 - map pipeline cases (`psdtest`, errormap/resample/rotate)
 - multi-run ordering and shape semantics
-- compat-mode divergence cases
+- accepted or corrected behavior cases recorded in `docs/compat_decisions.md`
 
 ## 6. Update Workflow
 - Trigger baseline regeneration when:
@@ -91,7 +105,10 @@ Optional jobs:
 - self-hosted AMDGPU tests
 
 ## 8. Contract Tests
-- [ ] Baseline generation reproducibility test (seeded)
-- [ ] Artifact metadata completeness test
+- [x] Baseline generation reproducibility test (seeded and byte-for-byte via
+  `scripts/check_parity_reproducibility.sh`)
+- [x] Artifact metadata completeness and SHA-256 test
+  (`test/parity/validate_artifacts.jl`)
 - [x] Threshold enforcement tests (`compare_examples.jl` + threshold config)
-- [ ] CI job pass/fail integration test
+- [x] CI integration for regeneration, reproducibility, metadata validation,
+  and threshold enforcement (`.github/workflows/ci.yml`)

@@ -7,15 +7,37 @@
 - Port all upstream examples and validate Julia vs Python numerical agreement.
 - Keep filename parity for traceability, but do not do line-by-line transliteration; use Julia-native types, dispatch, and trait-based backend selection.
 
+## Current Status (2026-07-13)
+
+Phases 0 through 9 are completed port-closure snapshots. This document retains
+their original sequencing for traceability; current contracts and follow-up
+work live in `docs/api_contract.md`, `docs/numerics_contract.md`,
+`docs/parity_harness_contract.md`, and `docs/GPU_IMPLEMENTATION_PLAN.md`.
+
+Current validation evidence:
+- all 23 upstream example source files map and load: one package marker plus 22
+  executable/helper/demo modules
+- every user-facing runner executes headlessly on CPU at a reduced CI grid
+- 16 numerical Python/Julia parity cases exercise meaningful prescription or
+  runner output boundaries, including broadband `testmulti1` and all three
+  `testmulti2` ripple patterns
+- CPU, AMDGPU, and availability-gated CUDA paths have correctness tests; this
+  machine currently provides AMDGPU but no CUDA hardware
+- benchmark reporting separates warmed steady-state runtime from cold-start /
+  TTFx and includes an explicit Julia/FFTW thread-topology correctness gate
+
 ## Porting Principles (Julia-First Internals)
 - Filename mapping is an organization constraint, not an implementation constraint.
 - Preserve externally visible behavior and naming where needed for compatibility.
 - Refactor internals into typed kernels and multiple-dispatch methods.
-- Prefer trait-based backend routing (`Array`, `CuArray`, future backends) over runtime flag toggles.
+- Prefer trait-based backend routing (`Array`, `CuArray`, `ROCArray`, future
+  backends) over runtime flag toggles.
 - Prefer composable kernels (`KernelAbstractions.jl`, `AcceleratedKernels.jl`) over Python-style global switches and ad hoc branching.
 
 ## Package Review Summary
-- Source size: 87 Python modules in `proper/`, 23 Python example scripts in `proper/examples/`, 3 C kernels, 1 FITS data asset.
+- Source size: 87 Python modules in `proper/`, 23 Python example source files in
+  `proper/examples/` (one package marker plus 22 executable/helper/demo
+  modules), 3 C kernels, and 1 FITS data asset.
 - Core architecture today:
   - `proper/__init__.py` re-exports nearly all routines and stores mutable global run state.
   - `WaveFront` object (`prop_wavefront.py`) holds optical state and array payload.
@@ -75,7 +97,8 @@
 - No hardcoded `Array` allocations in hot paths; allocate through helper constructors that preserve array backend.
 - FFT dispatch via backend traits:
   - CPU default: `FFTW.jl` (through `AbstractFFTs`).
-  - GPU path: `CUDA.jl` (`CUDA.CUFFT`) when arrays are `CuArray`.
+  - GPU paths: `CUDA.jl` (`CUDA.CUFFT`) for `CuArray` and `AMDGPU.jl`
+    (`AMDGPU.rocFFT`) for `ROCArray` through optional package extensions.
   - Optional MKL path if needed.
 - Interpolation/rotation/resampling:
   - Phase 1: robust CPU implementation in pure Julia.
@@ -298,7 +321,8 @@ Exit criterion for Phase 0: each subsection above is marked “decided” in pro
 - Goals:
   - Complete user-facing example parity and release-quality validation.
 - Work items:
-  - Port all 23 Python examples one-to-one (plus accepted MATLAB-only additions if approved).
+  - Port all 23 Python example source files one-to-one (plus accepted
+    MATLAB-only additions if approved).
   - Finalize parity harness:
     - Python baseline generation scripts
     - artifact provenance capture
@@ -327,7 +351,9 @@ Exit criterion for Phase 0: each subsection above is marked “decided” in pro
     - PSD/map synthesis and transforms (`prop_psd_errormap`, interpolation/cubic-conv paths)
     - Zernike/fit stack (`prop_zernikes`, `prop_noll_zernikes`, `prop_fit_zernikes`, related helpers)
     - polygon/segmented optics paths (`prop_polygon`, `prop_irregular_polygon`, `prop_hex_*`, rounded geometry)
-  - Run parity harness on all 23 examples against the patched Python baseline.
+  - Validate all 23 mapped sources at the appropriate evidence tier: load and
+    entry-point coverage for every source, headless runner execution, and
+    numerical parity at meaningful output-producing boundaries.
   - Add per-module parity fixtures and failure triage reports with decision-log links.
   - Close parity gaps by updating implementation and/or explicitly documenting accepted divergence.
 - Deliverables:
@@ -348,7 +374,7 @@ Exit criterion for Phase 0: each subsection above is marked “decided” in pro
     - `prop_end` extract indexing semantics
     - `prop_state` restore semantics
     - `prop_psd_errormap` backend-toggle/side-effect behavior
-  - Promote or retain corrected behavior per accepted decisions and compat-mode policy.
+  - Promote or retain corrected behavior through explicit accepted decisions.
   - Add explicit MATLAB-semantic regression tests (non-executable reference checks).
   - Finalize migration guide for users moving from Python/MATLAB to Julia.
 - Deliverables:
@@ -356,7 +382,8 @@ Exit criterion for Phase 0: each subsection above is marked “decided” in pro
   - Release checklist signed off with decision references.
 - Exit criteria:
   - Python parity baseline is green and MATLAB/manual-backed corrections are documented and tested.
-  - Release notes clearly describe compatibility guarantees and corrected-mode behavior.
+  - Release notes clearly describe compatibility guarantees and documented
+    corrected behavior.
 
 ## Refactor Track (Post-Audit, Parity-Preserving)
 Context: `docs/archive/JULIA_IMPLEMENTATION_AUDIT_2026-03-04.md` immediate checklist is complete. This track closes remaining architecture/performance findings without changing user-facing behavior.
@@ -449,29 +476,35 @@ Integration policy:
 - Route backend choice through traits/dispatch first, then select KA/AK implementation.
 - Add KA/AK methods only when parity tests and steady-state benchmarks show clear wins.
 
-## Example Parity Config Matrix (Coverage Plan)
+## Example Parity Config Matrix (Current Coverage)
 | Area | Axis | Permutations | Evidence | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Example parity | Example script | 23/23 upstream examples | `test/example_parity/*.jl` + generated diff metrics | Gap | Must cover every example below |
-| Backend | Array backend | CPU `Array`, GPU `CuArray` | Separate CI jobs + tolerance report | Gap | GPU first on core subset, then expand |
-| FFT backend | FFT provider | FFTW default, optional MKL/CUFFT | backend-tagged regression report | Gap | Must keep same normalization conventions |
-| Output mode | `prop_end` mode | intensity (`NOABS=false`), complex field (`NOABS=true`) | per-example assertions | Gap | Include talbot/talbot_correct |
-| Multi-run | execution mode | single `prop_run`, parallel `prop_run_multi` | shape + value parity checks | Gap | Include PASSVALUE arrays |
-| Error maps | map pipeline | read/resample/rotate/magnify/PSD | golden FITS + statistics checks | Gap | Include `psdtest`, coronagraph/telescope maps |
-| State system | save/restore | save new state, load existing state, cleanup | integration tests with temp dirs | Gap | Must validate deterministic reload |
+| Example mapping/execution | Upstream source | 23/23 mapped and loadable; all user-facing runners execute | `examples/runtests.jl`, `test/test_file_mapping.jl` | Covered | One package marker plus 22 executable/helper/demo modules |
+| Example numerics | Output-producing case | 16 Python/Julia cases | `test/parity/compare_examples.jl` + generated metrics | Covered | Aggregate metrics, centers, and asymmetric probes; helpers are covered transitively |
+| Backend | Array backend | CPU `Array`; optional CUDA `CuArray`; optional AMDGPU `ROCArray` | `test/test_r2_trait_routing.jl`, optional backend test environments | Covered | GPU execution is availability-gated and prohibits scalar indexing |
+| FFT backend | FFT provider | FFTW, CUFFT, rocFFT | direct-DFT CPU oracle plus optional GPU equivalence tests | Covered | MKL is not part of the claimed validation surface |
+| Output mode | `prop_end` mode | intensity (`NOABS=false`), complex field (`NOABS=true`) | package and parity assertions | Covered | Includes Talbot and coherent-carrier paths |
+| Multi-run | execution mode | single, threaded, prepared, caller-owned output | `test/test_multi_run_scheduling.jl`, `test/test_run_context_correctness.jl`, example parity | Covered | Includes `PASSVALUE`, deterministic ordering, and packed-storage safety |
+| Error maps | map pipeline | read/resample/rotate/magnify/PSD | FITS, semantic reconciliation, and backend tests | Covered | Includes seeded `psdtest` and map metadata/coordinate regressions |
+| State system | save/restore | save new state, load existing state, cleanup | `test/test_phase9_semantic_reconciliation.jl` and temp-directory runner smoke | Covered | Full wavefront restoration is regression-tested |
 
 ## Acceptance Criteria
-- One Julia source file exists for every mapped Python source file, and one Julia example exists for every Python example.
-- All examples execute in Julia without runtime errors on CPU.
-- Parity thresholds against Python baseline:
+- [x] One Julia source file exists for every mapped Python source file, and one
+  Julia example source exists for every Python example source.
+- [x] All user-facing examples execute in Julia without runtime errors on CPU.
+- [x] Parity thresholds against Python baseline:
   - use combined relative + absolute metrics
   - use denominator-floored relative metrics in deep-null/high-contrast regimes
   - use case-specific documented overrides where needed
   - threshold source-of-truth is machine-readable config in `test/parity/thresholds/` and documented in `docs/parity_thresholds.md`
-- Core kernels (`prop_propagate`, `prop_lens`, `prop_dm`, interpolation path) pass allocation and type-stability checks in benchmark tests.
-- Hot-path kernels meet dispatch/inference gate: no unintended dynamic dispatch or `Any` inference in designated inner-loop paths.
-- Comprehensive benchmark suite is present and produces reproducible Python-vs-Julia steady-state reports.
-- Julia TTFx is measured separately from steady-state runtime and reported independently.
+- [x] Core kernels (`prop_propagate`, `prop_lens`, `prop_dm`, interpolation
+  path) pass allocation and type-stability checks in benchmark tests.
+- [x] Hot-path kernels meet the dispatch/inference gate: no unintended dynamic
+  dispatch or `Any` inference in designated inner-loop paths.
+- [x] A comprehensive benchmark suite produces reproducible Python-vs-Julia
+  steady-state reports.
+- [x] Julia TTFx is measured separately from steady-state runtime and reported
+  independently.
 
 ## Benchmarking Plan (Python vs Julia)
 Decision reference: `D-0029` in `docs/compat_decisions.md`.
@@ -709,30 +742,33 @@ Note: mapping below guarantees file-level traceability; implementation may and s
 | `proper/examples/testmulti2.py` | `examples/testmulti2.jl` | Direct example prescription/demo port |
 
 ## Example Port Checklist
-- [ ] `coronagraph.jl`
-- [ ] `coronagraph_demo.jl`
-- [ ] `example_system.jl`
-- [ ] `hubble_simple.jl`
-- [ ] `microscope.jl`
-- [ ] `multi_example.jl`
-- [ ] `occulter_demo.jl`
-- [ ] `psdtest.jl`
-- [ ] `run_coronagraph.jl`
-- [ ] `run_coronagraph_dm.jl`
-- [ ] `run_example.jl`
-- [ ] `run_occulter.jl`
-- [ ] `simple_prescription.jl`
-- [ ] `simple_telescope.jl`
-- [ ] `talbot.jl`
-- [ ] `talbot_correct.jl`
-- [ ] `talbot_correct_demo.jl`
-- [ ] `talbot_demo.jl`
-- [ ] `telescope.jl`
-- [ ] `telescope_dm.jl`
-- [ ] `testmulti1.jl`
-- [ ] `testmulti2.jl`
+- [x] `__init__.jl`
+- [x] `coronagraph.jl`
+- [x] `coronagraph_demo.jl`
+- [x] `example_system.jl`
+- [x] `hubble_simple.jl`
+- [x] `microscope.jl`
+- [x] `multi_example.jl`
+- [x] `occulter_demo.jl`
+- [x] `psdtest.jl`
+- [x] `run_coronagraph.jl`
+- [x] `run_coronagraph_dm.jl`
+- [x] `run_example.jl`
+- [x] `run_occulter.jl`
+- [x] `simple_prescription.jl`
+- [x] `simple_telescope.jl`
+- [x] `talbot.jl`
+- [x] `talbot_correct.jl`
+- [x] `talbot_correct_demo.jl`
+- [x] `talbot_demo.jl`
+- [x] `telescope.jl`
+- [x] `telescope_dm.jl`
+- [x] `testmulti1.jl`
+- [x] `testmulti2.jl`
 
-## Execution Order Recommendation
+## Completed Execution Sequence
+
+The historical implementation order was:
 1. Complete Phase 0 preflight decisions and freeze contracts (API, numerics, backend traits, parity harness, CI).
 2. Port foundational wavefront + propagation core and run `simple_prescription` parity.
 3. Port aperture/mask/geometry and run telescope + microscope parity.

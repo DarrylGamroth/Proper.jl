@@ -2,6 +2,10 @@
 
 Date: 2026-03-04
 
+> Historical snapshot: this report records the then-current closure suite. For
+> live case counts, provenance requirements, and CI gates, use
+> [`parity_harness_contract.md`](parity_harness_contract.md).
+
 ## Scope
 Porting-plan parity target:
 - eliminate placeholder/fallback behavior in physics-critical modules
@@ -29,6 +33,7 @@ Porting-plan parity target:
 - Runtime compatibility mode flags were removed; divergences are documented directly in `docs/compat_decisions.md`.
 
 ## Exit Criteria Evaluation
-- All example parity thresholds met against patched Python baseline: `Yes`.
+- All then-current example parity thresholds met against patched Python
+  baseline: `Yes`.
 - Any remaining intentional deltas documented: `Yes`.
 - No unresolved high-severity parity gaps: `Yes` (threshold-gated parity is green).

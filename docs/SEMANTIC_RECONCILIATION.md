@@ -2,6 +2,11 @@
 
 Date: 2026-03-04
 
+> Historical snapshot: this report records the reconciliation state on the
+> date above. Current behavior and executable evidence live in
+> [`compat_decisions.md`](compat_decisions.md),
+> [`numerics_contract.md`](numerics_contract.md), and CI.
+
 ## Objective
 Reconcile known Python translation defects using MATLAB/manual semantics where applicable, while keeping idiomatic Julia implementation and Python-physics parity goals.
 
