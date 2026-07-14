@@ -916,3 +916,32 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   - Direct-DFT, power-conservation, inverse-roundtrip, coordinate, and unit
     regressions make transform and convention drift visible without relying on
     the implementation's FFT library as its own oracle.
+
+## D-0064: Entrance Normalization Rejects Undefined Total Power
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - Python and MATLAB divide the entrance field by the square root of its total
+    intensity without validating that intensity. A zero or nonfinite pupil
+    therefore produces NaNs or Infs rather than a normalized optical state.
+  - Julia previously skipped normalization when total intensity was zero,
+    silently returning a field whose documented unit-power invariant was false.
+  - AMDGPU's generic `sum(abs2, field)` path fails to compile on the available
+    hardware, while `AcceleratedKernels.mapreduce` executes without scalar
+    indexing and returns the required host scalar.
+- Decision:
+  - Preserve CPU summation behavior for valid inputs and use the portable
+    AcceleratedKernels reduction for CUDA and AMDGPU arrays.
+  - Require finite, strictly positive total intensity and throw `DomainError`
+    before changing the field when a finite normalization does not exist.
+  - Normalize in place with a backend-preserving broadcast.
+- Consequences:
+  - Valid CPU results retain their previous numerical ordering, and accelerator
+    prescriptions can include `prop_define_entrance` without falling back to
+    scalar indexing or host storage.
+  - Invalid inputs now fail at the source of the optical error instead of
+    propagating NaNs or an unnormalized zero field. This is an intentional
+    correctness divergence from both upstream's unchecked division and the
+    earlier Julia no-op.
+  - CPU and optional CUDA/AMDGPU tests cover unit power, field values, backend
+    identity, disabled scalar indexing, and invalid zero input.
