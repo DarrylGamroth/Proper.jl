@@ -945,3 +945,24 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     earlier Julia no-op.
   - CPU and optional CUDA/AMDGPU tests cover unit power, field values, backend
     identity, disabled scalar indexing, and invalid zero input.
+
+## D-0065: DM Fitting Requires An Influence Kernel
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - Python and MATLAB define `prop_fit_dm(dm_map, inf_kernel)` because actuator
+    commands cannot be fitted without the deformable mirror's influence
+    function.
+  - Julia also exposed a one-argument placeholder that copied the requested map
+    and returned a scalar zero. Its result shape was incompatible with the real
+    routine, it performed no fit, and no package caller used it.
+- Decision:
+  - Remove the one-argument placeholder while the package is at version
+    `0.1.0`; callers must provide both the target surface and influence kernel.
+  - Keep the familiar public `prop_fit_dm` name and the parity-tested two-input
+    implementation unchanged.
+- Consequences:
+  - A missing influence kernel now produces Julia's ordinary `MethodError`
+    instead of a plausible-looking but physically meaningless result.
+  - API tests assert that the one-input call is inapplicable and the upstream
+    two-input call remains available.
