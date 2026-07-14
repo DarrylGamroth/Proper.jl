@@ -9,19 +9,28 @@ include(joinpath(@__DIR__, "..", "..", "common", "amdgpu_wavefront_kernel_cases.
 using .BenchMetadata
 
 const RUN_TAG = "steady_state_amdgpu_supported_kernels"
-const REPORT_PATH = joinpath(@__DIR__, "..", "..", "reports", "amdgpu_supported_kernels.json")
+const REPORT_PATH = get(
+    ENV,
+    "PROPER_BENCH_REPORT",
+    joinpath(@__DIR__, "..", "..", "reports", "amdgpu_supported_kernels.json"),
+)
 
 AMDGPU.allowscalar(false)
 
 function bench_amdgpu_supported_kernels()
-    nprop = 512
-    nmap = 256
-    samples = 20
+    nprop = parse(Int, get(ENV, "PROPER_BENCH_PROP_GRID_N", "512"))
+    nmap = parse(Int, get(ENV, "PROPER_BENCH_MAP_GRID_N", "256"))
+    samples = parse(Int, get(ENV, "PROPER_BENCH_SAMPLES", "20"))
+    nprop > 0 || throw(ArgumentError("PROPER_BENCH_PROP_GRID_N must be positive"))
+    nmap >= 8 && iseven(nmap) || throw(ArgumentError("PROPER_BENCH_MAP_GRID_N must be even and at least 8"))
+    samples > 0 || throw(ArgumentError("PROPER_BENCH_SAMPLES must be positive"))
     wavefront_stats = benchmark_amdgpu_wavefront_kernel_stats(Float64; grid_n=nprop, samples=samples)
 
     img = amdgpu_rand(Float32, nmap, nmap)
     ctx_img = RunContext(typeof(img))
+    mag_quick_opts = Proper.MagnifyOptions(true, false, false)
     rot_out = similar(img)
+    mag_out = similar(img)
     szoom_out = similar(img)
     pix_out = similar(img, nmap ÷ 2, nmap ÷ 2)
     coord_x_axis = collect(Float32, range(3, nmap - 3; length=nmap))
@@ -39,6 +48,7 @@ function bench_amdgpu_supported_kernels()
     round_out = similar(rect_out)
 
     prop_rotate!(rot_out, img, 12.0, ctx_img)
+    prop_magnify!(mag_out, img, 1.1, mag_quick_opts, ctx_img)
     prop_szoom!(szoom_out, img, 1.1, ctx_img)
     Proper._prop_pixellate_factor!(pix_out, img, 2)
     prop_cubic_conv_coordinate_grid!(coord_out, ctx_img, img, coord_xgrid, coord_ygrid)
@@ -46,6 +56,7 @@ function bench_amdgpu_supported_kernels()
     prop_rectangle!(rect_out, wf_map, 0.4, 0.2, 0.03, -0.05; ROTATION=22.0, NORM=true)
     prop_rounded_rectangle!(round_out, wf_map, 0.05, 0.3, 0.2, 0.01, -0.02)
     prop_rotate!(rot_out, img, 12.0, ctx_img)
+    prop_magnify!(mag_out, img, 1.1, mag_quick_opts, ctx_img)
     prop_szoom!(szoom_out, img, 1.1, ctx_img)
     Proper._prop_pixellate_factor!(pix_out, img, 2)
     prop_cubic_conv_coordinate_grid!(coord_out, ctx_img, img, coord_xgrid, coord_ygrid)
@@ -56,6 +67,11 @@ function bench_amdgpu_supported_kernels()
 
     r = run(@benchmarkable begin
         prop_rotate!($rot_out, $img, 12.0, $ctx_img)
+        amdgpu_sync()
+    end evals=1 samples=samples)
+
+    m = run(@benchmarkable begin
+        prop_magnify!($mag_out, $img, 1.1, $mag_quick_opts, $ctx_img)
         amdgpu_sync()
     end evals=1 samples=samples)
 
@@ -91,7 +107,7 @@ function bench_amdgpu_supported_kernels()
 
     return Dict(
         "meta" => merge(amdgpu_report_meta(RUN_TAG; device=amdgpu_device_label()), Dict("prop_grid_n" => nprop, "map_grid_n" => nmap)),
-        "policy" => "steady-state supported AMDGPU kernel timings with per-sample wavefront state restore; TTFx excluded; per-sample synchronization included; prop_magnify_quick_mutating is omitted because the current AMDGPU toolchain crashes while compiling that benchmark row",
+        "policy" => "steady-state supported AMDGPU kernel timings with per-sample wavefront state restore; TTFx excluded; per-sample synchronization included",
         "kernels" => Dict(
             "prop_qphase" => wavefront_stats["prop_qphase"],
             "prop_ptp" => wavefront_stats["prop_ptp"],
@@ -101,6 +117,7 @@ function bench_amdgpu_supported_kernels()
             "prop_dm_direct_map" => wavefront_stats["prop_dm_direct_map"],
             "prop_end_mutating" => wavefront_stats["prop_end_mutating"],
             "prop_rotate_mutating" => trial_stats(r),
+            "prop_magnify_quick_mutating" => trial_stats(m),
             "prop_szoom_mutating" => trial_stats(sz),
             "prop_pixellate_mutating" => trial_stats(px),
             "prop_cubic_conv_coordinate_grid_mutating" => trial_stats(cc),

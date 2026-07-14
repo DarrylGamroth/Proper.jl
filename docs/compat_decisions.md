@@ -1003,3 +1003,38 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   - Callers that need the allocating convenience surface keep
     `prop_run_multi`; callers with stable buffers can eliminate full-frame
     output churn without introducing an allocator subsystem.
+
+## D-0067: CPU Thread Topology Is Measured, Not Chosen Globally
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - Julia task threads, FFTW threads, and BLAS threads are independent pools.
+    Large values in more than one pool can oversubscribe cores and memory
+    bandwidth, while the best division depends on grid size and the number of
+    independent prescriptions.
+  - Changing FFTW thread count after a prepared context has planned its FFTs
+    does not retune those existing plans.
+- Decision:
+  - Keep thread configuration caller-controlled and never select a machine-wide
+    topology inside the package.
+  - Provide fresh-process single-prescription and preallocated-batch benchmark
+    matrices over Julia and FFTW thread counts, with BLAS fixed explicitly and
+    full environment metadata in every case.
+  - Require every matrix case to match one common output reference within tight
+    Float64 tolerances before reporting its timing.
+- Consequences:
+  - In one local Ryzen 7 6800H run at 512x512, an eight-sample diagnostic matrix
+    produced zero elementwise error in every case. The single-prescription
+    workload improved from `61.08 ms` at Julia/FFTW `1/1` to `12.09 ms` at
+    `1/12` (`5.05x`), while `1/16` regressed to `44.72 ms`.
+  - For four caller-owned prepared runs on the same machine, Julia/FFTW `4/1`
+    improved from `117.32 ms` at `1/1` to `24.92 ms` (`4.71x`). Hybrid `2/4`
+    was slower at `44.42 ms`, demonstrating that the serial and batch optima
+    are different even for the same grid and prescription.
+  - Threadripper and workstation deployments can compare serial-outer,
+    outer-parallel, and hybrid configurations without conflating warmed runtime
+    with package load or first-call compilation.
+  - Benchmarking a new topology recreates FFT plans, so reported results reflect
+    the requested FFTW count instead of stale prepared workspace state.
+  - Correctness failure aborts the matrix; a faster but numerically unacceptable
+    configuration is never selected as the reported best case.

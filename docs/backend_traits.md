@@ -115,8 +115,11 @@ of silently falling back to the host.
 - `prop_rotate`
   - full-image rotate paths are backend-native for the supported array
     backends
-  - explicit point-sampling and coordinate-grid `prop_cubic_conv` forms are not
-    the GPU performance surface
+- `prop_cubic_conv` coordinate-grid interpolation
+  - `prop_cubic_conv(image, xgrid, ygrid; grid=false)` preserves the image
+    backend and performs interpolation on the device
+  - for repeated work, keep coordinate grids on the device and use
+    `prop_cubic_conv_coordinate_grid!` with an explicit context
 - `prop_magnify`
   - use `prop_magnify!` with an explicit `ctx` for the stable performance path
   - allocating wrappers exist for convenience but may create fresh workspace
@@ -134,7 +137,6 @@ of silently falling back to the host.
 ### 4.3 Intentionally Unsupported On GPU
 - `prop_cubic_conv` scalar point-sampling on GPU arrays
 - `prop_cubic_conv` pointwise vector mode on GPU arrays
-- `prop_cubic_conv` `grid=false` coordinate-grid mode on GPU arrays
 - `prop_end!` with mismatched output and wavefront backends
 
 These paths throw explicit `ArgumentError` rather than silently materializing
@@ -158,10 +160,10 @@ through host `Matrix(...)` fallbacks.
   - cold-start / TTFx must be measured separately in fresh processes
 
 ## 7. Contract Tests
-- [x] Trait dispatch tests by backend (CPU baseline + optional CUDA smoke when CUDA is available)
-- [ ] FFT equivalence tests across backends
+- [x] Trait dispatch tests by backend (CPU baseline + availability-gated CUDA and AMDGPU smoke)
+- [x] FFT propagation equivalence tests against CPU on availability-gated CUDA and AMDGPU paths; CPU additionally uses an independent direct-DFT oracle
 - [x] Interpolation consistency tests across context/style-dispatched entry points
-- [x] Explicit no-scalar-indexing checks on GPU smoke path (`CUDA.allowscalar(false)`, availability-gated)
+- [x] Explicit no-scalar-indexing checks on GPU smoke paths (`CUDA.allowscalar(false)` and `AMDGPU.allowscalar(false)`, availability-gated)
 - [x] Warmed host-allocation regression gates for GPU propagation hot paths
 - [x] Optional GPU smoke for same-backend map application, FITS map reads, error-map application, and PSD error-map application
-- [ ] Inference checks for hot kernels (`@code_warntype`/equivalent CI gate)
+- [x] `@inferred` and allocation gates for representative CPU hot kernels; accelerator compilation and execution are availability-gated

@@ -12,6 +12,23 @@ function _gpu_preallocated_multi_prescription(λm, n; wavefront, output)
     return prop_end(wavefront, output)
 end
 
+function _gpu_quick_magnify_smoke!(array_constructor, sync!; atol, rtol)
+    rng = MersenneTwister(20260713)
+    input_cpu = rand(rng, Float32, 16, 16)
+    output_cpu = similar(input_cpu)
+    cpu_ctx = RunContext(typeof(input_cpu))
+    prop_magnify!(output_cpu, input_cpu, 1.1f0, cpu_ctx; QUICK=true)
+
+    input_gpu = array_constructor(input_cpu)
+    output_gpu = similar(input_gpu)
+    gpu_ctx = RunContext(typeof(input_gpu))
+    @test prop_magnify!(output_gpu, input_gpu, 1.1f0, gpu_ctx; QUICK=true) === output_gpu
+    sync!()
+    @test typeof(output_gpu) === typeof(input_gpu)
+    @test isapprox(Array(output_gpu), output_cpu; atol, rtol)
+    return output_gpu
+end
+
 function _warmed_gpu_qphase_alloc(wf, z, ctx, sync!)
     prop_qphase(wf, z, ctx)
     sync!()
@@ -745,6 +762,7 @@ end
             _gpu_carrier_phase_smoke!(CUDA.CuArray, CUDA.synchronize; atol=1f-5, rtol=1f-5)
 
             m = prop_magnify(a, 1.1, 16, ctx; QUICK=true)
+            m_mutating = _gpu_quick_magnify_smoke!(CUDA.CuArray, CUDA.synchronize; atol=1f-5, rtol=1f-5)
             r = prop_rotate(a, 5.0, ctx)
             s = prop_szoom(a, 1.1, 16)
             p = Proper._prop_pixellate_factor(a, 2)
@@ -761,6 +779,7 @@ end
             @test coord_gpu isa CUDA.CuArray
             @test isapprox(Array(coord_gpu), coord_ref; atol=1f-5, rtol=1f-5)
             @test size(m) == (16, 16)
+            @test size(m_mutating) == (16, 16)
             @test size(r) == (16, 16)
             @test size(s) == (16, 16)
             @test size(p) == (8, 8)
@@ -872,6 +891,7 @@ end
             _gpu_define_entrance_smoke!(AMDGPU.ROCArray, AMDGPU.synchronize; atol=2f-6, rtol=2f-6)
             _gpu_preallocated_multi_smoke!(AMDGPU.ROCArray, AMDGPU.synchronize)
             _gpu_carrier_phase_smoke!(AMDGPU.ROCArray, AMDGPU.synchronize; atol=3f-4, rtol=1f-3)
+            m = _gpu_quick_magnify_smoke!(AMDGPU.ROCArray, AMDGPU.synchronize; atol=3f-4, rtol=1f-3)
 
             promoted_c = 10.0
             promoted_wf_gpu = Proper.WaveFront(AMDGPU.fill(ComplexF32(1), 16, 16), 500f-9, 1f-6, 0f0, 1f0)
@@ -899,6 +919,7 @@ end
             @test coord_gpu isa AMDGPU.ROCArray
             @test isapprox(Array(coord_gpu), coord_ref; atol=3f-4, rtol=1f-3)
             @test size(p) == (8, 8)
+            @test size(m) == (16, 16)
 
             wf = Proper.WaveFront(AMDGPU.fill(ComplexF32(1), 16, 16), 500f-9, 1f-3, 0f0, 1f0)
             prop_qphase(wf, 0.25f0, ctx)
