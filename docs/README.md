@@ -63,6 +63,8 @@ planning/audit records from the port effort.
   and pull requests
 - `CI` runs unit tests across supported platforms, coverage/Codecov, and
   lightweight Python-baseline parity
+- `CI` also executes all example smoke runners, builds this documentation with
+  Documenter doctests, and checks local Markdown targets on Julia 1.10 and 1.12
 - `.github/workflows/validation.yml` owns heavier validation surfaces:
   benchmark reports and the WFIRST Phase B Python/Julia parity matrix
 - `Validation` runs on pushes to `main`, on a weekly schedule, and manually via
@@ -101,4 +103,4 @@ investigation, or understanding how the port evolved. They are not the primary
 entry point for new users.
 
 - [GPU implementation plan](GPU_IMPLEMENTATION_PLAN.md)
-- [Archived maintainer notes](archive/)
+- [Archived maintainer notes](https://github.com/DarrylGamroth/Proper.jl/tree/main/docs/archive)

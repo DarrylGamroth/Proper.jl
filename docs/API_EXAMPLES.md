@@ -1,8 +1,8 @@
 # API Examples
 
 These examples are written in `jldoctest` style and mirrored by
-`test/test_doc_examples.jl` so they remain runnable in this repository even
-without a full Documenter pipeline.
+`test/test_doc_examples.jl`. CI executes both the Documenter doctests and the
+mirrored package tests so prose and test coverage cannot drift independently.
 
 ## `prop_run`
 

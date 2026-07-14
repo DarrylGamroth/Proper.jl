@@ -2,7 +2,7 @@
 
 This document is the current maintainer tracker for GPU-facing work in
 `Proper.jl`. Historical slice notes are archived in
-[`archive/GPU_IMPLEMENTATION_PLAN_2026-03-17.md`](archive/GPU_IMPLEMENTATION_PLAN_2026-03-17.md).
+[`archive/GPU_IMPLEMENTATION_PLAN_2026-03-17.md`](https://github.com/DarrylGamroth/Proper.jl/blob/main/docs/archive/GPU_IMPLEMENTATION_PLAN_2026-03-17.md).
 
 ## Current Contract
 - CUDA and AMDGPU are optional package extensions.
