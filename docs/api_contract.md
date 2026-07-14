@@ -77,6 +77,7 @@ Notes:
   - `prop_run(prepare_prescription_batch(...); slot=1)`
   - `prop_run(prepare_model(...); slot=1)`
   - `prop_run(prepare_run(...))`
+  - `prop_run_multi!(stack, samplings, runs)` for caller-owned batch output
   - `prop_begin(...; context=ctx)` / `prop_begin(...; workspace=ws)`
   - `prop_wavefront(...; context=ctx)` / `prop_wavefront(...; workspace=ws)`
 - Prepared parallel execution forks stored runtime state per pass:
@@ -144,12 +145,17 @@ Prepared-model asset contract:
   - `prop_run(...) -> (psf, sampling)`
 - Multi-run entry point:
   - `prop_run_multi(...) -> (stack, samplings)`
+  - `prop_run_multi!(stack, samplings, ...) -> (stack, samplings)` reuses both
+    caller-owned destinations
 - Prepared entry points preserve those same return shapes.
 - `prepare_run(...)` resolves one slot, its model assets, context, and native
   Julia keywords once; `prop_run(prepared_run)` executes that resolved run.
-- `prop_run_multi(runs::AbstractVector{<:Union{PreparedPrescription,PreparedBatch,PreparedModel}})`
+- `prop_run_multi(runs::AbstractVector{<:Union{PreparedPrescription,PreparedBatch,PreparedModel,PreparedRun}})`
   is a stable prepared execution form for wavelength sweeps and mixed prepared
   run collections.
+- Vectors returned by `prepare_run` are accepted by both `prop_run_multi` and
+  `prop_run_multi!`. They cannot receive `PASSVALUE` or late execution keywords
+  because their native Julia call shapes are already resolved.
 - Prescriptions may return either:
   - a `WaveFront`, which is finalized through `prop_end`, or
   - a `(psf, sampling)` tuple directly
@@ -157,6 +163,11 @@ Prepared-model asset contract:
   third dimension.
 - when feasible, `prop_run_multi` preserves the backend of the first prepared
   output for the stacked result instead of forcing a host `Array`
+- `prop_run_multi!` requires every result to match the caller stack's first two
+  dimensions, element type, and backend exactly; sampling metadata remains in a
+  host floating-point vector. Dense strided CPU stacks may be filled
+  concurrently; packed or custom storage runs serially to avoid races between
+  logical slices that share physical words.
 
 ## 4. Keyword Argument Contract
 - Keyword style support:

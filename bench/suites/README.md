@@ -9,6 +9,7 @@ Benchmark entry points currently include:
 - `bench/julia/steady_state/dm_projection.jl`
 - `bench/julia/steady_state/zernike_synthesis.jl`
 - `bench/julia/steady_state/zernike_fit.jl`
+- `bench/julia/steady_state/batch_preallocated_fp64.jl`
 - `bench/julia/wfirst_phaseb/prepared_models.jl`
 
 Generated reports belong under ignored `bench/reports/`.

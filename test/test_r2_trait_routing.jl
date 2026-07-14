@@ -7,6 +7,11 @@ function _gpu_entrance_prescription(λm, n)
     return prop_end(wf)
 end
 
+function _gpu_preallocated_multi_prescription(λm, n; wavefront, output)
+    prop_begin!(wavefront, one(λm), λm; beam_diam_fraction=one(λm) / 2)
+    return prop_end(wavefront, output)
+end
+
 function _warmed_gpu_qphase_alloc(wf, z, ctx, sync!)
     prop_qphase(wf, z, ctx)
     sync!()
@@ -199,6 +204,40 @@ function _gpu_define_entrance_smoke!(device_array, sync!; atol, rtol)
         one(T),
     )
     @test_throws DomainError prop_define_entrance(zero_wf)
+    return nothing
+end
+
+function _gpu_preallocated_multi_smoke!(device_array, sync!)
+    T = Float32
+    n = 8
+    nruns = 2
+    stack = device_array(zeros(T, n, n, nruns))
+    samplings = zeros(T, nruns)
+    runs = map(1:nruns) do i
+        context = RunContext(typeof(stack))
+        field = device_array(Matrix{Complex{T}}(undef, n, n))
+        wavefront = prop_begin!(field, one(T), T(0.5e-6); context=context)
+        prepared = prepare_prescription(
+            _gpu_preallocated_multi_prescription,
+            T(0.5) + T(i - 1) * T(0.01),
+            n;
+            context=context,
+        )
+        return prepare_run(
+            prepared;
+            activate_context=false,
+            wavefront=wavefront,
+            output=@view(stack[:, :, i]),
+        )
+    end
+
+    @test Proper._multi_run_exec_style(runs) isa Proper.MultiRunSerialExecStyle
+    returned_stack, returned_samplings = prop_run_multi!(stack, samplings, runs)
+    sync!()
+    @test returned_stack === stack
+    @test returned_samplings === samplings
+    @test Array(stack) == ones(T, n, n, nruns)
+    @test samplings == fill(T(2 / n), nruns)
     return nothing
 end
 
@@ -702,6 +741,7 @@ end
             @test !Proper.ka_separable_qphase_enabled(typeof(a), 256, 256)
             @test Proper.ka_separable_qphase_enabled(CUDA.CuMatrix{ComplexF64}, 128, 128)
             _gpu_define_entrance_smoke!(CUDA.CuArray, CUDA.synchronize; atol=2f-6, rtol=2f-6)
+            _gpu_preallocated_multi_smoke!(CUDA.CuArray, CUDA.synchronize)
             _gpu_carrier_phase_smoke!(CUDA.CuArray, CUDA.synchronize; atol=1f-5, rtol=1f-5)
 
             m = prop_magnify(a, 1.1, 16, ctx; QUICK=true)
@@ -830,6 +870,7 @@ end
             @test !Proper.ka_separable_qphase_enabled(typeof(a), 256, 256)
             @test Proper.ka_separable_qphase_enabled(AMDGPU.ROCMatrix{ComplexF64}, 128, 128)
             _gpu_define_entrance_smoke!(AMDGPU.ROCArray, AMDGPU.synchronize; atol=2f-6, rtol=2f-6)
+            _gpu_preallocated_multi_smoke!(AMDGPU.ROCArray, AMDGPU.synchronize)
             _gpu_carrier_phase_smoke!(AMDGPU.ROCArray, AMDGPU.synchronize; atol=3f-4, rtol=1f-3)
 
             promoted_c = 10.0
