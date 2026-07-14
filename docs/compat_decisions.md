@@ -135,6 +135,8 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   - Minimum supported Julia: 1.10.
   - Required CI: Linux CPU (parity + unit).
   - Optional CI: additional Julia version, macOS smoke, nightly GPU parity job.
+  - Amendment (2026-07-14): CUDA integration targets CUDA.jl 6; CUDA.jl 5 is
+    no longer in the supported compatibility range.
 
 ## D-0015: Legal and Fixture Policy
 - Date: 2026-03-04

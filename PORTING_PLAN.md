@@ -7,7 +7,7 @@
 - Port all upstream examples and validate Julia vs Python numerical agreement.
 - Keep filename parity for traceability, but do not do line-by-line transliteration; use Julia-native types, dispatch, and trait-based backend selection.
 
-## Current Status (2026-07-13)
+## Current Status (2026-07-14)
 
 Phases 0 through 9 are completed port-closure snapshots. This document retains
 their original sequencing for traceability; current contracts and follow-up
@@ -25,8 +25,10 @@ Current validation evidence:
   its native cubic-convolution/szoom kernels; SciPy fallback is rejected
 - all 23 representative WFIRST/Roman Phase B rows are hard-gated and currently
   pass, including compact/full explicit tilted-DM pairs and error-map branches
-- CPU, AMDGPU, and availability-gated CUDA paths have correctness tests; this
-  machine currently provides AMDGPU but no CUDA hardware
+- CPU, AMDGPU, and availability-gated CUDA paths have correctness tests; CUDA
+  is validated remotely on the WSL RTX 3050 Ti target with Julia 1.10.11 and
+  1.12.6, CUDA.jl 6.2.1, and scalar indexing disabled; CUDA.jl 6 is the
+  supported CUDA package line
 - benchmark reporting separates warmed steady-state runtime from cold-start /
   TTFx and includes an explicit Julia/FFTW thread-topology correctness gate
 - prepared CPU/CUDA/AMDGPU service-time distributions are correctness-gated,
