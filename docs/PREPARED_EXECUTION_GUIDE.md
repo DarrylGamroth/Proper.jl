@@ -268,7 +268,7 @@ model = prepare_model(
     256;
     pool_size=2,
     assets=prepare_asset_pool(AssetBundle; pool_size=2) do slot
-        return (dm=zeros(256, 256), slot=slot)
+        return (dm=zeros(48, 48), slot=slot)
     end,
 )
 ```
@@ -321,14 +321,12 @@ batch benchmark lane. It is the right API when your real workload is:
 - repeated prepared runs
 - GPU throughput rather than one-off interactive execution
 
-Representative validated CUDA batch result for that surface:
-
-- 4 prepared wavelengths on a `512 x 512` grid
-- FP64: `7.82 ms`
-- FP32: `537.67 us`
-
-That is why explicit prepared precision selection and vector-of-prepared-runs
-execution are documented as public capabilities rather than benchmark internals.
+Prepared precision selection and vector-of-prepared-runs execution are public
+capabilities because they control storage and ownership, not because of one
+device-specific benchmark result. Measure the target CPU or GPU with
+`scripts/benchmark_cpu_gpu.sh`; generated reports capture the available backend
+and workload configuration. This machine currently validates AMDGPU but has no
+CUDA device.
 
 ## Asset Injection Contract
 When a `PreparedModel` resolves assets for a slot:

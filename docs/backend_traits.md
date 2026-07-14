@@ -19,7 +19,7 @@ Define stable trait-dispatched interfaces for array backends and computational k
 - [x] AMDGPU package extension registers `ROCArray` backend, rocFFT, and KA kernel traits without making `AMDGPU.jl` a hard dependency
 
 ## 1. Trait Model
-Proposed trait families:
+Trait families:
 - `BackendStyle(::Type{<:AbstractArray})`
 - `FFTStyle(::Type{<:AbstractArray})`
 - `InterpStyle(::Type{<:AbstractArray})`
@@ -79,7 +79,8 @@ Semantics:
   - Interp/resample: `KernelAbstractions.jl` / `AcceleratedKernels.jl` kernels where implemented
   - Registration: package extension `ProperAMDGPUExt`
 - Future backends:
-  - oneAPI/ROCm backends may be added without API break if they satisfy trait contracts
+  - additional backends such as oneAPI or Metal may be added without an API
+    break if they satisfy the trait contracts
 
 ## 4. Honest Support Matrix
 

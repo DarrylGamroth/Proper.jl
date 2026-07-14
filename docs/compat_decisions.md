@@ -1086,3 +1086,30 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     meaningful compiled-C interpolation result rather than allocator contents.
   - Baseline reproducibility checks can detect any future reintroduction of
     uninitialized edge data.
+
+## D-0070: Example Validation Uses Tiered Evidence
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - The upstream example directory contains 23 source files, but one is the
+    package marker and several are helper prescriptions or plotting wrappers
+    without a distinct top-level numerical result.
+  - Describing this as 23 numerical parity cases overstated the executable
+    evidence and encouraged aggregate-only checks that can miss axis or
+    centering errors.
+- Decision:
+  - Require one-to-one filename, load, and expected-entry-point coverage for all
+    23 upstream sources: one package marker plus 22 executable/helper/demo
+    modules.
+  - Execute every user-facing runner headlessly on reduced grids in CI.
+  - Apply Python/Julia numerical thresholds at meaningful prescription or
+    runner output boundaries; cover helpers transitively and plotting-only
+    wrappers with execution smoke when they have no distinct numerical return.
+  - Include center values and asymmetric pixel probes alongside aggregate
+    metrics for numerical example cases.
+- Consequences:
+  - The live matrix currently has 23/23 source mappings and 16 numerical cases,
+    without claiming that a package marker or plot wrapper produces an
+    independent parity artifact.
+  - Documentation and CI must report mapping, execution, and numerical coverage
+    as separate evidence tiers.

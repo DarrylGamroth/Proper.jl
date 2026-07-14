@@ -18,6 +18,9 @@ planning/audit records from the port effort.
 
 ## Benchmarking
 - Run `./scripts/benchmark_cpu_gpu.sh` for the Julia CPU/GPU comparison lane
+- Run `./scripts/benchmark_thread_topology.sh` for a correctness-gated CPU
+  Julia/FFTW topology matrix; set `PROPER_THREAD_TOPOLOGY_WORKLOAD=batch` for
+  independent prepared-run throughput
 - Benchmark-only Julia dependencies live in `bench/Project.toml`; the benchmark
   scripts automatically develop the local checkout into that environment before
   running benchmark code
@@ -33,15 +36,19 @@ planning/audit records from the port effort.
 - The summary also includes:
   - `Prepared Batch Throughput`
   - `Precision Split`
-- A representative validated CUDA batch result is now surfaced in the root
-  README to make the prepared batch + FP32 capability visible from the main
-  package entry point
+- Thread-topology reports default to
+  `bench/reports/julia_thread_topology_cpu_core.json` and
+  `bench/reports/julia_thread_topology_cpu_batch.json`; every candidate is
+  checked against a reference output before its timing is accepted
 - Run `./scripts/profile_core_cpu_gpu.sh` to capture backend-specific text
   profiles for that shared core workload
 - The driver uses any available Julia GPU backends; CUDA or AMDGPU lanes require
   `CUDA.jl` or `AMDGPU.jl` to be available in the `bench/` environment
 - BenchmarkTools-based rows in that lane are warmed steady-state results, not
   cold-start / TTFx measurements
+- Timing reports are hardware snapshots, not portable expectations. The current
+  local machine validates AMDGPU; CUDA is availability-gated because no CUDA
+  device is present here.
 - If a GPU backend or supported device is unavailable, the summary records that
   backend as skipped rather than failing the whole benchmark lane
 - Active GPU implementation tracking lives in
@@ -80,8 +87,9 @@ planning/audit records from the port effort.
 - [Compatibility decisions](compat_decisions.md)
 
 ## Reference Validation And Coverage
-- [Parity closure report](PARITY_CLOSURE.md)
-- [Semantic reconciliation report](SEMANTIC_RECONCILIATION.md)
+- [Parity closure report](PARITY_CLOSURE.md) (dated historical snapshot)
+- [Semantic reconciliation report](SEMANTIC_RECONCILIATION.md) (dated
+  historical snapshot)
 - [WFIRST Phase B config matrix](WFIRST_PHASEB_CONFIG_MATRIX.md)
 
 ## Contributor Workflow

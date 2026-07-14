@@ -26,6 +26,9 @@ This document is the current maintainer tracker for GPU-facing work in
   is absent
 - prepared vector-of-runs execution supports multi-wavelength throughput
 - explicit `Float32` prepared execution is documented and benchmarked
+- backend-native coordinate-grid cubic convolution supports arbitrary map
+  projection on CUDA and AMDGPU arrays, with explicit failure for unsupported
+  scalar point sampling
 
 ## Active Follow-Up Candidates
 - tighten GPU allocation thresholds as CUDA.jl and AMDGPU.jl expose more stable
@@ -59,12 +62,12 @@ upstream-compatible `prop_dm` actuator/influence-function adapter the real-time
 hot path.
 
 Implementation priorities:
-1. GPU-native coordinate-grid cubic convolution for arbitrary map projection.
-   This is required by map reprojection and the full upstream-compatible
-   actuator-space `prop_dm` adapter.
-2. GPU-friendly DM surface application remains through `prop_dm(wf, dm_map)`;
-   if actuator-space commands must be handled inside `Proper.jl`, route the
-   projection through the coordinate-grid interpolation kernel.
+1. Profile representative map-heavy and RTC workloads before expanding the GPU
+   surface. Synthetic microbenchmarks alone do not justify a new kernel family.
+2. Keep full actuator-space `prop_dm` as an upstream-compatibility/CPU adapter.
+   For HIL work, reconstruct or preproject the actuator surface once in the AO
+   layer and send a wavefront-sampled map to `prop_dm(wf, dm_map)` or
+   `prop_add_phase`.
 3. GPU Zernike map generation only if per-frame Zernike updates are part of a
    real workload.
 4. Keep FITS I/O, PSD map generation, fitting routines, plotting, and
@@ -85,7 +88,13 @@ The user-facing integration contract is documented in
 ```bash
 ./scripts/benchmark_cpu_gpu.sh
 ./scripts/profile_core_cpu_gpu.sh
+./scripts/benchmark_thread_topology.sh
+PROPER_THREAD_TOPOLOGY_WORKLOAD=batch ./scripts/benchmark_thread_topology.sh
 ```
+
+The current local hardware validates the AMDGPU lane. CUDA hardware is not
+available on this machine, so CUDA remains availability-gated and must be
+revalidated on a CUDA runner before making current device-specific claims.
 
 For Python-baseline parity plus the full Python-vs-Julia benchmark lane, run:
 

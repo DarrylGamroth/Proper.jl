@@ -211,8 +211,11 @@ Important current examples:
 - the WFIRST reference model lives under `reference_models/wfirst_phaseb_proper`
 
 ## Benchmark And Parity Summary
-- Parity closure is complete against the patched Python 3.3.4 baseline:
-  see [docs/PARITY_CLOSURE.md](docs/PARITY_CLOSURE.md)
+- The live parity gate targets the patched Python 3.3.4 baseline and currently
+  covers 16 numerical cases plus all 23 upstream example-source mappings; see
+  [the parity harness contract](docs/parity_harness_contract.md)
+- [The parity closure report](docs/PARITY_CLOSURE.md) is a dated historical
+  snapshot, not the source of current suite counts
 - MATLAB/manual semantic reconciliation is complete for the identified hotspot
   semantics: see [docs/SEMANTIC_RECONCILIATION.md](docs/SEMANTIC_RECONCILIATION.md)
 - The WFIRST Phase B reference port is used as a broad correctness and
@@ -292,6 +295,19 @@ Run the dedicated Julia CPU/GPU comparison lane with:
 ./scripts/benchmark_cpu_gpu.sh
 ```
 
+For large multicore CPUs, measure Julia/FFTW topology with a correctness oracle
+before selecting thread counts:
+
+```bash
+./scripts/benchmark_thread_topology.sh
+PROPER_THREAD_TOPOLOGY_WORKLOAD=batch ./scripts/benchmark_thread_topology.sh
+```
+
+Those commands write
+`bench/reports/julia_thread_topology_cpu_core.json` and
+`bench/reports/julia_thread_topology_cpu_batch.json` by default. BLAS remains at
+one thread unless a measured workload demonstrates meaningful BLAS work.
+
 This generates:
 - `bench/reports/julia_cpu_gpu_summary.md`
 - `bench/reports/julia_cpu_gpu_steady_state.csv`
@@ -313,18 +329,11 @@ The summary includes both:
 - a synthetic core propagation-tail workload derived from the repeated
   lens/propagate sequence identified during hotspot analysis
 
-Representative validated batch result on CUDA hardware:
-- 4-wavelength prepared sweep, `512 x 512` grid
-- CPU FP64: `103.42 ms`
-- CUDA FP64: `7.82 ms`
-- CPU/CUDA FP64: `13.22x`
-- CPU FP32: `70.11 ms`
-- CUDA FP32: `537.67 us`
-- CPU/CUDA FP32: `130.40x`
-
-That is the clearest current example of why prepared batched execution and
-explicit `Float32` support are first-class performance features rather than
-benchmark-only details.
+Do not treat checked-in timing numbers as portable hardware claims. Run the
+harness on the target machine; its generated reports identify available GPU
+backends, precision, batch shape, runtime versions, and thread configuration.
+This checkout's current local validation includes AMDGPU, while CUDA is skipped
+because this machine has no CUDA device.
 
 For profiling the shared core workload directly, run:
 
