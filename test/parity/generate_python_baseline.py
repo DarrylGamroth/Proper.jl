@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import csv
 import json
 import os
@@ -6,6 +7,8 @@ import sys
 from pathlib import Path
 
 import numpy as np
+
+from baseline_provenance import write_provenance
 
 
 def run_simple_case(proper):
@@ -112,6 +115,10 @@ def run_carrier_phase_case(proper):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output-dir", type=Path)
+    args = parser.parse_args()
+
     project = Path(__file__).resolve().parents[2]
     pyproper_root = Path(os.environ.get("PYPROPER_ROOT", project / ".." / "proper_v3.3.4_python")).resolve()
     if not (pyproper_root / "proper").is_dir():
@@ -123,7 +130,10 @@ def main():
 
     import proper  # noqa: WPS433
 
-    outdir = Path(__file__).resolve().parent / "baseline" / "python334"
+    outdir = args.output_dir or (
+        Path(__file__).resolve().parent / "baseline" / "python334"
+    )
+    outdir = outdir.resolve()
     outdir.mkdir(parents=True, exist_ok=True)
 
     psf, sampling = run_simple_case(proper)
@@ -175,6 +185,41 @@ def main():
         }
     )
     (outdir / "carrier_phase.json").write_text(json.dumps(carrier_case, indent=2))
+
+    case_metadata = {
+        "simple_case": {
+            "script": "run_simple_case",
+            "wavelength_m": 0.55e-6,
+            "grid_size": 256,
+            "config": {"beam_diam_fraction": 0.5},
+        },
+        "wavefront_accessors_even": {
+            "script": "run_wavefront_accessors_even_case",
+            "wavelength_m": 500e-9,
+            "grid_size": 8,
+            "config": {"asymmetric_dyadic_inputs": True},
+        },
+        "carrier_phase": {
+            "script": "run_carrier_phase_case",
+            "wavelength_m": 500e-9,
+            "grid_size": 4,
+            "config": {"carrier_phase": [False, True]},
+        },
+    }
+    write_provenance(
+        outdir / "core_baseline_metadata.json",
+        generator=Path(__file__).name,
+        pyproper_root=pyproper_root,
+        proper=proper,
+        seed=None,
+        cases=case_metadata,
+        artifacts=(
+            "simple_case_meta.json",
+            "simple_case_psf.csv",
+            "wavefront_accessors_even.json",
+            "carrier_phase.json",
+        ),
+    )
 
 
 if __name__ == "__main__":

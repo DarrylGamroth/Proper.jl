@@ -20,9 +20,22 @@ const EXAMPLE_MODULES = Dict{Symbol,Module}(
     :run_coronagraph => load_example_module(joinpath(EXDIR, "run_coronagraph.jl")),
     :run_coronagraph_dm => load_example_module(joinpath(EXDIR, "run_coronagraph_dm.jl")),
     :multi_example => load_example_module(joinpath(EXDIR, "multi_example.jl")),
+    :testmulti1 => load_example_module(joinpath(EXDIR, "testmulti1.jl")),
+    :testmulti2 => load_example_module(joinpath(EXDIR, "testmulti2.jl")),
 )
 
+function probe_indices(a::AbstractMatrix)
+    ny, nx = size(a)
+    return (
+        (ny ÷ 5 + 1, nx ÷ 3 + 1),
+        (ny ÷ 3 + 1, 2 * nx ÷ 3 + 1),
+        (3 * ny ÷ 5 + 1, nx ÷ 4 + 1),
+        (4 * ny ÷ 5 + 1, 3 * nx ÷ 4 + 1),
+    )
+end
+
 function summarize(a, sampling)
+    probes = [a[index...] for index in probe_indices(a)]
     if eltype(a) <: Complex
         c = a[size(a, 1) ÷ 2 + 1, size(a, 2) ÷ 2 + 1]
         return Dict(
@@ -33,6 +46,8 @@ function summarize(a, sampling)
             "norm" => float(norm(a)),
             "center_re" => float(real(c)),
             "center_im" => float(imag(c)),
+            "probes_re" => Float64[real(value) for value in probes],
+            "probes_im" => Float64[imag(value) for value in probes],
         )
     else
         c = a[size(a, 1) ÷ 2 + 1, size(a, 2) ÷ 2 + 1]
@@ -43,11 +58,15 @@ function summarize(a, sampling)
             "norm" => float(norm(a)),
             "max" => float(maximum(a)),
             "center" => float(c),
+            "probes" => Float64[probes...],
         )
     end
 end
 
 Random.seed!(12345)
+
+testmulti1_psf = getfield(EXAMPLE_MODULES[:testmulti1], :testmulti1)()
+testmulti2_fields, testmulti2_samplings = getfield(EXAMPLE_MODULES[:testmulti2], :testmulti2)()
 
 cases = Dict{String,Tuple{Any,Any}}(
     "simple_prescription" => getfield(EXAMPLE_MODULES[:simple_prescription], :simple_prescription)(0.55e-6, 256),
@@ -62,6 +81,10 @@ cases = Dict{String,Tuple{Any,Any}}(
     "run_coronagraph" => getfield(EXAMPLE_MODULES[:run_coronagraph], :run_coronagraph)(0.55e-6, 256, Dict("use_errors" => false, "occulter_type" => "GAUSSIAN")),
     "run_coronagraph_dm" => getfield(EXAMPLE_MODULES[:run_coronagraph_dm], :run_coronagraph_dm)(0.55e-6, 256, Dict("use_errors" => false, "use_dm" => false, "occulter_type" => "GAUSSIAN")),
     "multi_example" => getfield(EXAMPLE_MODULES[:multi_example], :multi_example)(0.55e-6, 256, Dict("use_dm" => false, "dm" => zeros(48, 48))),
+    "testmulti1" => (testmulti1_psf, 1.5e-6),
+    "testmulti2_pattern_1" => (testmulti2_fields[:, :, 1], testmulti2_samplings[1]),
+    "testmulti2_pattern_2" => (testmulti2_fields[:, :, 2], testmulti2_samplings[2]),
+    "testmulti2_pattern_3" => (testmulti2_fields[:, :, 3], testmulti2_samplings[3]),
 )
 
 jl = Dict(name => summarize(psf, samp) for (name, (psf, samp)) in cases)
@@ -77,6 +100,21 @@ end
 function relerr_floor(a::Real, b::Real; floor::Float64=1e-12)
     den = max(abs(b), floor)
     return abs(a - b) / den
+end
+
+
+function vector_max_absdiff(actual, expected)
+    length(actual) == length(expected) || return Inf
+    return maximum(abs(Float64(actual[i]) - Float64(expected[i])) for i in eachindex(actual))
+end
+
+
+function vector_max_relerr_floor(actual, expected; floor::Float64=1e-12)
+    length(actual) == length(expected) || return Inf
+    return maximum(
+        relerr_floor(Float64(actual[i]), Float64(expected[i]); floor)
+        for i in eachindex(actual)
+    )
 end
 
 report = Dict{String,Any}()
@@ -99,6 +137,10 @@ for (name, j) in jl
         m["sum_relerr_floor"] = relerr_floor(j["sum"], Float64(p["sum"]))
         m["max_relerr_floor"] = relerr_floor(j["max"], Float64(p["max"]))
         m["norm_relerr_floor"] = relerr_floor(j["norm"], Float64(p["norm"]))
+        m["center_absdiff"] = abs(j["center"] - Float64(p["center"]))
+        m["center_relerr_floor"] = relerr_floor(j["center"], Float64(p["center"]))
+        m["probe_absdiff"] = vector_max_absdiff(j["probes"], p["probes"])
+        m["probe_relerr_floor"] = vector_max_relerr_floor(j["probes"], p["probes"])
     else
         m["sum_re_relerr"] = relerr(j["sum_re"], Float64(p["sum_re"]))
         m["sum_im_relerr"] = relerr(j["sum_im"], Float64(p["sum_im"]))
@@ -109,6 +151,14 @@ for (name, j) in jl
         m["sum_re_relerr_floor"] = relerr_floor(j["sum_re"], Float64(p["sum_re"]))
         m["sum_im_relerr_floor"] = relerr_floor(j["sum_im"], Float64(p["sum_im"]))
         m["norm_relerr_floor"] = relerr_floor(j["norm"], Float64(p["norm"]))
+        m["center_re_absdiff"] = abs(j["center_re"] - Float64(p["center_re"]))
+        m["center_im_absdiff"] = abs(j["center_im"] - Float64(p["center_im"]))
+        m["center_re_relerr_floor"] = relerr_floor(j["center_re"], Float64(p["center_re"]))
+        m["center_im_relerr_floor"] = relerr_floor(j["center_im"], Float64(p["center_im"]))
+        m["probe_re_absdiff"] = vector_max_absdiff(j["probes_re"], p["probes_re"])
+        m["probe_im_absdiff"] = vector_max_absdiff(j["probes_im"], p["probes_im"])
+        m["probe_re_relerr_floor"] = vector_max_relerr_floor(j["probes_re"], p["probes_re"])
+        m["probe_im_relerr_floor"] = vector_max_relerr_floor(j["probes_im"], p["probes_im"])
     end
     report[name] = m
 end

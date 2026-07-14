@@ -10,13 +10,19 @@ function multi_example(lambda_m::Real, n::Integer; use_dm::Bool=false, dm=nothin
     diam = 0.048
     pupil_ratio = 0.25
     fl_lens = 0.48
+    n_actuators = 48
 
     wfo = prop_begin(diam, lambda_m, n; beam_diam_fraction=pupil_ratio)
     prop_circular_aperture(wfo, diam / 2)
     prop_define_entrance(wfo)
 
     if use_dm
-        prop_dm(wfo, dm === nothing ? zeros(n, n) : dm; mirror=false)
+        dm_surface = dm === nothing ? zeros(typeof(wfo.sampling_m), n_actuators, n_actuators) : dm
+        size(dm_surface) == (n_actuators, n_actuators) || throw(ArgumentError(
+            "multi_example expects a 48 x 48 actuator-space DM surface",
+        ))
+        dm_center = n_actuators / 2
+        prop_dm(wfo, dm_surface, dm_center, dm_center, 1.0e-3)
     end
 
     prop_lens(wfo, fl_lens)
@@ -30,7 +36,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         0.55,
         256;
         name=:multi_example,
-        PASSVALUE=[(; use_dm=false), (; use_dm=true, dm=zeros(256, 256))],
+        PASSVALUE=[(; use_dm=false), (; use_dm=true, dm=zeros(48, 48))],
         pool_size=2,
     )
     stack, samplings = prop_run_multi(model)

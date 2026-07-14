@@ -1,12 +1,29 @@
 using Proper
+using Random
 
-function telescope_dm(wfo::WaveFront, f_lens::Real, use_errors::Bool, use_dm::Bool)
+function telescope_dm(
+    wfo::WaveFront,
+    f_lens::Real,
+    use_errors::Bool,
+    use_dm::Bool;
+    map_file::AbstractString="telescope_obj.fits",
+    rng::AbstractRNG=Random.default_rng(),
+)
     obj_map = nothing
     if use_errors
         rms_error = 10e-9
         c_freq = 15.0
         high_power = 3.0
-        obj_map = prop_psd_errormap(wfo, rms_error, c_freq, high_power; RMS=true, MAP="obj_map", FILE="telescope_obj.fits")
+        obj_map = prop_psd_errormap(
+            wfo,
+            rms_error,
+            c_freq,
+            high_power;
+            RMS=true,
+            MAP="obj_map",
+            FILE=map_file,
+            RNG=rng,
+        )
     end
 
     prop_lens(wfo, f_lens, "objective")

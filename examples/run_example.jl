@@ -1,13 +1,14 @@
 using Proper
 include(joinpath(@__DIR__, "example_system.jl"))
 
-function run_example(wavelength::Real, gridsize::Integer)
+function run_example(wavelength::Real, gridsize::Integer; iterations::Integer=11)
+    iterations > 0 || throw(ArgumentError("iterations must be positive"))
     state_path = joinpath(mktempdir(), "example_system.state")
     prop_init_savestate(dirname(state_path))
     prepared = prepare_model(:example_system, example_system, wavelength * 1e6, gridsize; state_path=state_path, pool_size=1)
     psf = nothing
     sampling = 0.0
-    for _ in 1:11
+    for _ in 1:iterations
         psf, sampling = prop_run(prepared)
     end
     prop_end_savestate(prop_begin(1.0, wavelength, gridsize), state_path)

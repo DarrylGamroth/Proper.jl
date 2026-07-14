@@ -1,9 +1,8 @@
 using Proper
 include(joinpath(@__DIR__, "run_occulter.jl"))
 
-function occulter_demo()
-    n = 512
-    lambda_um = 0.55
+function occulter_demo(; n::Integer=512, lambda_um::Real=0.55)
+    n > 0 || throw(ArgumentError("n must be positive"))
     model = prepare_model(:run_occulter, run_occulter, lambda_um, n; pool_size=1)
 
     solid, _ = prop_run(model; occulter=:solid)

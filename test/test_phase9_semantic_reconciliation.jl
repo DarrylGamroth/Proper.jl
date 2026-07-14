@@ -238,6 +238,16 @@ end
         @test isapprox(got, ref; atol=1e-12, rtol=1e-12)
     end
 
+    @testset "prop_szoom complex unsupported borders are initialized" begin
+        input = fill(1.0 + 2.0im, 32, 32)
+        output = prop_szoom(input, 1.25, 48)
+        reference = _matlab_szoom_ref(real.(input), 1.25; nox=48, noy=48) .+
+            2im .* _matlab_szoom_ref(real.(input), 1.25; nox=48, noy=48)
+        @test isapprox(output, reference; atol=1e-12, rtol=1e-12)
+        @test all(iszero, output[1, :])
+        @test all(iszero, output[:, 1])
+    end
+
     @testset "prop_pixellate sampling overload matches MATLAB formula" begin
         a = reshape(collect(1.0:64.0), 8, 8)
         ref = _matlab_pixellate_ref(a, 0.5, 1.0, 4)

@@ -39,7 +39,6 @@ end
         jl_files = Set(filter(f -> endswith(f, ".jl"), readdir(joinpath(@__DIR__, "..", "examples"))))
 
         for py in py_files
-            py == "__init__.py" && continue
             expected = replace(py, ".py" => ".jl")
             @test expected in jl_files
         end
