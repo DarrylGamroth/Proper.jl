@@ -24,7 +24,7 @@ ProperCUDAExt = "CUDA"
 [compat]
 AMDGPU = "2.7"
 AcceleratedKernels = "0.4.3"
-CUDA = "5"
+CUDA = "6"
 FFTW = "1.10"
 FITSIO = "0.17"
 KernelAbstractions = "0.9.42"

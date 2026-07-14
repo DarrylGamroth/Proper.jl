@@ -8,7 +8,7 @@ Proper = "0686a737-3bdd-44da-9bf7-6692cf630078"
 
 [compat]
 BenchmarkTools = "1.6"
-CUDA = "5"
+CUDA = "6"
 FFTW = "1.10"
 JSON3 = "1.14"
 LinearAlgebra = "1.10"
