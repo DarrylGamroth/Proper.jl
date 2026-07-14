@@ -28,6 +28,24 @@ jobs:
       - name: Test
         run: julia -t4 --startup-file=no --project=. -e 'using Pkg; Pkg.test()'
 
+  latency-harness:
+    name: Latency Harness (Julia ${{ matrix.julia-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        julia-version: ['1.10', '1.12']
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: ${{ matrix.julia-version }}
+      - uses: julia-actions/cache@v3
+      - name: Instantiate pinned latency tools
+        run: julia --startup-file=no --project=bench/latency -e 'using Pkg; Pkg.instantiate()'
+      - name: Test deterministic latency harness
+        run: julia --startup-file=no --project=bench/latency bench/latency/test/runtests.jl
+
   coverage:
     name: Coverage
     runs-on: ubuntu-latest

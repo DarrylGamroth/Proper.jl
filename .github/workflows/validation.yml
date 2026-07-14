@@ -13,6 +13,10 @@ on:
         description: Run the heavy WFIRST Phase B parity matrix
         type: boolean
         default: true
+      run_latency:
+        description: Collect prepared CPU latency distributions
+        type: boolean
+        default: true
       wfirst_cases:
         description: Comma-separated WFIRST cases for manual runs; leave empty for the full matrix
         type: string
@@ -69,6 +73,38 @@ jobs:
             bench/reports/*.json
             bench/reports/*.md
             bench/reports/*.csv
+
+  prepared-latency:
+    name: Prepared CPU Latency Distribution
+    if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_latency) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      JULIA_NUM_THREADS: '1'
+      PROPER_LATENCY_SAMPLES: '10000'
+      PROPER_LATENCY_REPETITIONS: '3'
+      PROPER_LATENCY_WARMUP: '5'
+      PROPER_LATENCY_COOLDOWN_SECONDS: '1'
+      PROPER_LATENCY_GRID_N: '512'
+      PROPER_LATENCY_FFTW_THREADS: '1'
+      PROPER_LATENCY_BLAS_THREADS: '1'
+      PROPER_LATENCY_MIN_TAIL_OBSERVATIONS: '100'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1.12'
+      - uses: julia-actions/cache@v3
+      - name: Collect correctness-gated latency distributions
+        run: ./scripts/benchmark_latency.sh cpu
+      - name: Upload raw latency artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: prepared-cpu-latency-artifacts
+          path: |
+            bench/reports/julia_prepared_latency_cpu_fp64.json
+            bench/reports/julia_prepared_latency_cpu_fp64.hlog
 
   wfirst-phaseb-parity:
     name: WFIRST Phase B Parity

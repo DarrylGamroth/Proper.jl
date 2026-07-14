@@ -1223,3 +1223,40 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     `6.4e-16`/`2.4e-15` locally. All 23 representative WFIRST rows pass; the
     worst relative L2 is `2.2e-13` and every sampling difference is zero,
     leaving substantial margin to the enforced thresholds.
+
+## D-0075: Prepared Tail Latency Uses Correctness-Gated Raw Histograms
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - Existing warmed `BenchmarkTools` trials are useful for typical runtime and
+    allocation comparisons, but small trial counts cannot support p90, p99, or
+    p99.9 claims.
+  - GPU launch timing without an explicit synchronization measures submission,
+    not completed optical propagation.
+  - Shared GitHub-hosted runners vary enough that a percentile regression gate
+    would conflate code changes with host placement and load.
+- Decision:
+  - Add a benchmark-only, exact-revision-pinned `HdrHistogram.jl` environment
+    and retain Julia-version-specific manifests outside the package runtime
+    dependency graph.
+  - Measure the caller-owned, preallocated `PreparedRun` surface only after an
+    allocating CPU oracle, target repeatability, output identity, and sampling
+    checks pass.
+  - Use a closed-loop, single-outstanding load model. End CPU samples at
+    return-ready output and CUDA/AMDGPU samples after explicit device
+    synchronization. Exclude preparation, correctness transfers, histogram
+    recording, cooldown, and export from the per-operation boundary.
+  - Apply no coordinated-omission correction because this harness does not
+    model an external arrival schedule. Preserve tagged raw histogram logs and
+    report only percentiles with at least 100 observations in their tail.
+  - Keep cold start / TTFx separate. Allow scheduled shared CI to enforce the
+    harness and numerical contracts and collect artifacts, but require a stable
+    dedicated runner before defining percentile regression thresholds.
+- Consequences:
+  - CPU, CUDA, and AMDGPU distributions share one explicit measurement and
+    correctness contract; unavailable GPU backends are recorded as skipped.
+  - p90 requires 1,000 samples, p99 requires 10,000, and p99.9 requires 100,000
+    samples per reported histogram under the default support rule.
+  - FAST-SCC arrival schedules, queueing, frame deadlines, bursts, and overload
+    remain application- or `AdaptiveOpticsSim.jl`-level benchmarks rather than
+    implicit claims made by this closed-loop package harness.

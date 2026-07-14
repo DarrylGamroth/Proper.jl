@@ -17,16 +17,23 @@ planning/audit records from the port effort.
   - [API contract](api_contract.md)
 
 ## Benchmarking
+- Read the [latency benchmarking guide](LATENCY_BENCHMARKING.md) before
+  interpreting prepared-call tail latency or configuring percentile sample
+  counts
+- Run `./scripts/benchmark_latency.sh cpu`, `amdgpu`, or `cuda` for a
+  correctness-gated service-time distribution and raw HdrHistogram log
 - Run `./scripts/benchmark_cpu_gpu.sh` for the Julia CPU/GPU comparison lane
 - Run `./scripts/benchmark_thread_topology.sh` for a correctness-gated CPU
   Julia/FFTW topology matrix; set `PROPER_THREAD_TOPOLOGY_WORKLOAD=batch` for
   independent prepared-run throughput
-- Benchmark-only Julia dependencies live in `bench/Project.toml`; the benchmark
-  scripts automatically develop the local checkout into that environment before
-  running benchmark code
-- Optional GPU benchmark packages should be added to that environment, for
-  example `julia --project=bench -e 'using Pkg; Pkg.develop(path=pwd()); Pkg.add("CUDA")'`
-  or the same command with `"AMDGPU"`
+- Ordinary benchmark-only Julia dependencies live in `bench/Project.toml`; the
+  exact-revision-pinned HdrHistogram overlay and version-specific manifests live
+  in `bench/latency/`
+- The benchmark scripts automatically develop the local checkout when needed
+  and compose those environments for latency runs
+- Optional GPU benchmark dependencies are declared separately in `bench/cuda/`
+  and `bench/amdgpu/`; instantiate the project for the device available on the
+  host
 - The resulting summary is written to `bench/reports/julia_cpu_gpu_summary.md`
 - The lane also writes:
   - `bench/reports/julia_cpu_gpu_batch_throughput.csv`
@@ -42,10 +49,12 @@ planning/audit records from the port effort.
   checked against a reference output before its timing is accepted
 - Run `./scripts/profile_core_cpu_gpu.sh` to capture backend-specific text
   profiles for that shared core workload
-- The driver uses any available Julia GPU backends; CUDA or AMDGPU lanes require
-  `CUDA.jl` or `AMDGPU.jl` to be available in the `bench/` environment
+- The driver uses any available Julia GPU backends through the checked-in
+  `bench/cuda/` and `bench/amdgpu/` environments
 - BenchmarkTools-based rows in that lane are warmed steady-state results, not
   cold-start / TTFx measurements
+- The scheduled prepared-latency lane collects artifacts without a percentile
+  regression gate because shared CI hardware is not a stable latency runner
 - Timing reports are hardware snapshots, not portable expectations. The current
   local machine validates AMDGPU; CUDA is availability-gated because no CUDA
   device is present here.
@@ -71,11 +80,13 @@ planning/audit records from the port effort.
 - `CI` also executes all example smoke runners, builds this documentation with
   Documenter doctests, and checks local Markdown targets on Julia 1.10 and 1.12
 - `.github/workflows/validation.yml` owns heavier validation surfaces:
-  benchmark reports and the WFIRST Phase B Python/Julia parity matrix
-- `Validation` runs on pushes to `main`, on a weekly schedule, and manually via
-  `workflow_dispatch`
-- Manual `Validation` runs can disable benchmark reports or WFIRST parity and
-  can limit WFIRST with the `wfirst_cases` input
+  benchmark reports, prepared latency distributions, and the WFIRST Phase B
+  Python/Julia parity matrix
+- Benchmark/WFIRST validation runs on pushes to `main`, on a weekly schedule,
+  and manually via `workflow_dispatch`; prepared latency runs on the schedule
+  or manual dispatch
+- Manual `Validation` runs can disable benchmark reports, prepared latency, or
+  WFIRST parity and can limit WFIRST with the `wfirst_cases` input
 - The verified Python PROPER reconstruction, upstream `proper-models` checkout,
   and WFIRST public data compatibility root are fetched into CI caches rather
   than committed to the repository

@@ -29,6 +29,9 @@ Current validation evidence:
   machine currently provides AMDGPU but no CUDA hardware
 - benchmark reporting separates warmed steady-state runtime from cold-start /
   TTFx and includes an explicit Julia/FFTW thread-topology correctness gate
+- prepared CPU/CUDA/AMDGPU service-time distributions are correctness-gated,
+  synchronize device completion, retain raw HdrHistogram logs, and suppress
+  statistically unsupported percentiles
 
 ## Porting Principles (Julia-First Internals)
 - Filename mapping is an organization constraint, not an implementation constraint.
@@ -549,9 +552,13 @@ Decision reference: `D-0029` in `docs/compat_decisions.md`.
   - measure cold-start and first-call compile latency independently
   - do not combine with steady-state runtime comparisons
 - Statistical policy:
-  - use fixed sample-count minimums per case (default `>= 30` timed samples)
-  - report median and p90 as primary statistics; treat minimum as informational only
-  - keep outlier handling explicit and consistent across Python and Julia
+  - use `BenchmarkTools` for warmed typical-runtime comparisons; report its
+    median and robust spread without relabeling small trials as tail evidence
+  - use the prepared HdrHistogram lane for service-time distributions
+  - require at least 100 observations beyond a requested tail percentile
+    (1,000 samples for p90, 10,000 for p99, and 100,000 for p99.9)
+  - report unsupported percentiles explicitly rather than extrapolating them
+  - keep outlier handling explicit and retain raw histogram logs
 
 ### 4. TTFx Exclusion Rule (Required)
 - Primary Python-vs-Julia performance claims are based on steady-state timings only.
@@ -569,9 +576,13 @@ Decision reference: `D-0029` in `docs/compat_decisions.md`.
 
 ### 6. Reported Metrics
 - Steady-state:
-  - median, p90, and best runtime
+  - median, robust spread, and informational best runtime
   - speedup ratio (Python / Julia)
   - allocations and allocated bytes (Julia)
+- Prepared service-time distributions:
+  - supported p50/p90/p99/p99.9 values, per-run and aggregate histograms
+  - achieved completion rate, GC counters, and observer overhead
+  - numerical-oracle and repeatability evidence collected before timing
 - TTFx:
   - startup latency
   - first-call latency by benchmark case
@@ -580,6 +591,8 @@ Decision reference: `D-0029` in `docs/compat_decisions.md`.
 - Store benchmark config + metadata with each run:
   - commit hash, decision set, baseline tag, backend, hardware, thread count
 - Emit machine-readable outputs (`JSON`/`CSV`) and human summary (`Markdown`).
+- Emit tagged HdrHistogram logs for prepared latency runs so distributions can
+  be reanalyzed without lossy percentile summaries.
 - Keep large/raw artifacts outside default git history unless explicitly approved.
 - Include explicit run tags:
   - `steady_state` for Python-vs-Julia runtime comparison
@@ -604,6 +617,10 @@ Decision reference: `D-0029` in `docs/compat_decisions.md`.
   - never merged into Python-vs-Julia runtime charts
 - `bench/common/`:
   - workload definitions, seed management, and shared metadata schema
+- `bench/latency/`:
+  - isolated, revision-pinned HdrHistogram environment and deterministic tests
+- `bench/julia/latency/`:
+  - CPU/CUDA/AMDGPU prepared-call distribution entrypoints
 - `bench/reports/`:
   - generated markdown summaries and comparison tables
 
@@ -612,13 +629,17 @@ Decision reference: `D-0029` in `docs/compat_decisions.md`.
 - Cold-start/TTFx command must run Julia cold-start suite only.
 - CI benchmark jobs must publish both artifacts, but the performance pass/fail gate uses steady-state artifacts.
 - TTFx artifacts are required for trend tracking and precompile validation, not for Python-runtime parity claims.
+- Shared-host CI may collect prepared latency distributions and must enforce
+  correctness, but percentile regression gates require a controlled dedicated
+  runner.
 
 ## Suggested Julia Dependencies
 - Core: `LinearAlgebra`, `Statistics`, `Random`, `FFTW`, `AbstractFFTs`
 - IO (required): `FITSIO` (`FITSIO.jl`)
 - Plotting (default for examples): `Plots` (`Plots.jl`)
 - Optional backend/perf: `CUDA`, `KernelAbstractions`, `AcceleratedKernels`, `MKL`
-- Testing/benchmarking: `Test`, `BenchmarkTools`
+- Testing/benchmarking: `Test`, `BenchmarkTools`; benchmark-only pinned
+  `HdrHistogram` for latency distributions
 
 ## One-to-One Filename Map
 Note: mapping below guarantees file-level traceability; implementation may and should diverge internally to use Julia dispatch/traits.

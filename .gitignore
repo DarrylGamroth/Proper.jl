@@ -1,4 +1,6 @@
 Manifest.toml
+!bench/latency/Manifest-v1.10.toml
+!bench/latency/Manifest-v1.12.toml
 __pycache__/
 .cache/
 .ci-cache/
@@ -7,6 +9,7 @@ __pycache__/
 bench/reports/*.json
 bench/reports/*.md
 bench/reports/*.csv
+bench/reports/*.hlog
 bench/reports/*_real.fits
 bench/reports/*_imag.fits
 *.npz

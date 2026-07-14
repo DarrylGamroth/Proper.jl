@@ -195,6 +195,11 @@ Thread counts are machine- and grid-size-dependent. Benchmark representative
 `prop_fftw_threads` affects newly created FFTW plans only; call
 `reset_prepared_batch!` or recreate prepared contexts after changing it.
 
+For distributions rather than typical warmed runtime, use the
+[prepared latency harness](LATENCY_BENCHMARKING.md). It exercises this same
+caller-owned `PreparedRun` surface, rejects numerical mismatches before timing,
+and explicitly synchronizes CUDA/AMDGPU work at the end of every sample.
+
 The repository includes a fresh-process matrix benchmark that rejects a
 configuration if its complex field differs from the matrix reference before
 timing it:

@@ -222,6 +222,9 @@ Important current examples:
   benchmarking workload, not as a separate optimized execution path
 - Current benchmark policy separates steady-state runtime from Julia cold-start /
   TTFx (`D-0029`)
+- Prepared CPU/CUDA/AMDGPU latency distributions have a correctness-first,
+  sample-count-aware protocol; see
+  [the latency benchmarking guide](docs/LATENCY_BENCHMARKING.md)
 
 ## CI And Validation Layout
 Benchmarking and WFIRST validation stay in this repository for traceability,
@@ -229,10 +232,11 @@ but they are separated from the always-on package CI:
 
 - `CI` runs package tests, coverage, Codecov upload, and lightweight
   Python-baseline parity on pushes and pull requests
-- `Validation` runs benchmark reports and the heavy WFIRST Phase B parity matrix
-  on pushes to `main`, weekly schedule, or manual `workflow_dispatch`
-- manual `Validation` runs can disable either benchmark reports or WFIRST
-  parity, and can override `wfirst_cases` for a targeted WFIRST subset
+- `Validation` runs benchmark reports and the heavy WFIRST Phase B parity
+  matrix on pushes to `main`, weekly schedule, or manual `workflow_dispatch`;
+  prepared latency runs on the weekly schedule or manual dispatch
+- manual `Validation` runs can disable benchmark reports, prepared latency, or
+  WFIRST parity, and can override `wfirst_cases` for a targeted WFIRST subset
 - external baselines are fetched into CI caches rather than vendored into the
   repository
 
@@ -267,16 +271,18 @@ PYTHON_BIN=.venv-parity/bin/python BENCH_INCLUDE_WFIRST_CPU=0 ./scripts/benchmar
 PYTHON_BIN=.venv-parity/bin/python WFIRST_PARITY_ONLY=1 ./scripts/benchmark_wfirst_phaseb_cpu.sh --parity-only
 ```
 
-Julia benchmark dependencies live in `bench/Project.toml`, not the core package
-environment. The benchmark scripts automatically develop the local checkout into
-that environment before running Julia benchmark code.
+Ordinary Julia benchmark dependencies live in `bench/Project.toml`, not the core
+package environment. The pinned HdrHistogram overlay lives separately in
+`bench/latency/`. The benchmark scripts automatically make both environments
+available before running latency code.
 
-Optional GPU benchmark backends should be added to the benchmark environment,
-not to the core package environment:
+Optional GPU benchmark backends are isolated from the core package environment
+in their checked-in benchmark projects. Instantiate the one available on the
+host:
 
 ```bash
-julia --project=bench -e 'using Pkg; Pkg.develop(path=pwd()); Pkg.add("CUDA")'
-julia --project=bench -e 'using Pkg; Pkg.develop(path=pwd()); Pkg.add("AMDGPU")'
+julia --project=bench/cuda -e 'using Pkg; Pkg.instantiate()'
+julia --project=bench/amdgpu -e 'using Pkg; Pkg.instantiate()'
 ```
 
 For a targeted WFIRST check:
@@ -303,10 +309,24 @@ before selecting thread counts:
 PROPER_THREAD_TOPOLOGY_WORKLOAD=batch ./scripts/benchmark_thread_topology.sh
 ```
 
-Those commands write
+Those topology commands write
 `bench/reports/julia_thread_topology_cpu_core.json` and
 `bench/reports/julia_thread_topology_cpu_batch.json` by default. BLAS remains at
 one thread unless a measured workload demonstrates meaningful BLAS work.
+
+For correctness-gated prepared-call latency distributions and raw HdrHistogram
+logs:
+
+```bash
+./scripts/benchmark_latency.sh cpu
+./scripts/benchmark_latency.sh amdgpu
+./scripts/benchmark_latency.sh cuda
+```
+
+The latency lane synchronizes GPU work inside the timed boundary and reports
+only percentiles supported by its sample count. See
+[the measurement contract](docs/LATENCY_BENCHMARKING.md) before interpreting
+tail latency.
 
 This generates:
 - `bench/reports/julia_cpu_gpu_summary.md`
@@ -319,8 +339,8 @@ This generates:
 The script uses the Julia steady-state CPU lane plus any available GPU lanes.
 It does not depend on the Python parity environment. If a GPU backend or
 supported device is unavailable, it records that backend as skipped instead of
-failing the whole run. GPU benchmark lanes require `CUDA.jl` or `AMDGPU.jl` to
-be available in the `bench/` environment on the machine running the benchmark.
+failing the whole run. GPU benchmark lanes use the checked-in `bench/cuda/` and
+`bench/amdgpu/` environments on the machine running the benchmark.
 
 The summary includes both:
 - the standard steady-state workload
