@@ -344,7 +344,7 @@ end
         dmap_manual = prop_dm(wf_manual, dm, 2.5, 2.5, 1.0e-3; NO_APPLY=true)
 
         @test dmap_apply ≈ dmap_manual
-        prop_add_phase(wf_manual, 2 .* transpose(dmap_manual))
+        prop_add_phase(wf_manual, 2 .* dmap_manual)
         @test wf_apply.field ≈ wf_manual.field
     end
 

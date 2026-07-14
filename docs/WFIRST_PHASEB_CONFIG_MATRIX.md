@@ -14,7 +14,7 @@ Representative configuration-matrix coverage for the Julia reference port and th
 | SPC pupil mask | `use_pupil_mask` | `1`, `0` | `full_spc_spec_long`, `full_spc_spec_long_no_pupil_mask` | Covered | Spec-long branch only. |
 | Coronagraph bypass | `use_fpm` / `none` | normal coronagraph, bypassed optics | `full_none` | Covered | `full_none` exercises the pupil-only path. |
 | Error maps | `use_errors` | `0`, `1` | `full_hlc_errors`, `full_spc_spec_long_errors` | Covered | Error-enabled parity now runs on the shared public-data compatibility root, with Julia applying WFIRST error maps in the same Python-order convention as the executable baseline. |
-| DMs | `use_dm1`, `use_dm2`, explicit maps | off, on with supplied maps | `compact_hlc_dm_pair`, `full_hlc_dm_pair` | Covered | Explicit HLC DM-map parity rows now match with relative L2 around `4.13e-3`; this is treated as comparable fidelity rather than exact internal equivalence. |
+| DMs | `use_dm1`, `use_dm2`, explicit maps | off, on with supplied maps | `compact_hlc_dm_pair`, `full_hlc_dm_pair` | Covered | The corrected tilted-DM coordinate-grid path matches the native Python reference at machine precision; the former `4.13e-3` discrepancy is now a hard regression failure. |
 | SPC family variants | SPC branch | `spc-spec_short`, `spc-spec_long`, `spc-ifs_short`, `spc-ifs_long`, `spc-wide` | `scripts/verify_wfirst_phaseb_matrix.sh` | Covered | Current public-data matrix validates both spec and IFS aliases. |
 | HLC variant | `hlc_erkin` | default, alt HLC branch | `compact_hlc_erkin`, `full_hlc_erkin` | Covered | Validated on the shared public-data compatibility root synthesized from `hlc_20190210b` into the legacy `hlc_20190206_v3` layout expected by the Python baseline. |
 
@@ -32,6 +32,10 @@ Run the representative parity matrix without timing loops:
 ```bash
 JULIA_NUM_THREADS=4 ./scripts/verify_wfirst_phaseb_matrix.sh
 ```
+
+The comparison exits nonzero if a requested case is missing, non-finite, or
+exceeds relative L2 `1e-10`, maximum absolute error `1e-12`, or sampling error
+`1e-15`. The JSON report records each threshold, failure, and pass result.
 
 Run the full WFIRST CPU benchmark with timings:
 

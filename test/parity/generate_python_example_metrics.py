@@ -8,6 +8,7 @@ from pathlib import Path
 import numpy as np
 
 from baseline_provenance import write_provenance
+from python334_runtime import load_python334_runtime
 
 
 def probe_indices(shape):
@@ -130,10 +131,10 @@ def main():
             "Set PYPROPER_ROOT or place proper_v3.3.4_python next to this repository."
         )
     pyexamples = pyproper_root / "proper" / "examples"
-    sys.path.insert(0, str(pyproper_root))
     sys.path.insert(0, str(pyexamples))
 
-    import proper
+    proper, native_runtime = load_python334_runtime(pyproper_root)
+    native_runtime.assert_active()
     import simple_prescription
     import simple_telescope
     import hubble_simple
@@ -208,6 +209,7 @@ def main():
         seed=12345,
         cases=case_metadata,
         artifacts=("example_metrics.json",),
+        native_runtime=native_runtime,
     )
 
 

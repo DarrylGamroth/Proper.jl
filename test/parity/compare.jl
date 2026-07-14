@@ -203,6 +203,107 @@ function compare_carrier_phase(base)
     return report
 end
 
+function compare_dm_tilt_projection(base)
+    baseline = JSON3.read(read(joinpath(base, "dm_tilt_projection.json"), String))
+    thresholds = TOML.parsefile(joinpath(@__DIR__, "cases", "dm_tilt_projection.toml"))["thresholds"]
+    config = baseline["config"]
+    dm_surface = json_real_matrix(baseline["inputs"]["dm_surface_m"])
+    n = Int(config["grid_size"])
+    expected_shape = Tuple(Int.(baseline["shape"]))
+    expected_shape == (n, n) || error("DM tilt baseline shape/config mismatch")
+
+    function wavefront()
+        return prop_begin(
+            Float64(config["beam_diameter_m"]),
+            Float64(config["wavelength_m"]),
+            n;
+            beam_diam_fraction=Float64(config["beam_diam_fraction"]),
+        )
+    end
+
+    kwargs = (
+        XTILT=Float64(config["xtilt_deg"]),
+        YTILT=Float64(config["ytilt_deg"]),
+        ZTILT=Float64(config["ztilt_deg"]),
+    )
+    dm_xc = Float64(config["dm_xc"])
+    dm_yc = Float64(config["dm_yc"])
+    spacing = Float64(config["spacing_m"])
+    wf_map = wavefront()
+    actual_dmap = prop_dm(
+        wf_map,
+        dm_surface,
+        dm_xc,
+        dm_yc,
+        spacing;
+        NO_APPLY=true,
+        kwargs...,
+    )
+    wf_zero_tilt = wavefront()
+    actual_dmap_zero_tilt = prop_dm(
+        wf_zero_tilt,
+        dm_surface,
+        dm_xc,
+        dm_yc,
+        spacing;
+        NO_APPLY=true,
+    )
+    wf_apply = wavefront()
+    prop_dm(wf_apply, dm_surface, dm_xc, dm_yc, spacing; kwargs...)
+    actual_wavefront = prop_get_wavefront(wf_apply)
+
+    outputs = baseline["outputs"]
+    expected_dmap_zero_tilt = json_real_matrix(outputs["dmap_zero_tilt_m"])
+    expected_dmap = json_real_matrix(outputs["dmap_m"])
+    expected_wavefront = json_complex_matrix(outputs["centered_wavefront"])
+    metric_type = @NamedTuple{
+        max_abs::Float64,
+        worst_index::NTuple{2,Int},
+        threshold::Float64,
+    }
+    metrics = Dict{String,metric_type}()
+    failures = String[]
+    record_pixelwise_comparison!(
+        metrics,
+        failures,
+        "dmap_zero_tilt_m",
+        actual_dmap_zero_tilt,
+        expected_dmap_zero_tilt,
+        Float64(thresholds["dmap_max_abs"]),
+    )
+    record_pixelwise_comparison!(
+        metrics,
+        failures,
+        "dmap_m",
+        actual_dmap,
+        expected_dmap,
+        Float64(thresholds["dmap_max_abs"]),
+    )
+    record_pixelwise_comparison!(
+        metrics,
+        failures,
+        "centered_wavefront",
+        actual_wavefront,
+        expected_wavefront,
+        Float64(thresholds["field_max_abs"]),
+    )
+
+    report = (
+        case="dm_tilt_projection",
+        shape=expected_shape,
+        metrics=metrics,
+        failures=failures,
+        pass=isempty(failures),
+    )
+    mkpath(joinpath(@__DIR__, "reports"))
+    open(joinpath(@__DIR__, "reports", "dm_tilt_projection_report.json"), "w") do io
+        JSON3.write(io, report)
+    end
+    println(report)
+    isempty(failures) || error("Tilted-DM parity failed: $(join(failures, "; "))")
+    return report
+end
+
 base = joinpath(@__DIR__, "baseline", "python334")
 psf_py = readdlm(joinpath(base, "simple_case_psf.csv"), ',')
 meta = JSON3.read(read(joinpath(base, "simple_case_meta.json"), String))
@@ -250,3 +351,4 @@ isempty(failures) || error("Simple-case parity threshold check failed: $(join(fa
 
 compare_wavefront_accessors_even(base)
 compare_carrier_phase(base)
+compare_dm_tilt_projection(base)

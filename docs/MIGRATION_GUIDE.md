@@ -135,6 +135,9 @@ Important behavior:
 - `prop_dm(wf, dm_map)` expects a map already sampled on the wavefront grid.
 - Use `prop_dm` with the full upstream-compatible actuator-space form only when
   you are intentionally modeling actuator geometry and influence functions.
+- The full actuator-space form returns its projected surface in the same image
+  orientation as Python/MATLAB PROPER. Raw transposed storage used while
+  applying that surface is internal and is never part of the public contract.
 
 ## Keyword Translation Rules
 

@@ -11,6 +11,15 @@ from pathlib import Path
 SOURCEFORGE_BASELINE_URL = (
     "https://sourceforge.net/projects/proper-library/files/proper_v3.3.4_python.zip"
 )
+SOURCEFORGE_BOOTSTRAP_URL = (
+    "https://sourceforge.net/projects/proper-library/files/proper_v3.3.5_python.zip"
+)
+SOURCEFORGE_BOOTSTRAP_SHA256 = (
+    "5c25bc4ca80efb088990f1d6be231fe5583a806ff806de17ddc26026f2b23d87"
+)
+EXPECTED_SOURCE_SNAPSHOT_SHA256 = (
+    "2f6f351715a49524f01aded1baedf7ef9c41bb40a3f738a4e7f481ed1daa7382"
+)
 SOURCE_SUFFIXES = {".c", ".fits", ".h", ".py"}
 
 
@@ -64,20 +73,38 @@ def write_provenance(
     seed,
     cases,
     artifacts,
+    native_runtime,
 ):
     output_path = Path(output_path)
     artifact_root = output_path.parent
+    native_runtime.assert_active()
+    project_root = Path(__file__).resolve().parents[2]
+    reconstruction_patch = project_root / "scripts" / "python_baseline_335_to_334.patch"
+    source_snapshot = source_snapshot_sha256(pyproper_root)
+    if source_snapshot != EXPECTED_SOURCE_SNAPSHOT_SHA256:
+        raise RuntimeError(
+            "Python PROPER baseline source snapshot mismatch: "
+            f"expected {EXPECTED_SOURCE_SNAPSHOT_SHA256}, got {source_snapshot}"
+        )
     artifact_hashes = {
         name: _sha256_file(artifact_root / name) for name in sorted(artifacts)
     }
     payload = {
-        "schema_version": 1,
+        "schema_version": 2,
         "baseline": {
             "name": "PROPER Python",
             "version": str(getattr(proper, "__version__", "3.3.4")),
             "source_url": SOURCEFORGE_BASELINE_URL,
             "source_root": str(Path(pyproper_root).resolve()),
-            "source_snapshot_sha256": source_snapshot_sha256(pyproper_root),
+            "source_snapshot_sha256": source_snapshot,
+            "reproducible_bootstrap": {
+                "seed_version": "3.3.5",
+                "seed_url": SOURCEFORGE_BOOTSTRAP_URL,
+                "seed_archive_sha256": SOURCEFORGE_BOOTSTRAP_SHA256,
+                "reconstruction_patch": reconstruction_patch.relative_to(project_root).as_posix(),
+                "reconstruction_patch_sha256": _sha256_file(reconstruction_patch),
+                "expected_source_snapshot_sha256": EXPECTED_SOURCE_SNAPSHOT_SHA256,
+            },
         },
         "generator": generator,
         "generated_at_utc": generated_at_utc(),
@@ -87,11 +114,21 @@ def write_provenance(
             "numpy": installed_version("numpy"),
             "scipy": installed_version("scipy"),
             "astropy": installed_version("astropy"),
-            "backend": "NumPy/SciPy CPU",
+            "backend": "NumPy + upstream PROPER native C kernels",
         },
+        "native_kernels": native_runtime.provenance,
         "numeric_precision": ["float64", "complex128"],
         "rng_seed": seed,
         "cases": cases,
         "artifacts": artifact_hashes,
     }
     output_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--source-snapshot", type=Path, required=True)
+    arguments = parser.parse_args()
+    print(source_snapshot_sha256(arguments.source_snapshot))

@@ -104,17 +104,16 @@ jobs:
         uses: actions/cache@v6
         with:
           path: .ci-cache/proper_v3.3.4_python
-          key: proper-python-v3.3.4-sourceforge
-      - name: Download Python PROPER baseline
+          key: proper-python-v3.3.4-patched-from-v3.3.5-5c25bc4c
+      - name: Prepare verified Python PROPER baseline
         shell: bash
-        run: |
-          if [[ -d "${PYPROPER_ROOT}/proper" ]]; then
-            echo "Using cached Python PROPER baseline at ${PYPROPER_ROOT}"
-            exit 0
-          fi
-          ./scripts/setup_python_baseline.sh
+        run: ./scripts/setup_python_baseline.sh
       - name: Install Python parity deps
         run: ./scripts/setup_parity_venv.sh
+      - name: Verify pinned Python native runtime
+        run: |
+          .venv-parity/bin/python test/parity/check_python_runtime.py
+          .venv-parity/bin/python test/parity/check_wfirst_gate.py
       - name: Instantiate
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
       - name: Instantiate examples

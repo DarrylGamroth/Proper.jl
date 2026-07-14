@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 
 from baseline_provenance import write_provenance
+from python334_runtime import load_python334_runtime
 
 
 def run_simple_case(proper):
@@ -114,6 +115,86 @@ def run_carrier_phase_case(proper):
     }
 
 
+def run_dm_tilt_projection_case(proper):
+    """Exercise asymmetric combined-axis DM projection and public orientation."""
+    n = 64
+    nact = 8
+    yy, xx = np.indices((nact, nact), dtype=np.float64)
+    dm_surface = 1e-9 * (
+        0.25
+        + 0.07 * xx
+        - 0.11 * yy
+        + 0.013 * xx * yy
+        + 0.021 * np.sin((2 * xx + yy) * np.pi / nact)
+    )
+    config = {
+        "beam_diameter_m": 1.0,
+        "beam_diam_fraction": 0.5,
+        "wavelength_m": 550e-9,
+        "grid_size": n,
+        "dm_xc": 3.25,
+        "dm_yc": 3.75,
+        "spacing_m": 0.04,
+        "xtilt_deg": 2.3,
+        "ytilt_deg": -5.7,
+        "ztilt_deg": 1.1,
+    }
+
+    def wavefront():
+        return proper.prop_begin(
+            config["beam_diameter_m"],
+            config["wavelength_m"],
+            n,
+            beam_diam_fraction=config["beam_diam_fraction"],
+        )
+
+    kwargs = {
+        "XTILT": config["xtilt_deg"],
+        "YTILT": config["ytilt_deg"],
+        "ZTILT": config["ztilt_deg"],
+    }
+    wf_zero_tilt = wavefront()
+    dmap_zero_tilt = proper.prop_dm(
+        wf_zero_tilt,
+        dm_surface,
+        config["dm_xc"],
+        config["dm_yc"],
+        config["spacing_m"],
+        NO_APPLY=True,
+    )
+    wf_map = wavefront()
+    dmap = proper.prop_dm(
+        wf_map,
+        dm_surface,
+        config["dm_xc"],
+        config["dm_yc"],
+        config["spacing_m"],
+        NO_APPLY=True,
+        **kwargs,
+    )
+    wf_apply = wavefront()
+    proper.prop_dm(
+        wf_apply,
+        dm_surface,
+        config["dm_xc"],
+        config["dm_yc"],
+        config["spacing_m"],
+        **kwargs,
+    )
+    return {
+        "config": config,
+        "inputs": {"dm_surface_m": np.asarray(dm_surface).tolist()},
+        "outputs": {
+            "dmap_zero_tilt_m": np.asarray(dmap_zero_tilt).tolist(),
+            "dmap_m": np.asarray(dmap).tolist(),
+            "centered_wavefront": complex_array_payload(
+                proper.prop_get_wavefront(wf_apply)
+            ),
+        },
+        "shape": [n, n],
+    }
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path)
@@ -126,9 +207,8 @@ def main():
             f"Missing Python PROPER baseline source tree: {pyproper_root}. "
             "Set PYPROPER_ROOT or place proper_v3.3.4_python next to this repository."
         )
-    sys.path.insert(0, str(pyproper_root))
-
-    import proper  # noqa: WPS433
+    proper, native_runtime = load_python334_runtime(pyproper_root)
+    native_runtime.assert_active()
 
     outdir = args.output_dir or (
         Path(__file__).resolve().parent / "baseline" / "python334"
@@ -186,6 +266,22 @@ def main():
     )
     (outdir / "carrier_phase.json").write_text(json.dumps(carrier_case, indent=2))
 
+    dm_tilt_case = run_dm_tilt_projection_case(proper)
+    dm_tilt_case.update(
+        {
+            "generator": "generate_python_baseline.py",
+            "python": sys.version,
+            "proper_version": getattr(proper, "__version__", "unknown"),
+            "case": "dm_tilt_projection",
+            "format": "json",
+            "python_root": str(pyproper_root),
+            "venv": os.environ.get("VIRTUAL_ENV", ""),
+        }
+    )
+    (outdir / "dm_tilt_projection.json").write_text(
+        json.dumps(dm_tilt_case, indent=2)
+    )
+
     case_metadata = {
         "simple_case": {
             "script": "run_simple_case",
@@ -205,6 +301,17 @@ def main():
             "grid_size": 4,
             "config": {"carrier_phase": [False, True]},
         },
+        "dm_tilt_projection": {
+            "script": "run_dm_tilt_projection_case",
+            "wavelength_m": 550e-9,
+            "grid_size": 64,
+            "config": {
+                "dm_shape": [8, 8],
+                "zero_tilt": True,
+                "combined_axis_tilts_deg": [2.3, -5.7, 1.1],
+                "asymmetric_surface": True,
+            },
+        },
     }
     write_provenance(
         outdir / "core_baseline_metadata.json",
@@ -218,7 +325,9 @@ def main():
             "simple_case_psf.csv",
             "wavefront_accessors_even.json",
             "carrier_phase.json",
+            "dm_tilt_projection.json",
         ),
+        native_runtime=native_runtime,
     )
 
 
