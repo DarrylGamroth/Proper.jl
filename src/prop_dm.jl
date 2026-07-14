@@ -135,11 +135,13 @@ function _dm_cubic_conv_transposed_grid!(
     ycoords::AbstractVector,
 )
     size(out) == (length(ycoords), length(xcoords)) || throw(ArgumentError("output size mismatch for DM interpolation"))
+    length(xcoords) == length(ycoords) || throw(ArgumentError(
+        "upstream-compatible DM projection requires equal X/Y coordinate lengths",
+    ))
     source_t = transpose(source)
     @inbounds for j in eachindex(xcoords)
-        x = xcoords[j]
         for i in eachindex(ycoords)
-            out[i, j] = libcconv(source_t, ycoords[i], x)
+            out[i, j] = libcconv(source_t, xcoords[i], ycoords[j])
         end
     end
     return out
@@ -153,10 +155,13 @@ function _dm_cubic_conv_transposed_coordinate_grid!(
 )
     size(xgrid) == size(ygrid) || throw(ArgumentError("xgrid and ygrid sizes must match"))
     size(out) == size(xgrid) || throw(ArgumentError("output size mismatch for DM interpolation"))
+    size(xgrid, 1) == size(xgrid, 2) || throw(ArgumentError(
+        "upstream-compatible tilted DM projection requires a square coordinate grid",
+    ))
     source_t = transpose(source)
     @inbounds for j in axes(xgrid, 2)
         for i in axes(xgrid, 1)
-            out[i, j] = libcconv(source_t, ygrid[i, j], xgrid[i, j])
+            out[i, j] = libcconv(source_t, xgrid[j, i], ygrid[j, i])
         end
     end
     return out
@@ -203,7 +208,9 @@ end
 Upstream-compatible deformable mirror model.
 
 `dm_z0` is a DM surface map in actuator space (meters) or a FITS filename.
-Returns the DM surface map reprojected onto the wavefront sampling.
+Returns the DM surface map reprojected onto the wavefront sampling in the
+upstream Python/MATLAB image orientation. The transposed raw layout used during
+wavefront application is internal.
 """
 function prop_dm(
     wf::WaveFront,
@@ -352,7 +359,7 @@ function prop_dm(
 
     1 <= xmin <= xmax <= n || throw(ArgumentError("PROP_DM: X placement out of bounds"))
     1 <= ymin <= ymax <= n || throw(ArgumentError("PROP_DM: Y placement out of bounds"))
-    dmap = if xdim == n && ydim == n && xmin == 1 && ymin == 1
+    dmap_internal = if xdim == n && ydim == n && xmin == 1 && ymin == 1
         grid
     else
         out = zeros(eltype(grid), n, n)
@@ -363,8 +370,10 @@ function prop_dm(
     if !switch_set(:NO_APPLY; kwargs...)
         # Match accepted D-0036 semantics: the projected DM map must be
         # transposed before centered-map application onto the wavefront grid.
-        _dm_apply_projected_phase!(wf, dmap)
+        _dm_apply_projected_phase!(wf, dmap_internal)
     end
 
-    return dmap
+    # Keep the raw transposed layout internal, but expose the same image
+    # orientation returned by Python PROPER at the public API boundary.
+    return permutedims(dmap_internal)
 end

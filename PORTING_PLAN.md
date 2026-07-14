@@ -21,6 +21,10 @@ Current validation evidence:
 - 16 numerical Python/Julia parity cases exercise meaningful prescription or
   runner output boundaries, including broadband `testmulti1` and all three
   `testmulti2` ripple patterns
+- Python parity uses the source-hash-pinned patched 3.3.4 baseline and requires
+  its native cubic-convolution/szoom kernels; SciPy fallback is rejected
+- all 23 representative WFIRST/Roman Phase B rows are hard-gated and currently
+  pass, including compact/full explicit tilted-DM pairs and error-map branches
 - CPU, AMDGPU, and availability-gated CUDA paths have correctness tests; this
   machine currently provides AMDGPU but no CUDA hardware
 - benchmark reporting separates warmed steady-state runtime from cold-start /

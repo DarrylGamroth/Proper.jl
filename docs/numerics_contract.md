@@ -9,6 +9,8 @@ Freeze numerical conventions used by propagation, transforms, and coordinate sys
 - `D-0007` numerical convention contract (accepted)
 - `D-0057` centered public wavefront accessors (accepted)
 - `D-0063` square propagation grid and independent transform oracle (accepted)
+- `D-0073` tilted-DM coordinates and public map orientation (accepted)
+- `D-0074` WFIRST comparisons are hard numerical gates (accepted)
 
 ## Status
 - [x] Draft pre-filled from proposed defaults
@@ -43,6 +45,9 @@ Freeze numerical conventions used by propagation, transforms, and coordinate sys
 ## 3. Centering Convention
 - Internal/public ordering:
   - `WaveFront.field` remains in raw FFT ordering for propagation and kernels
+  - full actuator-space `prop_dm` keeps its projected map in the transposed raw
+    layout used by wavefront application, but returns a materialized matrix in
+    upstream image orientation
   - `prop_get_wavefront`, `prop_get_amplitude`, and `prop_get_phase` return
     centered backend-preserving arrays
   - matrix inputs to `prop_add_wavefront` are centered public data and are
@@ -103,7 +108,8 @@ Freeze numerical conventions used by propagation, transforms, and coordinate sys
 | Coordinate convention | Grid parity/order | even and odd spatial axes; centered and raw FFT frequency order | `test/test_propagation_numerics.jl` | Covered | Exact arrays catch half-pixel, shift-direction, and axis-order drift. |
 | Unit conversion | API boundary/unit | run wavelength microns-to-meters, sampling radians/arcseconds, error maps in nm/microns | `test/test_propagation_numerics.jl` | Covered | Unit tests assert physical scale factors at public boundaries. |
 | Prepared RNG ownership | RNG source/scheduling/planning | implicit context RNG, explicit override, serial slots, threaded batch, Estimate/Measure | `test/test_run_context_correctness.jl`; CI package tests use `-t4` | Covered | Identically seeded context trees produce exact ordered stacks; explicit RNG leaves context RNG untouched. |
-| Executable upstream parity | Python 3.3.4 core and example outputs | centered field/amplitude/phase; scalar/matrix add; carrier phase; 16 example cases including actuator-space DM, broadband resampling, and three ripple orientations | `test/parity/generate_python_baseline.py`, `test/parity/generate_example_baseline.py`, `test/parity/compare.jl`, `test/parity/compare_examples.jl` | Covered | Exact pixelwise core thresholds plus aggregate, center, and asymmetric-probe example gates; complex `prop_szoom_c` unwritten borders are deterministically zeroed per `D-0069`. |
+| Executable upstream parity | Python 3.3.4 core and example outputs | centered field/amplitude/phase; scalar/matrix add; carrier phase; asymmetric zero- and combined-axis tilted-DM maps and applied field; 16 example cases including actuator-space DM, broadband resampling, and three ripple orientations | `test/parity/generate_python_baseline.py`, `test/parity/generate_example_baseline.py`, `test/parity/compare.jl`, `test/parity/compare_examples.jl` | Covered | Exact pixelwise core thresholds plus aggregate, center, and asymmetric-probe example gates; the source-hash-pinned baseline requires PROPER's native C kernels; complex `prop_szoom_c` unwritten borders are deterministically zeroed per `D-0069`. |
+| WFIRST/Roman model parity | Model/configuration branch | compact/full prescriptions across HLC, SPC, masks, offsets, errors, and explicit tilted DM pairs | `scripts/verify_wfirst_phaseb_matrix.sh`, `bench/python/compare_wfirst_phaseb_outputs.py` | Covered | Every requested row must exist and be finite, with relative L2 at most `1e-10`, maximum absolute error at most `1e-12`, and sampling error at most `1e-15`. |
 | Threaded stack assembly | Packed output storage | `BitMatrix` outputs into `BitArray{3}` | `test/test_multi_run_scheduling.jl`; CI package tests use `-t4` | Covered | Repeated yields expose logical slices that share packed storage words. |
 
 Additional contract areas retained for follow-up are tracked in the porting

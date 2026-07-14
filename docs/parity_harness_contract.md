@@ -9,6 +9,10 @@ Define how Julia outputs are compared against Python 3.3.4 baselines and how art
 - `D-0011` RNG determinism policy (accepted)
 - `D-0014` CI/support matrix (accepted)
 - `D-0070` tiered example validation evidence (accepted)
+- `D-0071` native Python interpolation baseline (accepted)
+- `D-0072` reproducible 3.3.4 bootstrap (accepted)
+- `D-0073` tilted-DM coordinate and return orientation (accepted)
+- `D-0074` WFIRST comparisons are hard gates (accepted)
 
 ## Status
 - [x] Draft pre-filled from proposed defaults
@@ -16,10 +20,29 @@ Define how Julia outputs are compared against Python 3.3.4 baselines and how art
 - [x] CI jobs wired
 
 ## 1. Baseline Source
-- Executable baseline: Python PROPER 3.3.4 from SourceForge:
+- Executable baseline: the accepted patched Python PROPER 3.3.4 source
+  snapshot. Its historical SourceForge URL was:
   `https://sourceforge.net/projects/proper-library/files/proper_v3.3.4_python.zip`
+- SourceForge removed that archive when 3.3.5 was published. The reproducible
+  bootstrap downloads the pinned 3.3.5 archive (SHA-256
+  `5c25bc4ca80efb088990f1d6be231fe5583a806ff806de17ddc26026f2b23d87`),
+  applies `scripts/python_baseline_335_to_334.patch`, removes the 3.3.5-only
+  module, and accepts the result only when its executable source snapshot is
+  `2f6f351715a49524f01aded1baedf7ef9c41bb40a3f738a4e7f481ed1daa7382`.
+  This is reconstruction of the frozen 3.3.4 baseline, not adoption of 3.3.5
+  behavior.
 - Local default path: `../proper_v3.3.4_python`
 - Override path: `PYPROPER_ROOT=/path/to/proper_v3.3.4_python`
+- Every executable Python comparison compiles the accepted upstream
+  `cubic_conv_c.c`, `cubic_conv_threaded_c.c`, and `prop_szoom_c.c` sources
+  into a temporary directory. A missing compiler, missing symbol, wrong source
+  snapshot, or disabled native path is a hard error. SciPy interpolation is not
+  an interchangeable parity backend because its cubic B-spline differs from
+  PROPER's documented cubic-convolution kernel.
+- Two-dimensional `GRID=False` requests use the serial version of that same C
+  kernel. The upstream threaded implementation caches one X kernel per output
+  column and is therefore invalid for combined-axis DM projections whose X
+  coordinate varies by row.
 - External WFIRST/Roman Phase B Python model baseline:
   `https://github.com/ajeldorado/proper-models.git`
 - Local default path: `../proper-models`
@@ -37,12 +60,16 @@ Current structure:
 - `test/parity/reports/` comparison summaries
 
 ## 3. Provenance Metadata Schema
-Each metadata document uses schema version 1 and captures:
+Each metadata document uses schema version 2 and captures:
 - baseline name/version/source URL, local source root, and deterministic SHA-256
   of the baseline source tree
 - generator entry point and generation timestamp
 - Python executable/version plus NumPy, SciPy, and Astropy versions
 - backend label and numeric precision
+- the reproducible 3.3.5-to-3.3.4 bootstrap URL, archive hash,
+  reconstruction-patch hash, and expected source snapshot
+- required native-kernel platform/machine, compiler command/version, compile
+  flags, exported symbol, and SHA-256 for each C source
 - RNG seed (or an explicit null value)
 - per-case wavelength, grid size, and configuration
 - SHA-256 for every generated artifact
@@ -79,6 +106,8 @@ Minimum coverage is tiered by what each upstream source actually exposes:
 - map pipeline cases (`psdtest`, errormap/resample/rotate)
 - multi-run ordering and shape semantics
 - accepted or corrected behavior cases recorded in `docs/compat_decisions.md`
+- asymmetric off-center zero-tilt and combined-axis tilted-DM projection,
+  including returned surface orientation and the applied centered wavefront
 
 ## 6. Update Workflow
 - Trigger baseline regeneration when:
@@ -91,13 +120,15 @@ Minimum coverage is tiered by what each upstream source actually exposes:
 Required jobs:
 - CPU unit tests on Linux, macOS, and Windows for supported Julia versions
 - Linux coverage job
-- Linux Python-baseline parity job using the cached SourceForge Python PROPER
-  baseline
+- Linux Python-baseline parity job using a cached and source-hash-verified
+  reconstruction of the accepted Python PROPER baseline
 Scheduled/extended jobs:
 - benchmark artifact generation from the full benchmark suite
-- WFIRST Phase B Python/Julia parity matrix using the cached SourceForge Python
-  PROPER baseline, cached upstream `proper-models` checkout, and cached public
-  Roman preflight compatibility data
+- WFIRST Phase B Python/Julia parity matrix using the same verified native
+  Python PROPER runtime, cached upstream `proper-models` checkout, and cached
+  public Roman preflight compatibility data
+- every requested WFIRST row is a hard numerical gate: relative L2 `1e-10`,
+  maximum absolute error `1e-12`, and sampling error `1e-15`
 - the extended validation workflow runs on pushes to `main`, weekly schedule,
   and manual `workflow_dispatch`; manual runs can target selected WFIRST cases
 Optional jobs:
@@ -109,6 +140,10 @@ Optional jobs:
   `scripts/check_parity_reproducibility.sh`)
 - [x] Artifact metadata completeness and SHA-256 test
   (`test/parity/validate_artifacts.jl`)
+- [x] Native-kernel selection, symbol, threaded/serial equivalence, and SciPy
+  fallback rejection (`test/parity/check_python_runtime.py`)
+- [x] WFIRST gate pass/fail, unavailable-case, and non-finite-metric contract
+  (`test/parity/check_wfirst_gate.py`)
 - [x] Threshold enforcement tests (`compare_examples.jl` + threshold config)
 - [x] CI integration for regeneration, reproducibility, metadata validation,
   and threshold enforcement (`.github/workflows/ci.yml`)

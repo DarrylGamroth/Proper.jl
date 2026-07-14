@@ -1113,3 +1113,113 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     independent parity artifact.
   - Documentation and CI must report mapping, execution, and numerical coverage
     as separate evidence tiers.
+
+## D-0071: Python Parity Requires PROPER's Native Interpolation Kernels
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - Python PROPER selects its C cubic-convolution and sinc-zoom kernels only
+    when precompiled shared libraries happen to exist beside the source.
+  - Without them, deformable-mirror and quick-resampling paths silently use
+    SciPy cubic B-spline interpolation. That algorithm is not numerically
+    equivalent to PROPER's C implementation of the documented IDL-style
+    cubic-convolution kernel.
+  - This made local reference data depend on untracked shared libraries and
+    made clean CI disagree specifically on the DM ripple cases while matching
+    sampling, norms, and non-DM examples.
+- Decision:
+  - Every executable Python reference consumer compiles the three accepted
+    3.3.4 C sources into process-owned temporary storage with recorded compiler
+    identity, source hashes, and conservative floating-point flags.
+  - Verify the required exported symbols and force all three native flags.
+    Missing compilers, sources, symbols, or later flag mutation are hard errors;
+    never widen numerical thresholds to admit the SciPy fallback.
+  - Exercise serial/threaded cubic-convolution equivalence and poison the SciPy
+    branch in a dedicated runtime contract test.
+- Consequences:
+  - Example, benchmark, and WFIRST Python reference runs use one explicit
+    numerical implementation on both developer machines and clean CI runners.
+  - Compilation occurs outside the baseline tree and outside timed steady-state
+    regions, so the frozen source snapshot and benchmark contract remain clean.
+  - Provenance schema version 2 records enough information to audit the native
+    implementation used for each generated artifact.
+
+## D-0072: Removed 3.3.4 Archive Is Reconstructed From a Pinned 3.3.5 Seed
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - SourceForge removed `proper_v3.3.4_python.zip` when 3.3.5 became current,
+    leaving fresh CI caches and new contributors unable to obtain the accepted
+    `D-0001` baseline.
+  - The 3.3.5 executable tree differs from the accepted patched 3.3.4 snapshot
+    in only the package version/export, the new rayleigh-factor API and
+    propagator use, and the already accepted `D-0003` Y-shift correction.
+- Decision:
+  - Pin the official 3.3.5 seed archive by SHA-256, apply an audited reverse
+    patch, remove the 3.3.5-only module/manual, and verify the deterministic
+    executable-source snapshot before publishing the target directory.
+  - Validate cached and user-supplied baseline roots against the same expected
+    source snapshot. Refuse to replace an unexpected existing path.
+  - Keep Python 3.3.4 as the executable baseline; the newer archive is only a
+    reproducible transport for reconstructing those frozen sources.
+- Consequences:
+  - Cold-cache CI and fresh local setup work without vendoring the external
+    PROPER distribution or silently changing the compatibility target.
+  - Archive, reconstruction-patch, and final source hashes are all recorded and
+    enforced, so upstream repacks or accidental local edits fail closed.
+
+## D-0073: Tilted DM Projection Uses Correct Coordinate-Grid Semantics
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - The Python threaded cubic-convolution routine caches one X interpolation
+    kernel per output column. That optimization is valid for tensor-product
+    grids and separable single-axis tilts, but not for combined-axis DM
+    projection where X also varies by output row.
+  - Julia's private DM projection also used an index/axis ordering that happened
+    to pass zero-tilt examples but produced the former `4.13e-3` WFIRST DM-pair
+    discrepancy once the Python native kernel was selected consistently.
+  - The Julia `prop_dm` return exposed its internal transposed wavefront-storage
+    orientation instead of the image orientation returned by Python/MATLAB.
+- Decision:
+  - Route two-dimensional Python `GRID=False` parity requests through the
+    serial version of the same accepted native C kernel; keep threaded native C
+    for tensor-product and one-dimensional pointwise requests.
+  - Correct the private Julia tilted-DM coordinate-grid index/axis mapping.
+  - Keep the transposed DM map internal for efficient raw wavefront application,
+    but return a materialized upstream-oriented matrix from the public API.
+  - Gate an asymmetric off-center fixture pixel by pixel for the returned
+    zero-tilt surface, returned combined-X/Y/Z-tilt surface, and applied
+    centered wavefront.
+- Consequences:
+  - Combined-axis projection no longer depends on a threaded-kernel assumption
+    that its coordinate topology violates.
+  - `prop_dm(...; NO_APPLY=true)` now has the familiar upstream image
+    orientation, while internal storage remains an implementation detail.
+  - The focused fixture matches within `2.4e-24` on either surface and
+    `1.1e-17` on the centered complex field on the local validation runtime.
+
+## D-0074: WFIRST Phase B Comparisons Are Numerical Gates
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - `compare_wfirst_phaseb_outputs.py` previously printed relative and absolute
+    differences but exited successfully for every finite value.
+  - Documentation consequently labeled a `4.13e-3` explicit-DM relative error
+    as comparable fidelity even though the mismatch was a correctable core
+    coordinate-order defect.
+- Decision:
+  - Fail requested WFIRST rows that are unavailable, non-finite, above relative
+    L2 `1e-10`, above maximum absolute error `1e-12`, or above sampling error
+    `1e-15`.
+  - Record thresholds, per-row failures, row pass state, and overall pass state
+    in the machine-readable comparison report.
+  - Unit-test the gate with machine-precision, historical-DM-error,
+    unavailable, and non-finite synthetic rows.
+- Consequences:
+  - Validation can no longer be green while merely reporting a known numerical
+    failure.
+  - The corrected compact/full HLC DM-pair rows match at relative L2
+    `6.4e-16`/`2.4e-15` locally. All 23 representative WFIRST rows pass; the
+    worst relative L2 is `2.2e-13` and every sampling difference is zero,
+    leaving substantial margin to the enforced thresholds.

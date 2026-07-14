@@ -16,9 +16,11 @@ def load_proper():
     if not proper_root.is_dir():
         raise RuntimeError(f"Missing Python baseline source tree: {proper_root}")
 
-    sys.path.insert(0, str(proper_root))
+    sys.path.insert(0, str(project_root / "test" / "parity"))
     try:
-        import proper  # noqa: WPS433
+        from python334_runtime import load_python334_runtime  # noqa: WPS433
+
+        proper, native_runtime = load_python334_runtime(proper_root)
     except Exception as exc:  # pragma: no cover - benchmark harness guardrail
         raise RuntimeError(
             "Unable to import Python PROPER baseline. "
@@ -32,7 +34,7 @@ def load_proper():
     proper.print_total_intensity = False
     proper.do_table = False
 
-    return proper, proper_root
+    return proper, proper_root, native_runtime
 
 
 def workload(proper, n=GRID_N):
@@ -44,7 +46,7 @@ def workload(proper, n=GRID_N):
 
 
 def main() -> None:
-    proper, proper_root = load_proper()
+    proper, proper_root, native_runtime = load_proper()
     outdir = Path(__file__).resolve().parents[1] / "reports"
     outdir.mkdir(parents=True, exist_ok=True)
 
@@ -65,6 +67,7 @@ def main() -> None:
             "proper_root": str(proper_root),
             "grid_n": GRID_N,
             "baseline": "python334_patched",
+            "native_kernels": native_runtime.provenance,
         },
         "stats": {
             "median_ns": int(statistics.median(samples_ns)),

@@ -1,0 +1,6 @@
+name = "dm_tilt_projection"
+baseline = "python334_patched_native"
+
+[thresholds]
+dmap_max_abs = 5e-20
+field_max_abs = 5e-13

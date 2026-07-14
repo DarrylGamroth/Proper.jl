@@ -65,7 +65,12 @@
         xdm = (x .+ float(dm_xc) * dx_dm) ./ dx_inf .+ xoff_grid0
         ydm = (y .+ float(dm_yc) * dx_dm) ./ dx_inf .+ yoff_grid0
 
-        grid = prop_cubic_conv(transpose(dm_grid), xdm, ydm; grid=false)
+        # Python passes an F-contiguous `dm_grid.T` view to a row-major C
+        # routine. The C routine consumes the underlying `dm_grid` memory, so
+        # the equivalent logical Julia oracle samples `dm_grid` directly.
+        # Keeping this oracle on the public interpolation path also makes it
+        # independent of the private allocation-avoiding DM projection loops.
+        grid = prop_cubic_conv(dm_grid, xdm, ydm; grid=false)
         dmap = zeros(eltype(grid), n, n)
         gy, gx = size(grid)
         xmin = n ÷ 2 - xdim ÷ 2 + 1
@@ -85,7 +90,7 @@
         wf_fast = _dm_projection_seed_field!(prop_begin(1.0, 0.55e-6, 64))
         wf_ref = _dm_projection_seed_field!(prop_begin(1.0, 0.55e-6, 64))
         prop_dm(wf_fast, dm, dm_xc, dm_yc, 0.0; N_ACT_ACROSS_PUPIL=side)
-        prop_add_phase(wf_ref, 2 .* transpose(ref))
+        prop_add_phase(wf_ref, 2 .* ref)
         @test wf_fast.field ≈ wf_ref.field rtol=5e-13 atol=5e-15
     end
 end

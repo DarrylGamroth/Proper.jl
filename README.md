@@ -345,10 +345,14 @@ This writes backend-specific text profiles under `bench/reports/` and keeps GPU
 optimization work tied to shared propagation code rather than model-specific
 wrappers.
 
-For Python-baseline parity and Python-vs-Julia benchmark runs, install the
-official Python PROPER 3.3.4 source tree first. For WFIRST/Roman Phase B
-Python-vs-Julia comparisons, also install the upstream `proper-models` source
-tree:
+For Python-baseline parity and Python-vs-Julia benchmark runs, prepare the
+accepted, source-hash-pinned Python PROPER 3.3.4 snapshot first. The setup
+script reconstructs it reproducibly from the checksum-pinned official 3.3.5
+archive because SourceForge no longer publishes the historical archive. It
+also requires a C compiler: parity runs compile and require PROPER's native
+cubic-convolution and sinc-zoom kernels rather than silently using SciPy's
+numerically different fallback. For WFIRST/Roman Phase B comparisons, also
+install the upstream `proper-models` source tree:
 
 ```bash
 ./scripts/setup_python_baseline.sh
@@ -363,6 +367,9 @@ if the WFIRST/Roman model checkout lives outside the default sibling path. The
 WFIRST Phase B Python source does not require Git LFS assets; for a full
 `proper-models` checkout with LFS assets, run
 `WFIRST_MODELS_LFS=1 ./scripts/setup_wfirst_models_baseline.sh`.
+Requested WFIRST rows are hard correctness gates, including their full complex
+fields and output sampling; a comparison report is not considered successful
+merely because it was produced.
 
 ### GPU Usage Contract
 - The intended GPU performance surface is:

@@ -1,0 +1,73 @@
+diff --git a/proper/__init__.py b/proper/__init__.py
+--- a/proper/__init__.py
++++ b/proper/__init__.py
+@@ -18,7 +18,7 @@
+ lib_dir = _osp.abspath(_osp.dirname(__file__))
+ 
+ # PyPROPER version number
+-__version__ = '3.3.5'
++__version__ = '3.3.4'
+ 
+ 
+ # If cubic convolution interpolation shared library exist,
+@@ -142,7 +142,6 @@
+ from .prop_savestate import prop_savestate
+ from .prop_select_propagator import prop_select_propagator
+ from .prop_set_antialiasing import prop_set_antialiasing
+-from .prop_set_rayleighfactor import prop_set_rayleighfactor
+ from .prop_shift_center import prop_shift_center
+ from .prop_sinc import prop_sinc
+ from .prop_state import prop_state
+@@ -219,11 +218,3 @@
+ 
+ antialias_subsampling = int(11)
+ 
+-# rayleigh factor is applied to the computed rayleigh distance to alter the
+-# length of the optical axis containing the beam waist inside which plane-to-
+-# plane propagation is selected. There have been instances when a beam is
+-# slightly defocused and near the rayleigh distance and the image shows
+-# artifacts - setting the rayleigh factor (using prop_set_rayleighfactor) to 
+-# something like 0.95 helps.
+-
+-rayleigh_factor = 1.0
+diff --git a/proper/prop_resamplemap.py b/proper/prop_resamplemap.py
+--- a/proper/prop_resamplemap.py
++++ b/proper/prop_resamplemap.py
+@@ -64,7 +64,7 @@ def prop_resamplemap(wf, dmap, pixscale, xc, yc, xshift, yshift):
+     
+     y = np.arange(n, dtype = np.float64) - int(n/2)
+     y = y * proper.prop_get_sampling(wf) / pixscale
+-    y += yc - xshift/pixscale
++    y += yc - yshift/pixscale
+ 
+     if proper.use_cubic_conv:
+         dmap = proper.prop_cubic_conv(dmap.T, x, y, GRID=True)
+diff --git a/proper/prop_select_propagator.py b/proper/prop_select_propagator.py
+--- a/proper/prop_select_propagator.py
++++ b/proper/prop_select_propagator.py
+@@ -36,11 +36,12 @@ def prop_select_propagator( wf, dz ):
+     # z_Rayleigh = Rayleigh distance from minimum beam waist 
+     # w_at_surface = waist radius at current surface 
+     # R_beam = beam radius of curvature 
++    rayleigh_factor = 1.
+     
+     dzw = wf.z_w0 - wf.z
+     newz = wf.z + dz
+     
+-    if np.abs(wf.z_w0 - newz) < proper.rayleigh_factor * wf.z_Rayleigh:
++    if np.abs(wf.z_w0 - newz) < rayleigh_factor * wf.z_Rayleigh:
+         beam_type_new = "INSIDE_"
+     else:
+         beam_type_new = "OUTSIDE"
+diff --git a/setup.py b/setup.py
+--- a/setup.py
++++ b/setup.py
+@@ -25,7 +25,7 @@ else:
+ 
+ setup(
+       name="PyPROPER3",
+-      version = "3.3.5",
++      version = "3.3.4",
+       packages=find_packages(),
+ 
+       # PROPER uses numpy, scipy and pyfits

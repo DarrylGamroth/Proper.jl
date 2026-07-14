@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import math
 from pathlib import Path
 
 import numpy as np
 from astropy.io import fits
+
+
+PARITY_THRESHOLDS = {
+    "relative_l2": 1e-10,
+    "max_abs_diff": 1e-12,
+    "max_sampling_abs_diff": 1e-15,
+}
 
 
 def project_root() -> Path:
@@ -114,6 +122,24 @@ def case_comparison(case_name: str):
     }
 
 
+def apply_parity_thresholds(row):
+    checked = dict(row)
+    checked["thresholds"] = dict(PARITY_THRESHOLDS)
+    failures = []
+    if not checked.get("available", False):
+        failures.append(checked.get("reason", "case is unavailable"))
+    else:
+        for metric, threshold in PARITY_THRESHOLDS.items():
+            value = checked.get(metric)
+            if value is None or not math.isfinite(float(value)):
+                failures.append(f"{metric} is not finite")
+            elif float(value) > threshold:
+                failures.append(f"{metric}={value} exceeds {threshold}")
+    checked["failures"] = failures
+    checked["pass"] = not failures
+    return checked
+
+
 def fmt_ms(x):
     return "n/a" if x is None else f"{x:.2f} ms"
 
@@ -132,9 +158,10 @@ def main():
     args = parser.parse_args()
 
     cases = [case for case in args.cases.split(",") if case]
-    rows = [case_comparison(case) for case in cases]
+    rows = [apply_parity_thresholds(case_comparison(case)) for case in cases]
     outpath = project_root() / "bench" / "reports" / "wfirst_phaseb_cpu_comparison.json"
-    outpath.write_text(json.dumps({"cases": rows}))
+    failures = [f"{row['case']}: {failure}" for row in rows for failure in row["failures"]]
+    outpath.write_text(json.dumps({"cases": rows, "pass": not failures, "failures": failures}))
 
     print("WFIRST Phase B CPU Comparison")
     print("============================")
@@ -152,7 +179,10 @@ def main():
         )
         if row.get("reason") is not None:
             line += f"  # {row['reason']}"
+        line += "  PASS" if row["pass"] else "  FAIL"
         print(line)
+    if failures:
+        raise SystemExit("WFIRST Phase B parity failed: " + "; ".join(failures))
 
 
 if __name__ == "__main__":

@@ -64,11 +64,13 @@ def resolve_roots() -> tuple[Path, Path, Path | None]:
 
 def load_python_models():
     proper_root, models_python_root, data_root = resolve_roots()
-    sys.path.insert(0, str(proper_root))
+    sys.path.insert(0, str(project_root() / "test" / "parity"))
     sys.path.insert(0, str(models_python_root))
 
     try:
-        import proper  # noqa: WPS433
+        from python334_runtime import load_python334_runtime  # noqa: WPS433
+
+        proper, native_runtime = load_python334_runtime(proper_root)
         import wfirst_phaseb_proper  # noqa: WPS433
         wfirst_phaseb_module = importlib.import_module("wfirst_phaseb_proper.wfirst_phaseb")
         wfirst_phaseb_compact_module = importlib.import_module("wfirst_phaseb_proper.wfirst_phaseb_compact")
@@ -93,7 +95,7 @@ def load_python_models():
     if data_root is not None:
         wfirst_phaseb_proper.data_dir = str(data_root)
 
-    return proper, wfirst_phaseb, wfirst_phaseb_compact, proper_root, models_python_root, data_root
+    return proper, wfirst_phaseb, wfirst_phaseb_compact, proper_root, models_python_root, data_root, native_runtime
 
 
 def case_definitions(wfirst_phaseb, wfirst_phaseb_compact):
@@ -455,7 +457,7 @@ def main() -> None:
     parser.add_argument("--parity-only", action="store_true")
     args = parser.parse_args()
 
-    proper, wfirst_phaseb, wfirst_phaseb_compact, proper_root, models_python_root, data_root = load_python_models()
+    proper, wfirst_phaseb, wfirst_phaseb_compact, proper_root, models_python_root, data_root, native_runtime = load_python_models()
     cases = case_definitions(wfirst_phaseb, wfirst_phaseb_compact)
     if args.case not in cases:
         raise SystemExit(f"unsupported case {args.case}")
@@ -495,6 +497,7 @@ def main() -> None:
             "output_dim": case["output_dim"],
             "wavelengths_um": [float(v * 1.0e6) for v in case["wavelengths_m"]],
             "available": True,
+            "native_kernels": native_runtime.provenance,
         },
         "stats": {
             "timed": timed,

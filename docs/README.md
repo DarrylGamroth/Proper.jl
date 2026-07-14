@@ -53,10 +53,15 @@ planning/audit records from the port effort.
   backend as skipped rather than failing the whole benchmark lane
 - Active GPU implementation tracking lives in
   [GPU implementation plan](GPU_IMPLEMENTATION_PLAN.md)
-- Python-baseline parity and Python-vs-Julia benchmarks use PROPER 3.3.4 from
-  SourceForge; run `./scripts/setup_python_baseline.sh` or set
+- Python-baseline parity and Python-vs-Julia benchmarks use the accepted patched
+  PROPER 3.3.4 source snapshot. Because SourceForge removed the historical
+  archive, `./scripts/setup_python_baseline.sh` reproducibly reconstructs that
+  exact snapshot from a checksum-pinned 3.3.5 archive. Run the script or set
   `PYPROPER_ROOT=/path/to/proper_v3.3.4_python` before running
   `./scripts/benchmark_all.sh`
+- Python parity and WFIRST comparisons require the three upstream native C
+  interpolation kernels; the harness compiles them in temporary storage and
+  fails instead of silently substituting SciPy interpolation
 
 ## CI And Validation Workflows
 - `.github/workflows/ci.yml` is the always-on regression workflow for pushes
@@ -71,9 +76,9 @@ planning/audit records from the port effort.
   `workflow_dispatch`
 - Manual `Validation` runs can disable benchmark reports or WFIRST parity and
   can limit WFIRST with the `wfirst_cases` input
-- The external Python PROPER baseline, upstream `proper-models` checkout, and
-  WFIRST public data compatibility root are fetched into CI caches rather than
-  committed to the repository
+- The verified Python PROPER reconstruction, upstream `proper-models` checkout,
+  and WFIRST public data compatibility root are fetched into CI caches rather
+  than committed to the repository
 
 ## Coverage
 - Run `./scripts/coverage_lcov.sh` to execute the full package test suite with
