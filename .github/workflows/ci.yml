@@ -58,6 +58,33 @@ jobs:
           use_oidc: true
           verbose: true
 
+  examples-docs:
+    name: Examples and Docs (Julia ${{ matrix.julia-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        julia-version: ['1.10', '1.12']
+    env:
+      GKSwstype: '100'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: ${{ matrix.julia-version }}
+      - uses: julia-actions/cache@v3
+      - name: Instantiate examples
+        run: julia --project=examples -e 'using Pkg; Pkg.develop(Pkg.PackageSpec(path=pwd())); Pkg.instantiate()'
+      - name: Execute example suite
+        run: julia -t4 --startup-file=no --project=examples examples/runtests.jl
+      - name: Instantiate documentation
+        run: julia --project=docs -e 'using Pkg; Pkg.develop(Pkg.PackageSpec(path=pwd())); Pkg.instantiate()'
+      - name: Build documentation and doctests
+        run: julia --startup-file=no --project=docs docs/make.jl
+      - name: Check local Markdown links
+        run: julia --startup-file=no scripts/check_markdown_links.jl
+
   python-parity:
     name: Python Parity
     runs-on: ubuntu-latest
@@ -92,12 +119,16 @@ jobs:
         run: julia --project=. -e 'using Pkg; Pkg.instantiate()'
       - name: Instantiate examples
         run: julia --project=examples -e 'using Pkg; Pkg.develop(Pkg.PackageSpec(path=pwd())); Pkg.instantiate()'
-      - name: Python baseline
-        run: .venv-parity/bin/python test/parity/generate_python_baseline.py
-      - name: Parity compare
+      - name: Generate Python parity baselines
+        run: |
+          .venv-parity/bin/python test/parity/generate_python_baseline.py
+          .venv-parity/bin/python test/parity/generate_python_example_metrics.py
+      - name: Check baseline reproducibility
+        run: ./scripts/check_parity_reproducibility.sh
+      - name: Validate baseline provenance and hashes
+        run: julia --startup-file=no --project=examples test/parity/validate_artifacts.jl
+      - name: Core parity compare
         run: julia -t4 --startup-file=no --project=examples test/parity/compare.jl
-      - name: Python example metrics baseline
-        run: .venv-parity/bin/python test/parity/generate_python_example_metrics.py
       - name: Example parity compare + thresholds
         run: julia -t4 --startup-file=no --project=examples test/parity/compare_examples.jl
       - name: Upload parity artifacts

@@ -77,7 +77,7 @@ This is the common nontrivial migration shape many upstream users care about.
 
 | MATLAB / upstream-style idea | Python-style idea | Julia |
 | --- | --- | --- |
-| read FITS map, apply error map, optionally apply DM, propagate, end | read FITS map, apply error map, optionally apply DM, propagate, end | `migration_dm_fits_prescription` in [`examples/migration_dm_fits.jl`](../examples/migration_dm_fits.jl) |
+| read FITS map, apply error map, optionally apply DM, propagate, end | read FITS map, apply error map, optionally apply DM, propagate, end | `migration_dm_fits_prescription` in [`examples/migration_dm_fits.jl`](https://github.com/DarrylGamroth/Proper.jl/blob/main/examples/migration_dm_fits.jl) |
 
 The Julia version is:
 
