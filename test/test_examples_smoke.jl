@@ -32,11 +32,24 @@ end
     @test maximum(psf) > 0
 end
 
-@testset "Multi example executes with direct DM map" begin
+@testset "Multi example executes with upstream actuator-space DM map" begin
     mod = load_example_module(joinpath(@__DIR__, "..", "examples", "multi_example.jl"))
-    field, sampling = mod.multi_example(0.55e-6, 32, Dict("use_dm" => true, "dm" => zeros(32, 32)))
+    field, sampling = mod.multi_example(0.55e-6, 32, Dict("use_dm" => true, "dm" => zeros(48, 48)))
     @test size(field) == (32, 32)
     @test sampling > 0
+end
+
+@testset "Multi-run example regressions execute" begin
+    testmulti1_mod = load_example_module(joinpath(@__DIR__, "..", "examples", "testmulti1.jl"))
+    psf = testmulti1_mod.testmulti1(; gridsize=32, npsf=32, nlambda=2)
+    @test size(psf) == (32, 32)
+    @test all(isfinite, psf)
+
+    testmulti2_mod = load_example_module(joinpath(@__DIR__, "..", "examples", "testmulti2.jl"))
+    fields, samplings = testmulti2_mod.testmulti2(; gridsize=32, npatterns=2)
+    @test size(fields) == (32, 32, 2)
+    @test all(isfinite, fields)
+    @test all(>(0), samplings)
 end
 
 @testset "Example native keyword APIs remain compatible with PASSVALUE" begin

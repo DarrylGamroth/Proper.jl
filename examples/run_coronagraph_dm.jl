@@ -1,4 +1,5 @@
 using Proper
+using Random
 include(joinpath(@__DIR__, "_passvalue.jl"))
 include(joinpath(@__DIR__, "telescope_dm.jl"))
 include(joinpath(@__DIR__, "coronagraph.jl"))
@@ -15,6 +16,8 @@ function run_coronagraph_dm(
     occulter=:gaussian,
     occulter_type=nothing,
     plot::Bool=false,
+    map_file::AbstractString="telescope_obj.fits",
+    rng::AbstractRNG=Random.default_rng(),
 )
     diam = 0.1
     f_lens = 24 * diam
@@ -29,6 +32,9 @@ function run_coronagraph_dm(
         f_lens,
         use_errors,
         use_dm,
+        ;
+        map_file,
+        rng,
     )
     coronagraph(
         wfo,

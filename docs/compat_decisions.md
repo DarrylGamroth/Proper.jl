@@ -1038,3 +1038,51 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     the requested FFTW count instead of stale prepared workspace state.
   - Correctness failure aborts the matrix; a faster but numerically unacceptable
     configuration is never selected as the reported best case.
+
+## D-0068: Multi-Run Examples Preserve Upstream Actuator-Space DM Semantics
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - The initial Julia `multi_example` port treated `dm` as an already-sampled
+    wavefront-grid map, while Python PROPER treats it as a `48 x 48`
+    actuator-space surface with a 1 mm actuator pitch.
+  - `testmulti1` and `testmulti2` were not executed by CI, indexed Julia named
+    tuples with strings, and constructed wavefront-sized DM arrays. The
+    broadband example also omitted upstream's intensity-conserving magnification.
+- Decision:
+  - Restore the upstream actuator-space `prop_dm` call and require a `48 x 48`
+    command map in `multi_example`.
+  - Keep the direct sampled-map `prop_dm(wf, dm_map)` API available for native
+    Julia callers, but do not substitute it inside an upstream parity example.
+  - Let Julia runner functions return their computed arrays for testing and
+    composition, while preserving their zero-argument command-line behavior.
+  - Gate the two multi-run examples against Python-generated numerical metrics,
+    including broadband resampling and all three ripple patterns.
+- Consequences:
+  - The examples now exercise the same influence-function projection, actuator
+    centering, reflection phase, and flux-conserving resampling as Python 3.3.4.
+  - Reduced-size keyword controls are available for deterministic CI smoke
+    tests without changing the upstream-sized defaults.
+
+## D-0069: Complex Python `prop_szoom_c` Unwritten Borders Are Zero
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - Python 3.3.4 allocates complex `prop_magnify` C-path output with
+    `numpy.empty`, while `prop_szoom_c.c` intentionally skips output pixels
+    whose full 13-sample interpolation support extends beyond the input.
+  - Those skipped complex pixels therefore contain uninitialized memory. Their
+    values change across runs and caused broadband integrated-flux metrics to
+    disagree even though every fully supported pixel matched Julia.
+  - The Python real path, pure-Python fallback, MATLAB implementation, and Julia
+    implementation all initialize skipped output pixels to zero.
+- Decision:
+  - The executable parity generator explicitly zeros only the complex output
+    pixels that `prop_szoom_c.c` does not write before computing metrics.
+  - Keep the compiled C result unchanged over its complete interpolation
+    support; do not mask or relax any supported-pixel difference.
+- Consequences:
+  - `testmulti1` has deterministic full-frame flux metrics and compares the
+    meaningful compiled-C interpolation result rather than allocator contents.
+  - Baseline reproducibility checks can detect any future reintroduction of
+    uninitialized edge data.
