@@ -140,6 +140,7 @@ end
 @testset "API contract export surface" begin
     @test Base.isexported(Proper, :prop_run)
     @test Base.isexported(Proper, :prop_run_multi)
+    @test Base.isexported(Proper, :prop_run_multi!)
     @test Base.isexported(Proper, :prop_fftw_threads)
     @test Base.isexported(Proper, :prepare_prescription)
     @test Base.isexported(Proper, :prepare_prescription_batch)

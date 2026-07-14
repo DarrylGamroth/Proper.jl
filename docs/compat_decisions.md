@@ -966,3 +966,40 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     instead of a plausible-looking but physically meaningless result.
   - API tests assert that the one-input call is inapplicable and the upstream
     two-input call remains available.
+
+## D-0066: Mutating Multi-Run Execution Uses Caller-Owned Typed Storage
+- Date: 2026-07-13
+- Status: Accepted
+- Context:
+  - `prop_run_multi` must allocate its returned three-dimensional stack and
+    sampling vector. Even fully prepared prescriptions therefore paid for a
+    second full output stack and serial post-run assembly.
+  - Repeated AO, HIL, and wavelength-sweep workloads already know their output
+    shapes and can own stable wavefront, output, and sampling buffers.
+  - Arena and bump allocators obscure array lifetime, aliasing, and device
+    placement while providing little benefit for these few large, long-lived
+    buffers.
+- Decision:
+  - Add `prop_run_multi!(stack, samplings, ...)` with exact output shape,
+    element-type, and backend checks, and return the caller's same objects.
+  - Accept vectors produced by `prepare_run` in both allocating and mutating
+    multi-run APIs. Fully prepared runs resolve native Julia keywords before
+    execution and therefore reject late `PASSVALUE` or execution keywords.
+  - Run independent CPU contexts concurrently only when destinations are dense
+    strided storage. Use serial execution for packed/custom storage and for
+    accelerator host submission, preserving `D-0012` and avoiding shared-word
+    races without atomics.
+  - Treat zero allocation as a warmed single-run storage-path contract. The
+    threaded path has a bounded host-allocation budget for Julia task and
+    backend wrapper overhead, not a false universal zero-allocation claim.
+- Consequences:
+  - On the local Julia 1.12 CPU at 256x256 with four prepared optical runs and
+    one FFTW thread, the reproducible warmed benchmark remained bit-identical,
+    improved from `12.69 ms` to `5.17 ms` (`2.46x`), and reduced host
+    allocation from `8.40 MB` to `12.7 KB` (`99.85%`).
+  - The focused single-run fixture allocates zero warmed bytes; the four-run
+    threaded scheduling fixture allocates about `3.1 KB` on the same runtime.
+    Regression tests use a small cross-version budget for thread machinery.
+  - Callers that need the allocating convenience surface keep
+    `prop_run_multi`; callers with stable buffers can eliminate full-frame
+    output churn without introducing an allocator subsystem.

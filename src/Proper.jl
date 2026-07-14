@@ -128,7 +128,7 @@ export prop_get_sampling, prop_get_sampling_radians, prop_get_sampling_arcsec
 export prop_get_wavelength, prop_get_z, prop_get_gridsize
 export prop_get_beamradius, prop_get_distancetofocus, prop_get_fratio
 export prop_get_nyquistsampling, prop_get_refradius
-export prop_run, prop_run_multi
+export prop_run, prop_run_multi, prop_run_multi!
 
 function __init__()
     configured_threads = get(ENV, "PROPER_FFTW_THREADS", nothing)

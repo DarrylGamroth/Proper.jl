@@ -93,6 +93,38 @@ julia> size(stack), length(samplings)
 ((16, 16, 2), 2)
 ```
 
+## caller-owned `prop_run_multi!` output
+
+```jldoctest
+julia> using Proper
+
+julia> function batch_into_demo(λm, n, value)
+           return fill(Float32(value), n, n), Float32(λm)
+       end
+batch_into_demo (generic function with 1 method)
+
+julia> prepared = prepare_prescription(batch_into_demo, 0.55f0, 8; precision=Float32);
+
+julia> batch = prepare_prescription_batch(prepared; pool_size=2);
+
+julia> stack = zeros(Float32, 8, 8, 2);
+
+julia> samplings = zeros(Float32, 2);
+
+julia> returned_stack, returned_samplings = prop_run_multi!(
+           stack,
+           samplings,
+           batch;
+           PASSVALUE=Float32[1, 2],
+       );
+
+julia> returned_stack === stack, returned_samplings === samplings
+(true, true)
+
+julia> vec(stack[1, 1, :]), samplings
+(Float32[1.0, 2.0], Float32[5.5000004f-7, 5.5000004f-7])
+```
+
 ## `prepare_model`
 
 ```jldoctest

@@ -60,6 +60,27 @@ using Proper
         @test length(samplings) == 2
     end
 
+    @testset "prop_run_multi! caller-owned output example" begin
+        function batch_into_demo(λm, n, value)
+            return fill(Float32(value), n, n), Float32(λm)
+        end
+
+        prepared = prepare_prescription(batch_into_demo, 0.55f0, 8; precision=Float32)
+        batch = prepare_prescription_batch(prepared; pool_size=2)
+        stack = zeros(Float32, 8, 8, 2)
+        samplings = zeros(Float32, 2)
+        returned_stack, returned_samplings = prop_run_multi!(
+            stack,
+            samplings,
+            batch;
+            PASSVALUE=Float32[1, 2],
+        )
+        @test returned_stack === stack
+        @test returned_samplings === samplings
+        @test vec(stack[1, 1, :]) == Float32[1, 2]
+        @test samplings == fill(0.55f0 * Float32(1e-6), 2)
+    end
+
     @testset "prepare_model example" begin
         function model_demo(λm, n, pass; gain=1.0)
             psf = fill(Float64(gain + pass), n, n)

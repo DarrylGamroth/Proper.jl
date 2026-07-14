@@ -480,3 +480,60 @@ prepared = prepare_run(
 This is the intended boundary for low-latency HIL and RTC integration: resolve
 all static structure once, reuse caller-owned arrays, and keep per-frame work
 limited to command updates plus propagation.
+
+The same ownership model extends to independent batches with
+`prop_run_multi!`. Bind each prepared run to its own wavefront, context, and
+output slice, then reuse the stack and sampling vector:
+
+```julia
+function batch_hil_prescription(λm, n; wavefront, output, run_context)
+    prop_begin!(wavefront, 2.4f0, λm; beam_diam_fraction=0.5f0)
+    prop_lens(wavefront, 20f0, run_context)
+    prop_propagate(wavefront, 20f0, run_context)
+    return prop_end(wavefront, output)
+end
+
+wavelengths = Float32[0.50, 0.55, 0.60, 0.65]
+n = 256
+stack = zeros(Float32, n, n, length(wavelengths))
+samplings = zeros(Float32, length(wavelengths))
+
+runs = map(enumerate(wavelengths)) do (slot, wavelength)
+    context = RunContext(Matrix{Float32})
+    field = Matrix{ComplexF32}(undef, n, n)
+    wavefront = prop_begin!(
+        field,
+        2.4f0,
+        wavelength * 1f-6;
+        beam_diam_fraction=0.5f0,
+        context=context,
+    )
+    prepared = prepare_prescription(
+        batch_hil_prescription,
+        wavelength,
+        n;
+        context=context,
+    )
+    prepare_run(
+        prepared;
+        activate_context=false,
+        wavefront=wavefront,
+        output=@view(stack[:, :, slot]),
+        run_context=context,
+    )
+end
+
+prop_run_multi!(stack, samplings, runs)
+```
+
+The vector must remain concretely typed, and every run must own independent
+mutable workspace. Dense strided CPU slices can execute on Julia threads.
+Packed arrays such as `BitArray` and custom storage use serial execution because
+distinct logical slices can share physical words. Accelerator batches retain
+ordered serial host submission while their kernels execute on the device.
+
+This is preferable to an arena or bump allocator for the current workload:
+large arrays have stable shapes and lifetimes, so explicit typed buffers make
+ownership, aliasing, backend placement, and numerical validation visible.
+Arenas remain a poor fit for arrays that escape a prescription or must be
+retained as batch output.
