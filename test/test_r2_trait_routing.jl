@@ -1,6 +1,12 @@
 using Test
 using Random
 
+function _gpu_entrance_prescription(λm, n)
+    wf = prop_begin(1.0, λm, n)
+    prop_define_entrance(wf)
+    return prop_end(wf)
+end
+
 function _warmed_gpu_qphase_alloc(wf, z, ctx, sync!)
     prop_qphase(wf, z, ctx)
     sync!()
@@ -158,6 +164,41 @@ function _gpu_carrier_phase_smoke!(device_array, sync!; atol, rtol)
     carrier = Array(carrier_wf.field)
     @test isapprox(carrier, envelope .* Complex{T}(im); atol=atol, rtol=rtol)
     @test isapprox(abs2.(carrier), abs2.(envelope); atol=atol, rtol=rtol)
+    return nothing
+end
+
+function _gpu_define_entrance_smoke!(device_array, sync!; atol, rtol)
+    T = Float32
+    input = reshape(
+        Complex{T}.(1:256) .+ im .* reverse(Complex{T}.(1:256)),
+        16,
+        16,
+    )
+    field = device_array(input)
+    wf = Proper.WaveFront(field, T(500e-9), T(1e-3), zero(T), one(T))
+    expected = input ./ sqrt(sum(abs2, input))
+
+    @test prop_define_entrance(wf) === wf
+    sync!()
+    @test wf.field === field
+    @test isapprox(Array(wf.field), expected; atol=atol, rtol=rtol)
+    @test isapprox(sum(abs2, Array(wf.field)), one(T); atol=atol, rtol=rtol)
+
+    ctx = RunContext(typeof(field))
+    output, sampling = prop_run(_gpu_entrance_prescription, T(0.5), 16; context=ctx)
+    sync!()
+    @test Proper.backend_style(typeof(output)) == Proper.backend_style(typeof(field))
+    @test isapprox(sum(Array(output)), one(T); atol=atol, rtol=rtol)
+    @test sampling > zero(T)
+
+    zero_wf = Proper.WaveFront(
+        device_array(zeros(Complex{T}, 4, 4)),
+        T(500e-9),
+        T(1e-3),
+        zero(T),
+        one(T),
+    )
+    @test_throws DomainError prop_define_entrance(zero_wf)
     return nothing
 end
 
@@ -660,6 +701,7 @@ end
             @test Proper.ka_separable_phase_enabled(typeof(a), 256, 256)
             @test !Proper.ka_separable_qphase_enabled(typeof(a), 256, 256)
             @test Proper.ka_separable_qphase_enabled(CUDA.CuMatrix{ComplexF64}, 128, 128)
+            _gpu_define_entrance_smoke!(CUDA.CuArray, CUDA.synchronize; atol=2f-6, rtol=2f-6)
             _gpu_carrier_phase_smoke!(CUDA.CuArray, CUDA.synchronize; atol=1f-5, rtol=1f-5)
 
             m = prop_magnify(a, 1.1, 16, ctx; QUICK=true)
@@ -787,6 +829,7 @@ end
             @test Proper.ka_separable_phase_enabled(typeof(a), 256, 256)
             @test !Proper.ka_separable_qphase_enabled(typeof(a), 256, 256)
             @test Proper.ka_separable_qphase_enabled(AMDGPU.ROCMatrix{ComplexF64}, 128, 128)
+            _gpu_define_entrance_smoke!(AMDGPU.ROCArray, AMDGPU.synchronize; atol=2f-6, rtol=2f-6)
             _gpu_carrier_phase_smoke!(AMDGPU.ROCArray, AMDGPU.synchronize; atol=3f-4, rtol=1f-3)
 
             promoted_c = 10.0
