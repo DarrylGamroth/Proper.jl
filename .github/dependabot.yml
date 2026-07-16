@@ -24,6 +24,13 @@ updates:
       - dependency-name: "Proper"
       # HdrHistogram is an unregistered, pinned benchmark dependency.
       - dependency-name: "HdrHistogram"
+      # Standard libraries are updated with Julia, not independently by Pkg.
+      - dependency-name: "LinearAlgebra"
+      - dependency-name: "Random"
+      - dependency-name: "Serialization"
+      - dependency-name: "SHA"
+      - dependency-name: "Test"
+      - dependency-name: "TOML"
     commit-message:
       prefix: "deps"
 

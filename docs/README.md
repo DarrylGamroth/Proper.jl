@@ -97,7 +97,8 @@ planning/audit records from the port effort.
 - Julia update pull requests remain ungrouped because Dependabot's
   community-maintained Julia updater does not yet support grouped full-unlock
   resolution; the local `Proper` dependency and unregistered, pinned
-  `HdrHistogram` benchmark dependency are excluded
+  `HdrHistogram` benchmark dependency are excluded, as are standard libraries
+  that update with the Julia runtime
 - GitHub Actions updates are grouped into a separate weekly pull request
 - Dependabot pull requests must pass the normal CI and validation contracts;
   the version-specific latency manifests remain part of that review

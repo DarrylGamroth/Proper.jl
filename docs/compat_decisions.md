@@ -142,7 +142,8 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     CI, parity, and validation gates. Julia update pull requests remain
     ungrouped until its community-maintained Dependabot updater supports grouped
     full-unlock resolution. Local and unregistered pinned dependencies are
-    excluded from automated updates.
+    excluded from automated updates, along with standard libraries whose
+    versions are owned by the Julia runtime.
 
 ## D-0015: Legal and Fixture Policy
 - Date: 2026-03-04
