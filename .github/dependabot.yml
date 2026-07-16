@@ -22,11 +22,8 @@ updates:
     ignore:
       # Proper is a local path dependency in the auxiliary environments.
       - dependency-name: "Proper"
-    groups:
-      julia-dependencies:
-        patterns:
-          - "*"
-        group-by: "dependency-name"
+      # HdrHistogram is an unregistered, pinned benchmark dependency.
+      - dependency-name: "HdrHistogram"
     commit-message:
       prefix: "deps"
 
