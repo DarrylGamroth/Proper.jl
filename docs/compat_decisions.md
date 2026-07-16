@@ -139,7 +139,10 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     no longer in the supported compatibility range.
   - Amendment (2026-07-16): Dependabot checks all maintained Julia environments
     and GitHub Actions weekly; ordinary updates remain subject to the existing
-    CI, parity, and validation gates.
+    CI, parity, and validation gates. Julia update pull requests remain
+    ungrouped until its community-maintained Dependabot updater supports grouped
+    full-unlock resolution. Local and unregistered pinned dependencies are
+    excluded from automated updates.
 
 ## D-0015: Legal and Fixture Policy
 - Date: 2026-03-04

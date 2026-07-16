@@ -94,9 +94,10 @@ planning/audit records from the port effort.
 ## Dependency Updates
 - `.github/dependabot.yml` checks the package, test, documentation, example,
   coverage, benchmark, and GPU Julia environments every week
-- Julia updates for the same dependency are grouped across environments so
-  their compatibility bounds stay aligned; the local path dependency on
-  `Proper` is excluded
+- Julia update pull requests remain ungrouped because Dependabot's
+  community-maintained Julia updater does not yet support grouped full-unlock
+  resolution; the local `Proper` dependency and unregistered, pinned
+  `HdrHistogram` benchmark dependency are excluded
 - GitHub Actions updates are grouped into a separate weekly pull request
 - Dependabot pull requests must pass the normal CI and validation contracts;
   the version-specific latency manifests remain part of that review
