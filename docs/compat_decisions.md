@@ -137,6 +137,9 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   - Optional CI: additional Julia version, macOS smoke, nightly GPU parity job.
   - Amendment (2026-07-14): CUDA integration targets CUDA.jl 6; CUDA.jl 5 is
     no longer in the supported compatibility range.
+  - Amendment (2026-07-16): Dependabot checks all maintained Julia environments
+    and GitHub Actions weekly; ordinary updates remain subject to the existing
+    CI, parity, and validation gates.
 
 ## D-0015: Legal and Fixture Policy
 - Date: 2026-03-04

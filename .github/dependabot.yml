@@ -1,0 +1,46 @@
+version: 2
+
+updates:
+  - package-ecosystem: "julia"
+    directories:
+      - "/"
+      - "/bench"
+      - "/bench/amdgpu"
+      - "/bench/cuda"
+      - "/bench/latency"
+      - "/coverage"
+      - "/docs"
+      - "/examples"
+      - "/test/amdgpu"
+      - "/test/cuda"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "America/Los_Angeles"
+    open-pull-requests-limit: 5
+    ignore:
+      # Proper is a local path dependency in the auxiliary environments.
+      - dependency-name: "Proper"
+    groups:
+      julia-dependencies:
+        patterns:
+          - "*"
+        group-by: "dependency-name"
+    commit-message:
+      prefix: "deps"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:30"
+      timezone: "America/Los_Angeles"
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "ci"
