@@ -258,6 +258,84 @@ function _gpu_preallocated_multi_smoke!(device_array, sync!)
     return nothing
 end
 
+struct _CUDAGraphOpticalPath{W,A,P,O}
+    wavefront::W
+    entrance_field::A
+    amplitude::P
+    opd_m::P
+    output::O
+end
+
+@inline function _propagate_cuda_graph_optical_path!(path::_CUDAGraphOpticalPath)
+    copyto!(path.wavefront.field, path.entrance_field)
+    prop_multiply(path.wavefront, path.amplitude)
+    prop_add_phase(path.wavefront, path.opd_m)
+    prop_end!(path.output, path.wavefront; noabs=true)
+    return path.output
+end
+
+function _gpu_cuda_graph_smoke!()
+    T = Float32
+    n = 16
+    wavelength_m = T(500e-9)
+    entrance_field = CUDA.fill(Complex{T}(1), n, n)
+    wavefront = Proper.WaveFront(
+        similar(entrance_field),
+        wavelength_m,
+        T(1e-3),
+        zero(T),
+        one(T),
+    )
+    path = _CUDAGraphOpticalPath(
+        wavefront,
+        entrance_field,
+        CUDA.fill(T(2), n, n),
+        CUDA.fill(wavelength_m / T(4), n, n),
+        CUDA.zeros(Complex{T}, n, n),
+    )
+
+    @test_throws ArgumentError prepare_cuda_graph(
+        _propagate_cuda_graph_optical_path!,
+        path;
+        warmup=-1,
+    )
+    prepared = prepare_cuda_graph(
+        _propagate_cuda_graph_optical_path!,
+        path;
+        warmup=2,
+    )
+    @test prepared isa PreparedCUDAGraph
+
+    fill!(path.amplitude, T(2))
+    fill!(path.opd_m, wavelength_m / T(4))
+    @test launch_cuda_graph!(prepared) === prepared
+    CUDA.synchronize()
+    @test isapprox(
+        Array(path.output),
+        fill(Complex{T}(0, 2), n, n);
+        atol=T(2e-6),
+        rtol=T(2e-6),
+    )
+
+    # A graph retains buffer addresses but must observe new frame contents.
+    fill!(path.amplitude, T(3))
+    fill!(path.opd_m, zero(T))
+    launch_cuda_graph!(prepared, CUDA.stream())
+    CUDA.synchronize()
+    @test isapprox(
+        Array(path.output),
+        fill(Complex{T}(3), n, n);
+        atol=T(2e-6),
+        rtol=T(2e-6),
+    )
+
+    launch_cuda_graph!(prepared)
+    CUDA.synchronize()
+    @test (@allocated launch_cuda_graph!(prepared)) == 0
+    CUDA.synchronize()
+    return nothing
+end
+
 function _gpu_propagate_to_fft_scratch!(wf, ctx, dz, propagation::Symbol)
     if propagation === :ptp
         wf.reference_surface = Proper.PLANAR
@@ -741,6 +819,7 @@ end
         if cuda_ready
             CUDA.allowscalar(false)
             @test Base.get_extension(Proper, :ProperCUDAExt) !== nothing
+            _gpu_cuda_graph_smoke!()
 
             a = CUDA.rand(Float32, 16, 16)
             ctx = RunContext(typeof(a))

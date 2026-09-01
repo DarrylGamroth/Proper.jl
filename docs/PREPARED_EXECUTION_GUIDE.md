@@ -227,6 +227,50 @@ prescriptions, `LinearAlgebra.BLAS.set_num_threads(1)` is a sensible starting
 point to avoid nested BLAS parallelism, but it should also be measured on the
 application's non-propagation workloads.
 
+## CUDA Graph Execution
+
+Load CUDA.jl to activate Proper's optional graph methods. A graph can cover any
+allocation-stable prepared optical call, including a complete instrument path
+implemented by another package:
+
+```julia
+using CUDA
+using Proper
+
+graph = prepare_cuda_graph(propagate_optical_path!, prepared_path; warmup=10)
+
+copyto!(prepared_path.pupil_amplitude, next_amplitude)
+copyto!(prepared_path.opd_m, next_opd_m)
+launch_cuda_graph!(graph)
+```
+
+`prepare_cuda_graph` performs warmup, synchronization, stream capture,
+instantiation, and one priming launch. `launch_cuda_graph!` is asynchronous and
+returns the graph object. Subsequent work on the same CUDA stream consumes the
+new optical output without a host synchronization.
+
+The graph retains the operation and its positional arguments to keep their
+device buffers alive. Those buffers may receive new contents in place, but the
+following changes require recapture:
+
+- replacing an input, output, scratch, or FFT-plan object
+- changing the grid or array shapes
+- changing which kernels or library calls execute
+- changing stream topology without preserving captured dependencies
+
+CUDA Graph replay records device operations, not Julia host logic. Any host
+state updates inside the operation execute during capture only. Prepared paths
+must therefore express per-frame state through stable device buffers.
+
+For standalone Proper or SPIDERS execution, repeatedly launch the prepared
+graph. For a combined application graph, retain the ordinary uncaptured
+`propagate_optical_path!` entry point and let the outer HIL layer capture AOS,
+Proper, and downstream device work together. Do not begin a nested capture.
+
+The steady launch, excluding synchronization, is expected to allocate zero host
+bytes after warmup. Synchronization wrappers can have a small CUDA.jl host
+allocation and should be measured separately.
+
 ### `PreparedAssetPool`
 Use this when each slot should lazily create and retain its own asset bundle.
 

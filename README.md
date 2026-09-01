@@ -185,6 +185,45 @@ psf, sampling = prop_run(prepared)
 For a fuller explanation of prepared execution, see
 `docs/PREPARED_EXECUTION_GUIDE.md`.
 
+### Use CUDA Graphs For A Stable Device-Resident Optical Path
+
+CUDA.jl is an optional dependency. When it is loaded, a prepared optical path
+with stable device buffers, plans, and control flow can be captured once and
+launched without rebuilding the host-side kernel submission sequence:
+
+```julia
+using CUDA
+using Proper
+
+# `prepared_path` owns all device inputs, outputs, plans, and scratch arrays.
+graph = prepare_cuda_graph(propagate_optical_path!, prepared_path; warmup=10)
+
+# Update existing input arrays in place for each frame.
+copyto!(prepared_path.opd_m, next_opd_m)
+launch_cuda_graph!(graph)  # asynchronous on the current CUDA stream
+```
+
+This API captures the complete callable operation, so it can cover an entire
+prepared coronagraph, SCC, or LLOWFS propagation rather than one PROPER kernel.
+The graph launch itself has a zero-host-allocation steady-state contract on the
+tested CUDA.jl 6 path. Synchronize only when the host must observe completion;
+same-stream device work is ordered after the graph automatically.
+
+Do not allocate or replace device buffers during capture. Host-side mutations
+inside `propagate_optical_path!` occur only while capturing and are not replayed.
+Recapture after changing the grid, FFT plans, buffer identities, or control-flow
+topology. If an application wants one larger AOS-to-detector graph, capture the
+ordinary `propagate_optical_path!` call in that outer graph instead of launching
+an already prepared graph from inside another capture.
+
+See [`examples/cuda_graph_prepared.jl`](examples/cuda_graph_prepared.jl) for a
+standalone multi-operation optical-path example. Run it with the CUDA test
+environment:
+
+```bash
+julia --project=test/cuda examples/cuda_graph_prepared.jl
+```
+
 ## Compatibility Notes
 - Python PROPER 3.3.4 is the executable parity baseline
 - MATLAB PROPER 3.3.1 remains the semantic reference when investigating likely

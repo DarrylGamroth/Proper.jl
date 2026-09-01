@@ -1307,3 +1307,34 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     direct-execution block requests rendering.
   - Capturing diagnostics allocates caller-visible buffers only when requested;
     the default coronagraph path performs no diagnostic copies.
+
+## D-0077: CUDA Graph Capture Is A General Prepared-Execution Facility
+- Date: 2026-08-31
+- Status: Accepted
+- Context:
+  - A prepared SPIDERS optical path repeatedly submitted the same CUDA kernels,
+    FFTs, buffer addresses, and control-flow topology while changing device
+    input contents in place.
+  - Capturing that path in the HIL integration layer reduced a synchronized
+    launch from about 139 KiB of host allocation to only the small allocation
+    attributable to CUDA.jl synchronization, but standalone Proper and SPIDERS
+    users could not use the facility without depending on AdaptiveOpticsSim.
+  - CUDA Graph ownership inside one optical prescription must not prevent an
+    application from instead capturing a larger AO-to-detector device graph.
+- Decision:
+  - Provide `PreparedCUDAGraph`, `prepare_cuda_graph`, and
+    `launch_cuda_graph!` through Proper's optional CUDA extension.
+  - Capture an arbitrary positional callable and retain both the callable and
+    arguments as lifetime roots. Do not restrict the facility to `prop_run`,
+    SCC, LLOWFS, or another specific prescription.
+  - Keep launch asynchronous, with an optional explicit stream. Exclude
+    synchronization from the zero-host-allocation launch contract.
+  - Preserve the original uncaptured operation so an outer application can
+    capture the complete device pipeline instead of nesting graph capture.
+- Consequences:
+  - Standalone Proper and instrument packages can remove repeated CUDA launch
+    construction without importing AdaptiveOpticsSim or its HIL adapter.
+  - Device buffer contents may vary between launches, but buffer identities,
+    shapes, plans, and device-work topology remain fixed until recapture.
+  - Host-side mutations performed by the operation during capture do not replay
+    and must not represent per-frame state.

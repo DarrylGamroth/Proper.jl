@@ -4,5 +4,5 @@ Proper = "0686a737-3bdd-44da-9bf7-6692cf630078"
 
 [compat]
 Documenter = "1"
-Proper = "0.2"
+Proper = "0.3"
 julia = "1.10"

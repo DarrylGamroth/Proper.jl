@@ -29,6 +29,8 @@ This document is the current maintainer tracker for GPU-facing work in
   HdrHistogram logs
 - prepared vector-of-runs execution supports multi-wavelength throughput
 - explicit `Float32` prepared execution is documented and benchmarked
+- optional CUDA Graph preparation can capture and asynchronously replay a whole
+  allocation-stable prepared optical call with zero host allocation per launch
 - backend-native coordinate-grid cubic convolution supports arbitrary map
   projection on CUDA and AMDGPU arrays, with explicit failure for unsupported
   scalar point sampling
@@ -42,6 +44,8 @@ This document is the current maintainer tracker for GPU-facing work in
   precision, and batch throughput
 - collect prepared-call latency distributions on representative dedicated GPU
   runners before defining any device-specific percentile regression gate
+- evaluate one application-owned graph spanning AO state update, the uncaptured
+  Proper operation, and detector work; do not compose it through nested capture
 - validate optional self-hosted CUDA/AMDGPU CI runners when those runners become
   part of the project infrastructure
 

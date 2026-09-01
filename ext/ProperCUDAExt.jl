@@ -22,6 +22,49 @@ Proper.workspace_matrix(::Type{<:CUDA.CuArray}, ::Type{T}, ny::Integer=0, nx::In
 Proper.workspace_complex_matrix(::Type{<:CUDA.CuArray}, ::Type{T}, ny::Integer=0, nx::Integer=0) where {T<:AbstractFloat} = CUDA.CuMatrix{Complex{T}}(undef, ny, nx)
 Proper.fft_plan_exec_style(::Type{<:CUDA.CuArray}) = Proper.FFTPlanAvailableStyle()
 
+function Proper.prepare_cuda_graph(
+    operation::F,
+    args...;
+    warmup::Integer=10,
+) where {F}
+    warmup >= 0 || throw(ArgumentError("warmup must be nonnegative"))
+    CUDA.is_capturing() && throw(ArgumentError(
+        "prepare_cuda_graph cannot run during an active CUDA stream capture",
+    ))
+
+    for _ in 1:warmup
+        operation(args...)
+    end
+    CUDA.synchronize()
+
+    graph = CUDA.capture() do
+        operation(args...)
+    end
+    executable = CUDA.instantiate(graph)
+    prepared = Proper.PreparedCUDAGraph(
+        graph,
+        executable,
+        operation,
+        args,
+    )
+    CUDA.launch(executable)
+    CUDA.synchronize()
+    return prepared
+end
+
+@inline function Proper.launch_cuda_graph!(prepared::Proper.PreparedCUDAGraph)
+    CUDA.launch(prepared.executable)
+    return prepared
+end
+
+@inline function Proper.launch_cuda_graph!(
+    prepared::Proper.PreparedCUDAGraph,
+    stream::CUDA.CuStream,
+)
+    CUDA.launch(prepared.executable, stream)
+    return prepared
+end
+
 function Proper.FFTWorkspace(::Type{<:CUDA.CuArray}, ::Type{T}=Float64) where {T<:AbstractFloat}
     rho2 = CUDA.CuMatrix{T}(undef, 0, 0)
     scratch = CUDA.CuMatrix{Complex{T}}(undef, 0, 0)

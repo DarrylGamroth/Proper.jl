@@ -224,6 +224,21 @@ Additional stable return conventions:
 - Warning policy:
   - `@warn` for compatibility-relevant behavior changes
 
+## 6.1 Optional CUDA Graph Execution
+
+- `prepare_cuda_graph(operation, args...; warmup=10)` is provided by the CUDA
+  extension and returns a `PreparedCUDAGraph` that retains the operation and
+  arguments as lifetime roots.
+- `launch_cuda_graph!(prepared[, stream])` asynchronously launches the captured
+  device work and returns `prepared`.
+- Preparation and graph instantiation are allocating setup operations. A warmed
+  launch excluding synchronization has a zero-host-allocation contract for the
+  supported CUDA.jl 6 line.
+- Captured buffer, plan, shape, and device-work topology identities are stable.
+  Contents of existing device buffers may change in place between launches.
+- Host-side state mutation is not replayed. Applications needing a larger graph
+  must capture the ordinary operation rather than nest `prepare_cuda_graph`.
+
 ## 7. Non-Goals
 - Reproducing Python module-global mutable state patterns.
 - Enforcing Python object model or dynamic import behavior internally.
