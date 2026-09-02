@@ -22,6 +22,49 @@ Proper.workspace_matrix(::Type{<:AMDGPU.ROCArray}, ::Type{T}, ny::Integer=0, nx:
 Proper.workspace_complex_matrix(::Type{<:AMDGPU.ROCArray}, ::Type{T}, ny::Integer=0, nx::Integer=0) where {T<:AbstractFloat} = AMDGPU.ROCMatrix{Complex{T}}(undef, ny, nx)
 Proper.fft_plan_exec_style(::Type{<:AMDGPU.ROCArray}) = Proper.FFTPlanAvailableStyle()
 
+function Proper.prepare_hip_graph(
+    operation::F,
+    args...;
+    warmup::Integer=10,
+) where {F}
+    warmup >= 0 || throw(ArgumentError("warmup must be nonnegative"))
+    AMDGPU.is_capturing() && throw(ArgumentError(
+        "prepare_hip_graph cannot run during an active HIP stream capture",
+    ))
+
+    for _ in 1:warmup
+        operation(args...)
+    end
+    AMDGPU.synchronize()
+
+    graph = AMDGPU.capture() do
+        operation(args...)
+    end
+    executable = AMDGPU.instantiate(graph)
+    prepared = Proper.PreparedHIPGraph(
+        graph,
+        executable,
+        operation,
+        args,
+    )
+    AMDGPU.launch(executable)
+    AMDGPU.synchronize()
+    return prepared
+end
+
+@inline function Proper.launch_hip_graph!(prepared::Proper.PreparedHIPGraph)
+    AMDGPU.launch(prepared.executable)
+    return prepared
+end
+
+@inline function Proper.launch_hip_graph!(
+    prepared::Proper.PreparedHIPGraph,
+    stream::AMDGPU.HIPStream,
+)
+    AMDGPU.launch(prepared.executable, stream)
+    return prepared
+end
+
 function Proper.FFTWorkspace(::Type{<:AMDGPU.ROCArray}, ::Type{T}=Float64) where {T<:AbstractFloat}
     rho2 = AMDGPU.ROCMatrix{T}(undef, 0, 0)
     scratch = AMDGPU.ROCMatrix{Complex{T}}(undef, 0, 0)

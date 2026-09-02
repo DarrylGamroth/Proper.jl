@@ -224,6 +224,36 @@ environment:
 julia --project=test/cuda examples/cuda_graph_prepared.jl
 ```
 
+### Use HIP Graphs On AMD GPUs
+
+AMDGPU.jl activates the corresponding HIP Graph API for allocation-stable
+prepared paths:
+
+```julia
+using AMDGPU
+using Proper
+
+graph = prepare_hip_graph(propagate_optical_path!, prepared_path; warmup=10)
+
+# Update stable ROCArray buffers with capture-compatible device kernels.
+prepared_path.pupil_amplitude .= next_amplitude
+prepared_path.opd_m .= next_opd_m
+launch_hip_graph!(graph)  # asynchronous on the current HIP stream
+```
+
+`launch_hip_graph!(graph, stream)` accepts an explicit `AMDGPU.HIPStream` and
+preserves normal same-stream ordering. On the supported AMDGPU.jl 2 path,
+device-to-device `copyto!` may use a HIP operation that cannot be captured;
+use kernel assignment such as `.=` inside the captured operation. ROCFFT plans
+are supported after warmup and must keep stable identities until recapture.
+
+See [`examples/amdgpu_graph_prepared.jl`](examples/amdgpu_graph_prepared.jl)
+for a complete ROCFFT-backed example. Run it with the AMDGPU test environment:
+
+```bash
+julia --project=test/amdgpu examples/amdgpu_graph_prepared.jl
+```
+
 ## Compatibility Notes
 - Python PROPER 3.3.4 is the executable parity baseline
 - MATLAB PROPER 3.3.1 remains the semantic reference when investigating likely

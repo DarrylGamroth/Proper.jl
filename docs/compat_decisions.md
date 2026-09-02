@@ -1338,3 +1338,35 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     shapes, plans, and device-work topology remain fixed until recapture.
   - Host-side mutations performed by the operation during capture do not replay
     and must not represent per-frame state.
+
+## D-0078: HIP Graph Capture Mirrors CUDA With Backend-Specific Entry Points
+- Date: 2026-09-01
+- Status: Accepted
+- Context:
+  - AMDGPU.jl 2 exposes public HIP Graph capture, instantiation, asynchronous
+    launch, active-stream detection, and explicit-stream launch primitives.
+  - Proper's AMDGPU backend already owns reusable ROCFFT plans and device
+    workspaces suitable for stable graph replay.
+  - HIP stream capture does not accept every ordinary ROCArray operation. In
+    particular, AMDGPU.jl's device-to-device `copyto!` may route through
+    `hipMemcpyWithStream`, which ROCm rejects during capture, while equivalent
+    device-kernel assignment is capture-compatible.
+- Decision:
+  - Provide `PreparedHIPGraph`, `prepare_hip_graph`, and `launch_hip_graph!`
+    through Proper's optional AMDGPU extension.
+  - Keep the HIP and CUDA public names explicit because arbitrary positional
+    callables do not provide a reliable backend-dispatch argument.
+  - Match CUDA's lifecycle and ownership contract: warm, synchronize, capture,
+    instantiate, prime, retain the callable and arguments, and launch
+    asynchronously on the current or an explicit stream.
+  - Require HIP-capture-compatible operations and document device-kernel
+    assignment as the stable-buffer copy path for AMDGPU.jl 2.
+- Consequences:
+  - Proper can replay warmed ROCFFT optical paths on AMD GPUs without rebuilding
+    the host-side submission sequence for every frame.
+  - Graph replay remains functional on AMDGPU.jl 2.7, where a launch may incur
+    a small dependency-owned host allocation. The warmed launch, excluding
+    synchronization, has a zero-host-allocation contract on validated
+    AMDGPU.jl 2.8+ configurations.
+  - Buffer, plan, workspace, shape, and device-work topology identities remain
+    fixed until recapture; host-side mutations still do not replay.

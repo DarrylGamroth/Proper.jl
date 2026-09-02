@@ -224,7 +224,7 @@ Additional stable return conventions:
 - Warning policy:
   - `@warn` for compatibility-relevant behavior changes
 
-## 6.1 Optional CUDA Graph Execution
+## 6.1 Optional GPU Graph Execution
 
 - `prepare_cuda_graph(operation, args...; warmup=10)` is provided by the CUDA
   extension and returns a `PreparedCUDAGraph` that retains the operation and
@@ -238,6 +238,18 @@ Additional stable return conventions:
   Contents of existing device buffers may change in place between launches.
 - Host-side state mutation is not replayed. Applications needing a larger graph
   must capture the ordinary operation rather than nest `prepare_cuda_graph`.
+- `prepare_hip_graph(operation, args...; warmup=10)` is provided by the AMDGPU
+  extension and returns a `PreparedHIPGraph` with the same stable-identity and
+  lifetime-root contract.
+- `launch_hip_graph!(prepared[, stream])` asynchronously launches on the current
+  or explicit HIP stream and returns `prepared`. A warmed launch excluding
+  synchronization has a zero-host-allocation contract for supported AMDGPU.jl
+  2.8+ configurations.
+- HIP capture requires capture-compatible device operations. Kernel assignment
+  such as `.=` is the supported stable-buffer copy path when AMDGPU.jl's
+  device-to-device `copyto!` maps to an unsupported capture operation.
+- Warmed ROCFFT plans are capture-compatible; plan and workspace identities
+  remain fixed until recapture.
 
 ## 7. Non-Goals
 - Reproducing Python module-global mutable state patterns.

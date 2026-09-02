@@ -31,6 +31,9 @@ This document is the current maintainer tracker for GPU-facing work in
 - explicit `Float32` prepared execution is documented and benchmarked
 - optional CUDA Graph preparation can capture and asynchronously replay a whole
   allocation-stable prepared optical call with zero host allocation per launch
+- optional HIP Graph preparation can capture and asynchronously replay warmed
+  ROCFFT optical paths, including distinct-stream launch and same-stream
+  downstream ordering, with zero host allocation per launch on AMDGPU.jl 2.8+
 - backend-native coordinate-grid cubic convolution supports arbitrary map
   projection on CUDA and AMDGPU arrays, with explicit failure for unsupported
   scalar point sampling

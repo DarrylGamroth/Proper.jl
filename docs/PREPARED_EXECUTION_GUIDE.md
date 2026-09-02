@@ -271,6 +271,39 @@ The steady launch, excluding synchronization, is expected to allocate zero host
 bytes after warmup. Synchronization wrappers can have a small CUDA.jl host
 allocation and should be measured separately.
 
+## HIP Graph Execution
+
+Load AMDGPU.jl to activate Proper's HIP Graph methods. The lifecycle mirrors
+CUDA Graph execution while retaining backend-specific types and entry points:
+
+```julia
+using AMDGPU
+using Proper
+
+graph = prepare_hip_graph(propagate_optical_path!, prepared_path; warmup=10)
+
+prepared_path.pupil_amplitude .= next_amplitude
+prepared_path.opd_m .= next_opd_m
+launch_hip_graph!(graph)
+```
+
+`prepare_hip_graph` performs warmup, synchronization, HIP stream capture,
+instantiation, and one priming launch. `launch_hip_graph!` is asynchronous,
+returns the `PreparedHIPGraph`, and optionally accepts an explicit
+`AMDGPU.HIPStream`. Work queued after the graph on the same stream observes its
+output without an intervening host synchronization.
+
+The stable-buffer, fixed-topology, lifetime-root, host-mutation, and nested
+capture rules described for CUDA Graphs also apply to HIP Graphs. In addition,
+the captured operation must use HIP-stream-capture-compatible primitives.
+AMDGPU.jl 2 may implement device-to-device `copyto!` with an operation that
+ROCm rejects during capture; use a device kernel such as `.=` for that copy.
+Warmed ROCFFT plans can be captured and replayed, but their identities and
+workspace buffers must remain stable.
+
+The steady HIP Graph launch, excluding synchronization, is expected to allocate
+zero host bytes after warmup on supported AMDGPU.jl 2.8+ configurations.
+
 ### `PreparedAssetPool`
 Use this when each slot should lazily create and retain its own asset bundle.
 

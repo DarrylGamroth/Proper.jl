@@ -101,6 +101,7 @@ export prepare_prescription, prepare_prescription_batch, prepare_asset_pool, pre
 export prepare_run
 export prepared_context
 export PreparedCUDAGraph, prepare_cuda_graph, launch_cuda_graph!
+export PreparedHIPGraph, prepare_hip_graph, launch_hip_graph!
 export reset_prepared_batch!, reset_prepared_assets!, reset_prepared_model!
 export prop_wavefront, prop_begin, prop_begin!, prop_end, prop_add_phase, prop_add_wavefront
 export prop_multiply, prop_divide, prop_shift_center

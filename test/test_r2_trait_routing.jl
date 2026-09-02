@@ -336,6 +336,163 @@ function _gpu_cuda_graph_smoke!()
     return nothing
 end
 
+struct _HIPGraphOpticalPath{W,A,P,O,C,T}
+    wavefront::W
+    entrance_field::A
+    amplitude::P
+    opd_m::P
+    output::O
+    context::C
+    dz_m::T
+end
+
+@inline function _propagate_hip_graph_optical_path!(path::_HIPGraphOpticalPath)
+    # AMDGPU's device-to-device `copyto!` is not HIP-stream-capture compatible.
+    # Express the stable input update as a device kernel instead.
+    path.wavefront.field .= path.entrance_field
+    path.wavefront.reference_surface = Proper.PLANAR
+    prop_ptp(path.wavefront, path.dz_m, path.context)
+    prop_multiply(path.wavefront, path.amplitude)
+    prop_add_phase(path.wavefront, path.opd_m)
+    prop_end!(path.output, path.wavefront; noabs=true)
+    return path.output
+end
+
+function _hip_graph_reference(
+    entrance_field,
+    amplitude,
+    opd_m,
+    wavelength_m,
+    sampling_m,
+    dz_m,
+)
+    wavefront = Proper.WaveFront(
+        copy(entrance_field),
+        wavelength_m,
+        sampling_m,
+        zero(wavelength_m),
+        one(wavelength_m),
+    )
+    context = RunContext(wavefront)
+    output = similar(entrance_field)
+    path = _HIPGraphOpticalPath(
+        wavefront,
+        entrance_field,
+        amplitude,
+        opd_m,
+        output,
+        context,
+        dz_m,
+    )
+    _propagate_hip_graph_optical_path!(path)
+    return output
+end
+
+function _gpu_hip_graph_smoke!()
+    T = Float32
+    n = 16
+    wavelength_m = T(500e-9)
+    sampling_m = T(1e-3)
+    dz_m = T(0.01)
+    entrance_cpu = Matrix{Complex{T}}(undef, n, n)
+    for j in axes(entrance_cpu, 2), i in axes(entrance_cpu, 1)
+        entrance_cpu[i, j] = cis(T(0.07) * T(i - 1) + T(0.11) * T(j - 1))
+    end
+
+    entrance_field = AMDGPU.ROCArray(entrance_cpu)
+    wavefront = Proper.WaveFront(
+        similar(entrance_field),
+        wavelength_m,
+        sampling_m,
+        zero(T),
+        one(T),
+    )
+    path = _HIPGraphOpticalPath(
+        wavefront,
+        entrance_field,
+        AMDGPU.fill(T(2), n, n),
+        AMDGPU.fill(wavelength_m / T(4), n, n),
+        similar(entrance_field),
+        RunContext(typeof(entrance_field)),
+        dz_m,
+    )
+
+    @test_throws ArgumentError prepare_hip_graph(
+        _propagate_hip_graph_optical_path!,
+        path;
+        warmup=-1,
+    )
+    capture_error = Ref{Any}()
+    guard_graph = AMDGPU.capture() do
+        capture_error[] = try
+            prepare_hip_graph(
+                _propagate_hip_graph_optical_path!,
+                path;
+                warmup=0,
+            )
+            nothing
+        catch error
+            error
+        end
+    end
+    @test capture_error[] isa ArgumentError
+    finalize(guard_graph)
+    AMDGPU.synchronize()
+
+    prepared = prepare_hip_graph(
+        _propagate_hip_graph_optical_path!,
+        path;
+        warmup=2,
+    )
+    @test prepared isa PreparedHIPGraph
+    @test Proper.fft_workspace(path.context).forward_plan !== nothing
+    @test Proper.fft_workspace(path.context).backward_plan !== nothing
+
+    fill!(path.amplitude, T(2))
+    fill!(path.opd_m, wavelength_m / T(4))
+    @test launch_hip_graph!(prepared) === prepared
+    AMDGPU.synchronize()
+    expected = _hip_graph_reference(
+        entrance_cpu,
+        fill(T(2), n, n),
+        fill(wavelength_m / T(4), n, n),
+        wavelength_m,
+        sampling_m,
+        dz_m,
+    )
+    @test isapprox(Array(path.output), expected; atol=T(3e-4), rtol=T(1e-3))
+
+    # A distinct stream orders input updates, graph replay, and downstream work
+    # without a host synchronization between those operations.
+    ordered_output = similar(path.output)
+    stream = AMDGPU.HIPStream()
+    AMDGPU.stream!(stream) do
+        fill!(path.amplitude, T(3))
+        fill!(path.opd_m, zero(T))
+        @test launch_hip_graph!(prepared, stream) === prepared
+        ordered_output .= T(2) .* path.output
+    end
+    AMDGPU.synchronize(stream)
+    expected = _hip_graph_reference(
+        entrance_cpu,
+        fill(T(3), n, n),
+        fill(zero(T), n, n),
+        wavelength_m,
+        sampling_m,
+        dz_m,
+    )
+    @test isapprox(Array(path.output), expected; atol=T(3e-4), rtol=T(1e-3))
+    @test isapprox(Array(ordered_output), T(2) .* expected; atol=T(6e-4), rtol=T(1e-3))
+
+    launch_hip_graph!(prepared)
+    AMDGPU.synchronize()
+    launch_allocation_limit = pkgversion(AMDGPU) >= v"2.8" ? 0 : 64
+    @test (@allocated launch_hip_graph!(prepared)) <= launch_allocation_limit
+    AMDGPU.synchronize()
+    finalize(stream)
+    return nothing
+end
+
 function _gpu_propagate_to_fft_scratch!(wf, ctx, dz, propagation::Symbol)
     if propagation === :ptp
         wf.reference_surface = Proper.PLANAR
@@ -952,6 +1109,7 @@ end
         if amdgpu_ready
             AMDGPU.allowscalar(false)
             @test Base.get_extension(Proper, :ProperAMDGPUExt) !== nothing
+            _gpu_hip_graph_smoke!()
 
             a = AMDGPU.rand(Float32, 16, 16)
             ctx = RunContext(typeof(a))

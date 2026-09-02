@@ -96,6 +96,59 @@ The warmed launch path has a zero-host-allocation contract on supported CUDA.jl
 """
 function launch_cuda_graph! end
 
+"""
+    PreparedHIPGraph
+
+Reusable HIP Graph execution prepared by [`prepare_hip_graph`](@ref).
+
+The object owns the captured graph, executable graph, operation, and arguments
+so device buffers referenced by the prepared optical path remain rooted for the
+graph lifetime. Construct it with `prepare_hip_graph`; do not construct it
+directly.
+"""
+struct PreparedHIPGraph{G,E,F,A}
+    graph::G
+    executable::E
+    operation::F
+    arguments::A
+end
+
+"""
+    prepare_hip_graph(operation, args...; warmup=10)
+
+Prepare a reusable HIP Graph for one allocation-stable optical operation.
+
+AMDGPU.jl must be loaded so Proper's optional AMDGPU extension can provide this
+method. Preparation calls `operation(args...)` `warmup` times, synchronizes,
+captures the same call, instantiates its graph, and primes one graph launch.
+Preparation, compilation, capture, and priming are therefore outside the
+repeated execution boundary.
+
+The operation must enqueue a fixed topology of HIP-capture-compatible device
+work using stable buffer and plan identities. Buffer contents may change in
+place between launches. Device allocation, buffer replacement, topology
+changes, or an enclosing HIP capture require a separately prepared graph.
+Host-side state changes made by `operation` during capture are not replayed.
+
+Use [`launch_hip_graph!`](@ref) for asynchronous repeated execution. The
+operation's ordinary uncaptured entry point remains available when an
+application wants to capture a larger graph around the full device pipeline.
+"""
+function prepare_hip_graph end
+
+"""
+    launch_hip_graph!(prepared[, stream])
+
+Launch a [`PreparedHIPGraph`](@ref) asynchronously and return `prepared`.
+
+Without an explicit HIP stream, the currently active stream is used. Work
+subsequently enqueued on the same stream observes the graph's output without a
+host synchronization. Synchronize only at a required host completion boundary.
+The warmed launch path has a zero-host-allocation contract on supported
+AMDGPU.jl 2.8+ configurations.
+"""
+function launch_hip_graph! end
+
 abstract type PreparedRunContextActivation end
 struct PreparedRunContextActive <: PreparedRunContextActivation end
 struct PreparedRunContextInactive <: PreparedRunContextActivation end
