@@ -1,6 +1,6 @@
 name = "Proper"
 uuid = "0686a737-3bdd-44da-9bf7-6692cf630078"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Darryl Gamroth <dgamroth@rubus.ca>"]
 
 [deps]
@@ -23,11 +23,11 @@ ProperCUDAExt = "CUDA"
 
 [compat]
 AMDGPU = "2.7"
-AcceleratedKernels = "0.4.3"
+AcceleratedKernels = "0.4.3, 0.5.11"
 CUDA = "6"
 FFTW = "1.10"
 FITSIO = "0.17"
-KernelAbstractions = "0.9.42"
+KernelAbstractions = "0.9.42, 0.10.1"
 LinearAlgebra = "1.10"
 Random = "1.10"
 Serialization = "1.10"

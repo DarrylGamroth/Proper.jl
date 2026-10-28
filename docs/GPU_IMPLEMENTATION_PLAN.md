@@ -5,6 +5,14 @@ This document is the current maintainer tracker for GPU-facing work in
 [`archive/GPU_IMPLEMENTATION_PLAN_2026-03-17.md`](https://github.com/DarrylGamroth/Proper.jl/blob/main/docs/archive/GPU_IMPLEMENTATION_PLAN_2026-03-17.md).
 
 ## Current Contract
+
+Dependency selectors remain backend-specific: `test/cuda/Project.toml` pins
+CUDA 6.4.2 / KernelAbstractions 0.9.45 / AcceleratedKernels 0.4.3, while
+`test/amdgpu/Project.toml` pins AMDGPU 2.9.2 / KernelAbstractions 0.10.1 /
+AcceleratedKernels 0.5.11. Library compatibility admits both cohorts; it does
+not qualify CUDA on KernelAbstractions 0.10 or establish latency results.
+See [D-0079](compat_decisions.md#d-0079-separate-accelerator-dependency-cohorts).
+
 - CUDA and AMDGPU are optional package extensions.
 - GPU performance work targets shared `Proper.jl` propagation and helper paths,
   not WFIRST-specific reference-model code.
