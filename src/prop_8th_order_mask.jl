@@ -164,23 +164,37 @@ end
     return complex(min(real(a), real(b)), max(imag(a), imag(b)))
 end
 
+@static if isdefined(AK, :Workspace)
+    function _mask_reduction_workspace(mask::AbstractMatrix{T}) where {T<:AbstractFloat}
+        neutral = complex(typemax(T), typemin(T))
+        return AK.workspace(AK.mapreduce, _mask_squared_extrema_map,
+            _mask_squared_extrema_combine, mask; init=neutral, neutral=neutral)
+    end
+else
+    _mask_reduction_workspace(::AbstractMatrix) = nothing
+end
+
 @inline function _mask_squared_extrema(mask::AbstractMatrix{T}, wf::WaveFront) where {T<:AbstractFloat}
     length(mask) <= 1 && return complex(zero(T), zero(T))
 
     # Planned FFT paths publish `workspace.fft.scratch` as the live field, so
     # mask reductions must use separately owned storage.
-    required_temp = _mask_extrema_temp_length(length(mask))
-    reduction_scratch = ensure_mask_reduction_scratch!(wf.workspace.mask, required_temp)
     neutral = complex(typemax(T), typemin(T))
-    return AK.mapreduce(
-        _mask_squared_extrema_map,
-        _mask_squared_extrema_combine,
-        mask;
-        init=neutral,
-        neutral=neutral,
-        temp=reduction_scratch,
-        block_size=MASK_EXTREMA_BLOCK_SIZE,
-    )
+    @static if isdefined(AK, :Workspace)
+        ws = wf.workspace.mask
+        if ws.reduction_workspace_length != length(mask)
+            ws.reduction_workspace = _mask_reduction_workspace(mask)
+            ws.reduction_workspace_length = length(mask)
+        end
+        return AK.mapreduce(_mask_squared_extrema_map, _mask_squared_extrema_combine,
+            mask; init=neutral, neutral=neutral, workspace=ws.reduction_workspace)
+    else
+        required_temp = _mask_extrema_temp_length(length(mask))
+        reduction_scratch = ensure_mask_reduction_scratch!(wf.workspace.mask, required_temp)
+        return AK.mapreduce(_mask_squared_extrema_map, _mask_squared_extrema_combine,
+            mask; init=neutral, neutral=neutral, temp=reduction_scratch,
+            block_size=MASK_EXTREMA_BLOCK_SIZE)
+    end
 end
 
 function _fill_8th_mask!(::LinearMaskShape, mask::AbstractMatrix{T}, x::AbstractVector{T}, y::AbstractVector{T}, e::T, ll::T, mm::T, plml::T, y_axis::Bool) where {T<:AbstractFloat}

@@ -1291,11 +1291,18 @@ end
             )
             @test mask_alloc_bytes <= GPU_WARM_8TH_MASK_ALLOC_MAX
             reduction_scratch = wf_mask_alloc.workspace.mask.reduction_scratch
+            reduction_workspace = wf_mask_alloc.workspace.mask.reduction_workspace
             @test reduction_scratch isa AMDGPU.ROCVector{ComplexF32}
-            @test length(reduction_scratch) == Proper._mask_extrema_temp_length(length(mask_alloc))
+            @static if isdefined(Proper.AK, :Workspace)
+                @test reduction_workspace isa Proper.AK.Workspace
+                @test wf_mask_alloc.workspace.mask.reduction_workspace_length == length(mask_alloc)
+            else
+                @test length(reduction_scratch) == Proper._mask_extrema_temp_length(length(mask_alloc))
+            end
             prop_8th_order_mask!(mask_alloc, wf_mask_alloc, 3f0; circular=true)
             AMDGPU.synchronize()
             @test wf_mask_alloc.workspace.mask.reduction_scratch === reduction_scratch
+            @test wf_mask_alloc.workspace.mask.reduction_workspace === reduction_workspace
 
             prop_circular_aperture(wf, 2.5f-4)
             @test wf.workspace.mask.mask isa AMDGPU.ROCArray

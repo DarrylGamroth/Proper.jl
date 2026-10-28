@@ -1370,3 +1370,36 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     AMDGPU.jl 2.8+ configurations.
   - Buffer, plan, workspace, shape, and device-work topology identities remain
     fixed until recapture; host-side mutations still do not replay.
+
+## D-0079: Separate Accelerator Dependency Cohorts
+- Date: 2026-10-28
+- Status: Accepted
+- Context:
+  - AMDGPU 2.9.2 requires the KernelAbstractions 0.10 dependency cohort.
+  - AcceleratedKernels 0.5.11 replaces reduction `temp`/`block_size` keywords
+    with a typed reusable `Workspace` API.
+  - Broad library compatibility does not qualify every backend/dependency pair.
+- Decision:
+  - Retain exact CUDA 6.4.2 / KernelAbstractions 0.9.45 / AcceleratedKernels
+    0.4.3 pins in `test/cuda/Project.toml`. Keep separate exact AMDGPU 2.9.2 /
+    KernelAbstractions 0.10.1 / AcceleratedKernels 0.5.11 pins in
+    `test/amdgpu/Project.toml`.
+  - Select the reduction API once at module loading. Preserve raw scratch on
+    AcceleratedKernels 0.4 and retain a typed workspace per mask workspace on
+    0.5. Rebuild it when reduction length changes; fixed-size calls reuse it
+    independently of FFT scratch.
+- Consequences:
+  - CPU tests exercise both reduction APIs and retained-storage reuse without
+    loading a GPU package. Numerical formulas and public optical APIs do not
+    change.
+  - CUDA on KernelAbstractions 0.10 remains unqualified here. AMDGPU numerical,
+    allocation, graph-capture and latency evidence remain separate gates; new
+    dependency pins do not establish those results.
+- Validation:
+  - Julia 1.13.3 CPU checks pass 227 assertions for each pinned AK/KA cohort,
+    including reductions, entrance normalization, workspace reuse and FFT alias
+    regression checks, without loading a GPU package.
+  - The existing optional AMDGPU routing subset passes 203 assertions on
+    gfx1030 with the pinned 2.9.2/0.10.1/0.5.11 cohort, including HIP replay,
+    mask numerics, retained workspace identity and its warmed allocation gates.
+    CUDA was not loaded or executed. No latency distribution was measured.

@@ -63,12 +63,15 @@ mutable struct MaskWorkspace{
     VX<:AbstractVector{T},
     VY<:AbstractVector{T},
     RV<:AbstractVector{Complex{T}},
+    RW,
 }
     mask::M
     valid::Bool
     xverts::VX
     yverts::VY
     reduction_scratch::RV
+    reduction_workspace::RW
+    reduction_workspace_length::Int
 end
 
 MaskWorkspace(::Type{T}=Float64) where {T<:AbstractFloat} = MaskWorkspace(Matrix, T)
@@ -80,12 +83,15 @@ function MaskWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:
     xverts = Vector{T}(undef, 0)
     yverts = Vector{T}(undef, 0)
     reduction_scratch = workspace_complex_vector(A, T, 0)
-    return MaskWorkspace{T,typeof(mask),typeof(xverts),typeof(yverts),typeof(reduction_scratch)}(
+    reduction_workspace = _mask_reduction_workspace(mask)
+    return MaskWorkspace{T,typeof(mask),typeof(xverts),typeof(yverts),typeof(reduction_scratch),typeof(reduction_workspace)}(
         mask,
         false,
         xverts,
         yverts,
         reduction_scratch,
+        reduction_workspace,
+        0,
     )
 end
 

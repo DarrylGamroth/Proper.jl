@@ -1,6 +1,29 @@
 using Test
 using Random
 
+@testset "Portable reductions on CPU storage" begin
+    rng = MersenneTwister(20261028)
+    for T in (Float32, Float64)
+        field = rand(rng, Complex{T}, 9, 11)
+        wf = Proper.WaveFront(copy(field), T(500e-9), T(1e-3), zero(T), one(T))
+        # Exercise the accelerator reduction interface with CPU arrays, without
+        # loading a GPU package or selecting an accelerator.
+        @test Proper._entrance_power(Proper.AMDGPUBackend(), field) ≈ sum(abs2, field)
+        for dims in ((0, 0), (1, 1), (5, 7), (32, 34), (5, 7))
+            mask = rand(rng, T, dims...)
+            expected = length(mask) <= 1 ? complex(zero(T), zero(T)) :
+                complex(minimum(abs2, mask), maximum(abs2, mask))
+            @test (@inferred Proper._mask_squared_extrema(mask, wf)) == expected
+            workspace = wf.workspace.mask.reduction_workspace
+            scratch = wf.workspace.mask.reduction_scratch
+            @test Proper._mask_squared_extrema(mask, wf) == expected
+            @test wf.workspace.mask.reduction_workspace === workspace
+            @test wf.workspace.mask.reduction_scratch === scratch
+            @test wf.field == field
+        end
+    end
+end
+
 @testset "CPU KernelAbstractions helper kernels" begin
     rng = MersenneTwister(20260428)
 
