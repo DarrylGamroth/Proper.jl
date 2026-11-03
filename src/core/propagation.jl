@@ -2,7 +2,7 @@
     PreparedPropagation
 
 A fixed-sampling, envelope-only PTP, WTS or STW complex-field transform.
-Construct with `prepare_propagation`. Phase factors are immutable calibration;
+Construct with `prepare_propagation`. Derived phase factors are run-immutable;
 FFT scratch and plans are retained execution storage. Inputs and outputs are
 caller-owned. This object does not advance a `WaveFront`'s geometric state.
 """
