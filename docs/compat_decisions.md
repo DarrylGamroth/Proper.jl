@@ -1446,3 +1446,12 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   requirements and FFT-scratch alias rejection. This allows an exactly
   reconstructed real multiplier to replace complex storage without changing
   ordinary propagation or reducing arithmetic precision.
+- Independent-field continuation (2026-11-03): Add private two-field
+  pack/join/transfer/unpack kernels for callers that establish identical prepared
+  geometry, two square planes, matching precision/backend and independent
+  outputs. Reuse each common phase evaluation across both fields, preserving
+  the scalar multiplication order and per-plane FFT normalization. FFTs must
+  transform only axes `(1,2)`. Scheduling, scratch ownership and checkpoint
+  dependency validation remain the caller's responsibility. Scalar routines and
+  public APIs are unchanged. Focused tests compare against scalar kernels on
+  odd/even grids in Float32/Float64, including captured CUDA replay.

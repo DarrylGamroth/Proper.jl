@@ -1,4 +1,5 @@
 using Test, Proper, FFTW, LinearAlgebra, Random, KernelAbstractions
+include("test_propagation_batch.jl")
 
 @kernel function expand_prepared_phase!(out,phase)
     y,x=@index(Global,NTuple)
@@ -34,6 +35,7 @@ function check_phase_factors(p,wf,d,ctx,kind,synchronize)
 end
 
 function check_prepared_propagation(array, synchronize; capture=nothing, replay=nothing)
+    check_propagation_batch_kernels(array,synchronize;capture,replay)
     @testset "Prepared field propagation $array" begin
         for T in (Float32,Float64), n in (1,2,7,8,512), kind in (:ptp,:wts,:stw), sign in (-1,0,1)
             rng = MersenneTwister(19)
