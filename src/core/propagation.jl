@@ -199,7 +199,8 @@ centered `(y,x)` fields; otherwise both use raw FFT order. Optional input and
 output multipliers run before and after the transform, respectively. The sequence of edge,
 quadratic phase, FFT scaling and output multiplication is retained; backend
 fusion and cached phase evaluation can differ from ordinary execution by roundoff. Input/output may alias each other, but must not alias FFT scratch.
-All arrays must have the prepared shape, precision, backend and one-based axes.
+All arrays must have the prepared shape, backend and one-based axes. Input
+multipliers may be real or complex at the field's component precision.
 Synchronize at the caller's completion boundary; do not overlap shared scratch.
 """
 function propagate!(out, p::PreparedPropagation{T}, input;
@@ -224,7 +225,8 @@ end
 @inline function _check_propagation_multiplier(multiplier, input, scratch)
     Base.mightalias(multiplier,scratch) && throw(ArgumentError("prepared propagation multiplier aliases FFT scratch"))
     axes(multiplier) == axes(input) || throw(DimensionMismatch("prepared propagation multiplier axes differ"))
-    eltype(multiplier) === eltype(input) && typeof(get_backend(multiplier)) === typeof(get_backend(input)) ||
+    eltype(multiplier) in (eltype(input),real(eltype(input))) &&
+        typeof(get_backend(multiplier)) === typeof(get_backend(input)) ||
         throw(ArgumentError("prepared propagation multiplier precision/backend differs"))
     return nothing
 end

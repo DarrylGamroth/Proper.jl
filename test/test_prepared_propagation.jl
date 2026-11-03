@@ -94,6 +94,35 @@ function check_prepared_propagation(array, synchronize; capture=nothing, replay=
             @test_throws DimensionMismatch Proper.propagate!(similar(input,n-1,n),p,input)
             @test_throws DimensionMismatch Proper.propagate!(out,p,input;input_multiplier=similar(edge,n-1,n))
         end
+        # Real multipliers at field precision, including noncontiguous and
+        # indexed views, preserve the complex-multiplier result under capture.
+        for T in (Float32,Float64)
+            n=8
+            input=array(randn(MersenneTwister(53),Complex{T},n,n))
+            wf=WaveFront(copy(input),T(1.6e-6),T(4e-5),zero(T),one(T))
+            prepared=Proper.prepare_propagation(wf,T(.013),RunContext(wf);kind=:wts)
+            out,expected=similar(input),similar(input)
+            values=reshape(T.(1:2n*n)./T(2n*n),2n,n)
+            strided=view(array(values),1:2:2n,:)
+            quarter=array(reshape(T.(1:25)./T(25),5,5))
+            indices=array(Int32[1,2,3,4,5,4,3,2])
+            indexed=view(quarter,indices,indices)
+            for edge in (array(Array(strided)),strided,indexed)
+                complex_edge=array(complex.(Array(edge)))
+                Proper.propagate!(expected,prepared,input;centered=true,input_multiplier=complex_edge)
+                operation()=Proper.propagate!(out,prepared,input;centered=true,input_multiplier=edge)
+                operation();synchronize()
+                @test Array(out)≈Array(expected) rtol=128eps(T) atol=128eps(T)
+                if capture!==nothing
+                    graph=capture(operation);replay(graph);synchronize()
+                    @test Array(out)≈Array(expected) rtol=128eps(T) atol=128eps(T)
+                end
+            end
+            other=T===Float32 ? Float64 : Float32
+            @test_throws ArgumentError Proper.propagate!(out,prepared,input;input_multiplier=array(ones(other,n,n)))
+            alias=view(reshape(reinterpret(T,vec(prepared.field)),2n,n),1:n,:)
+            @test_throws ArgumentError Proper.propagate!(out,prepared,input;input_multiplier=alias)
+        end
         # STW at the waist resolves its zero sentinel to zero: it still
         # transforms/scales the field, and its quadratic factor is identity.
         for n in (8,512)

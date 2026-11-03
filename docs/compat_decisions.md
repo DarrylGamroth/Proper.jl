@@ -1439,3 +1439,10 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   in raw FFT order between transforms. Reject invalid outer multiplier
   collection types before enqueueing work. This does not change ordinary
   propagation or introduce instrument configuration into the package.
+
+- Multiplier storage continuation (2026-11-03): Prepared field transforms also
+  accept real sampled input multipliers at the field's component precision.
+  Dense, strided and indexed views retain the same shape/backend/one-based-axis
+  requirements and FFT-scratch alias rejection. This allows an exactly
+  reconstructed real multiplier to replace complex storage without changing
+  ordinary propagation or reducing arithmetic precision.
