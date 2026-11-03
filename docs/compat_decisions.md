@@ -1433,3 +1433,9 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   This preparation-time policy changes neither model parameters nor precision.
   Computing every factor regressed captured fitted propagation, so it is not
   selected. The application investigation records the matched measurements.
+- Transform continuation (2026-11-03): Extend adjacent prepared pairs to
+  nonempty homogeneous tuples and ordered sampled input multipliers. Retain
+  every transform's gain, scaling and multiplier order while keeping fields
+  in raw FFT order between transforms. Reject invalid outer multiplier
+  collection types before enqueueing work. This does not change ordinary
+  propagation or introduce instrument configuration into the package.

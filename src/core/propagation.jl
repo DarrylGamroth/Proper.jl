@@ -154,6 +154,10 @@ end
 
 @inline _propagation_input(value, ::Nothing, y, x) = value
 @inline _propagation_input(value, multiplier, y, x) = value * multiplier[y, x]
+@inline _propagation_input(value, ::Tuple{}, y, x) = value
+@inline _propagation_input(value, multipliers::Tuple, y, x) =
+    _propagation_input(_propagation_input(value, first(multipliers), y, x),
+        Base.tail(multipliers), y, x)
 
 # Checked equal one-based shapes and a single wrap bound every access. Phase
 # arrays are empty or the reflected half-axis shape constructed above.
@@ -213,6 +217,10 @@ function propagate!(out, p::PreparedPropagation{T}, input;
 end
 
 @inline _check_propagation_multiplier(::Nothing, input, scratch) = nothing
+@inline function _check_propagation_multiplier(multipliers::Tuple, input, scratch)
+    foreach(multiplier -> _check_propagation_multiplier(multiplier,input,scratch),multipliers)
+    return nothing
+end
 @inline function _check_propagation_multiplier(multiplier, input, scratch)
     Base.mightalias(multiplier,scratch) && throw(ArgumentError("prepared propagation multiplier aliases FFT scratch"))
     axes(multiplier) == axes(input) || throw(DimensionMismatch("prepared propagation multiplier axes differ"))
@@ -243,32 +251,51 @@ end
 end
 
 """
-    propagate!(out, (first, second), input; centered=false,
-        input_multipliers=(nothing,nothing), output_multipliers=(1,1))
+    propagate!(out, transforms::Tuple, input; centered=false,
+        input_multipliers=map(_ -> nothing, transforms),
+        output_multipliers=map(_ -> 1, transforms))
 
-Execute two adjacent prepared transforms using the same FFT scratch. This
-preserves each transform's multiplications and scaling, while combining the
-first output mapping and second input mapping into one raw-order field pass.
+Execute adjacent prepared transforms using the same FFT scratch. This
+preserves each transform's multiplications and scaling, while combining each
+output mapping and following input mapping into one raw-order field pass.
+An input multiplier may be a tuple of sampled multipliers, applied in order.
+The outer input/output multiplier collections must be tuples.
 Input/output and scratch contracts are the same as the single-transform method.
 """
-function propagate!(out, pair::Tuple{P,P}, input; centered::Bool=false,
-    input_multipliers=(nothing,nothing), output_multipliers=(1,1)) where {T,P<:PreparedPropagation{T}}
-    first, second = pair
-    first.field === second.field || throw(ArgumentError("adjacent propagation requires shared FFT scratch"))
-    _check_propagation_fields(out, input, first)
-    _check_propagation_multiplier(input_multipliers[1], input, first.field)
-    _check_propagation_multiplier(input_multipliers[2], input, first.field)
-    backend = get_backend(first.field)
-    shift = centered ? fld(size(first.field,1),2) : 0
-    _propagation_pack_kernel!(backend, (16,16))(first.field, input, input_multipliers[1],
-        first.before, shift; ndrange=size(input))
-    _propagation_fft!(first)
-    _propagation_join_kernel!(backend, (16,16))(first.field, first.after, first.scale,
-        Complex{T}(output_multipliers[1]), input_multipliers[2], second.before, shift; ndrange=size(input))
-    _propagation_fft!(second)
-    _propagation_unpack_kernel!(backend, (16,16))(out, second.field, second.after, second.scale,
-        Complex{T}(output_multipliers[2]), centered ? cld(size(first.field,1),2) : 0; ndrange=size(out))
+function propagate!(out, transforms::Tuple{P,Vararg{P}}, input; centered::Bool=false,
+    input_multipliers::Tuple=map(_ -> nothing,transforms),
+    output_multipliers::Tuple=map(_ -> 1,transforms)) where {T,P<:PreparedPropagation{T}}
+    length(input_multipliers)==length(output_multipliers)==length(transforms) ||
+        throw(DimensionMismatch("prepared propagation multiplier counts differ"))
+    initial=first(transforms)
+    all(p -> p.field===initial.field,transforms) ||
+        throw(ArgumentError("adjacent propagation requires shared FFT scratch"))
+    _check_propagation_fields(out,input,initial)
+    foreach(multiplier -> _check_propagation_multiplier(multiplier,input,initial.field),input_multipliers)
+    backend=get_backend(initial.field)
+    shift=centered ? fld(size(initial.field,1),2) : 0
+    _propagation_pack_kernel!(backend,(16,16))(initial.field,input,first(input_multipliers),
+        initial.before,shift;ndrange=size(input))
+    _propagation_fft!(initial)
+    _propagation_continue!(out,initial,Base.tail(transforms),Base.tail(input_multipliers),
+        output_multipliers,centered,shift)
     return out
+end
+
+@inline function _propagation_continue!(out,previous,::Tuple{},::Tuple{},gains,centered,shift)
+    _propagation_unpack_kernel!(get_backend(previous.field),(16,16))(
+        out,previous.field,previous.after,previous.scale,eltype(out)(first(gains)),
+        centered ? cld(size(previous.field,1),2) : 0;ndrange=size(out))
+    return nothing
+end
+@inline function _propagation_continue!(out,previous,remaining::Tuple,inputs,gains,centered,shift)
+    next=first(remaining)
+    _propagation_join_kernel!(get_backend(previous.field),(16,16))(
+        previous.field,previous.after,previous.scale,eltype(out)(first(gains)),
+        first(inputs),next.before,shift;ndrange=size(out))
+    _propagation_fft!(next)
+    return _propagation_continue!(out,next,Base.tail(remaining),Base.tail(inputs),
+        Base.tail(gains),centered,shift)
 end
 
 function _check_propagation_fields(out, input, p)

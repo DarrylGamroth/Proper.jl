@@ -279,7 +279,10 @@ context's FFT scratch and plans. Execution does not advance wavefront geometry.
 The caller serializes all users of shared scratch and owns input/output arrays.
 Centered fields, an optional sampled input multiplier and a scalar output
 multiplier can be mapped in the same field passes. Two adjacent prepared
-transforms can share one intermediate raw-order pass. Ordinary `prop_*` routines
+transforms can share one intermediate raw-order pass. Nonempty homogeneous
+tuples extend this to longer transform groups. Each input multiplier may be
+an ordered tuple of sampled multipliers; outer multiplier collections are
+tuples with one entry per transform. Ordinary `prop_*` routines
 remain the numerical oracle; roundoff equivalence does not imply bitwise equality.
 
 Prepared quadratic factors retain their exact evaluated values through even-axis

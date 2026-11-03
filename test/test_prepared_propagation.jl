@@ -114,6 +114,52 @@ function check_prepared_propagation(array, synchronize; capture=nothing, replay=
                 @test Array(out)≈expected rtol=128eps(Float32) atol=128eps(Float32)
             end
         end
+        # Longer raw-order groups preserve every scalar gain and sampled
+        # multiplier, including a mask followed by the next edge multiplier.
+        for T in (Float32,Float64), n in (7,8,512), count in (3,4,5,8), centered in (false,true)
+            rng=MersenneTwister(41)
+            input=array(randn(rng,Complex{T},n,n))
+            wf=WaveFront(copy(input),T(1.6e-6),T(4e-5),zero(T),one(T))
+            context=RunContext(wf)
+            kinds=(:stw,:wts,:ptp,:stw,:wts)
+            transforms=ntuple(i->Proper.prepare_propagation(wf,T(isodd(i) ? .013 : -.025),context;kind=kinds[mod1(i,5)]),count)
+            edge=array(Complex{T}.(0.9 .+0.02im .*randn(rng,n,n)))
+            mask=array(Complex{T}.(0.8 .+0.03im .*randn(rng,n,n)))
+            inputs=ntuple(i->i==3 ? (mask,edge) : (isodd(i) ? nothing : edge),count)
+            gains=ntuple(i->Complex{T}(cis(T(i*.17))),count)
+            out,expected=similar(input),similar(input)
+            operation()=Proper.propagate!(out,transforms,input;centered,
+                input_multipliers=inputs,output_multipliers=gains)
+            captured=capture===nothing ? nothing : capture(operation)
+            for state in 1:2
+                input .*=Complex{T}(0.91+0.07im)
+                copyto!(expected,input)
+                for i in 1:count
+                    multiplier=inputs[i]
+                    if multiplier isa Tuple
+                        for factor in multiplier
+                            expected .*=factor
+                        end
+                    elseif multiplier!==nothing
+                        expected .*=multiplier
+                    end
+                    Proper.propagate!(expected,transforms[i],expected;centered,output_multiplier=gains[i])
+                end
+                captured===nothing ? operation() : replay(captured)
+                synchronize()
+                @test Array(out)≈Array(expected) rtol=128eps(T) atol=128eps(T)
+            end
+            @test_throws DimensionMismatch Proper.propagate!(out,transforms,input;input_multipliers=(nothing,))
+            @test_throws ArgumentError Proper.propagate!(out,transforms,input;
+                input_multipliers=ntuple(_->(edge,first(transforms).field),count))
+            if T===Float32 && n==8 && count==4 && centered
+                saved=Array(out)
+                @test_throws TypeError Proper.propagate!(out,transforms,input;input_multipliers=collect(inputs))
+                @test_throws TypeError Proper.propagate!(out,transforms,input;output_multipliers=collect(gains))
+                synchronize()
+                @test Array(out)==saved
+            end
+        end
         wf=WaveFront(array(ones(ComplexF32,8,8)),1.6f-6,4f-5,0f0,1f0)
         @test_throws ArgumentError Proper.prepare_propagation(wf,.01f0,RunContext(Matrix{ComplexF64}))
         @test_throws ArgumentError Proper.prepare_propagation(wf,0f0,RunContext(wf);kind=:unknown)
