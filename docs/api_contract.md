@@ -281,3 +281,11 @@ Centered fields, an optional sampled input multiplier and a scalar output
 multiplier can be mapped in the same field passes. Two adjacent prepared
 transforms can share one intermediate raw-order pass. Ordinary `prop_*` routines
 remain the numerical oracle; roundoff equivalence does not imply bitwise equality.
+
+Prepared quadratic factors retain their exact evaluated values through even-axis
+reflection, reducing cached storage to `(floor(n/2)+1)²`. The ordinary propagation
+routines remain the reference. A separately qualified CUDA Float32 spatial-phase
+path recomputes the original chirp expression in the fused field kernels;
+frequency-domain factors stay cached. Selection occurs during preparation and
+contains no instrument identity. Other devices, shapes, precisions and backends
+retain cached factors. Physical parameters and output precision are unchanged.

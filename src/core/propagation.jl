@@ -6,10 +6,10 @@ Construct with `prepare_propagation`. Derived phase factors are run-immutable;
 FFT scratch and plans are retained execution storage. Inputs and outputs are
 caller-owned. This object does not advance a `WaveFront`'s geometric state.
 """
-struct PreparedPropagation{T,A,F,B}
-    before::A
-    transfer::A
-    after::A
+struct PreparedPropagation{T,A,Q,R,F,B}
+    before::Q
+    transfer::R
+    after::Q
     field::A
     forward::F
     backward::B
@@ -28,8 +28,9 @@ Prepare the field arithmetic of `prop_ptp`, `prop_wts` or `prop_stw` at `wf`'s
 wavelength, sampling, precision and square grid. `kind` selects `:ptp`, `:wts`
 or `:stw`; STW assumes spherical input and resolves zero distance to the waist.
 Distance is converted to field precision.
-The wavefront is not changed. Phase factors are evaluated on its backend using
-the ordinary routine's arithmetic, outside graph capture. The context's FFT
+The wavefront is not changed. Cached phase factors use the ordinary backend
+arithmetic outside capture. A qualified direct spatial-phase path instead retains
+its coefficients and evaluates the same expression during execution. The context's FFT
 scratch/plans are shared: callers must serialize all users of that storage.
 Use a new preparation when geometry or backend changes.
 """
@@ -55,7 +56,9 @@ function prepare_propagation(wf::WaveFront{T}, dz::Real, ctx::RunContext; kind::
         saved === nothing || copyto!(wf.field, saved)
     end
     empty = similar(field, 0, 0)
-    before, transfer, after = empty, empty, empty
+    phase_style=Val(_direct_spatial_phase_enabled(field))
+    before = after = _empty_spatial_phase(phase_style,field)
+    transfer = empty
     scale = inv(T(n))
     direction = Int8(d >= 0 ? 1 : -1)
     if kind === :ptp
@@ -67,11 +70,8 @@ function prepare_propagation(wf::WaveFront{T}, dz::Real, ctx::RunContext; kind::
             _prepare_frequency_phase!(backend_style(typeof(transfer)), transfer, kphase, wf.sampling_m, ctx, scale)
         end
     elseif !(kind === :wts && iszero(d))
-        phase = similar(field)
-        fill!(phase, one(Complex{T}))
         dx = kind === :stw ? wf.wavelength_m * abs(d) / (n * wf.sampling_m) : wf.sampling_m
-        phase_wf = WaveFront(phase, wf.wavelength_m, dx, zero(T), wf.beam_diameter_m)
-        prop_qphase(phase_wf, d, ctx)
+        phase = _prepare_spatial_phase(phase_style,field,wf,d,ctx,dx)
         if kind === :wts
             before = phase
         else
@@ -81,7 +81,9 @@ function prepare_propagation(wf::WaveFront{T}, dz::Real, ctx::RunContext; kind::
         direction = Int8(0)
     end
     direction == 0 && (scale = one(T))
-    return PreparedPropagation(before, transfer, after, field, forward, backward, direction, scale)
+    return PreparedPropagation(_compact_propagation_phase(before),
+        _compact_propagation_phase(transfer), _compact_propagation_phase(after),
+        field, forward, backward, direction, scale)
 end
 
 function _prepare_frequency_phase!(::CPUBackend, phase::AbstractMatrix{Complex{T}}, k, dx, ctx, scale) where {T}
@@ -91,11 +93,70 @@ function _prepare_frequency_phase!(::BackendStyle, phase, k, dx, ctx, scale)
     return _apply_fft_quadratic_phase_ka!(phase, k, dx, qphase_workspace(ctx), scale)
 end
 
+# Direct Float32 spatial chirps are cheaper to recompute on the qualified
+# CUDA path than to read from a large cache. Keep frequency-domain factors
+# cached: their separable Float64 angle evaluation has a different cost.
+struct DirectPhaseFactors{T}
+    k::T
+    dx::T
+    active::Bool
+end
+Base.isempty(phase::DirectPhaseFactors) = !phase.active
+_direct_spatial_phase_enabled(::AbstractArray) = false
+_empty_spatial_phase(::Val{false},field) = similar(field,0,0)
+_empty_spatial_phase(::Val{true},::AbstractMatrix{Complex{T}}) where {T} =
+    DirectPhaseFactors(zero(T),one(T),false)
+function _prepare_spatial_phase(::Val{false},field,wf,d,ctx,dx)
+    phase=similar(field)
+    fill!(phase,one(eltype(field)))
+    phase_wf=WaveFront(phase,wf.wavelength_m,dx,zero(dx),wf.beam_diameter_m)
+    prop_qphase(phase_wf,d,ctx)
+    return phase
+end
+function _prepare_spatial_phase(::Val{true},::AbstractMatrix{Complex{T}},wf,d,ctx,dx) where {T}
+    k=iszero(d) ? zero(T) : T(pi/(wf.wavelength_m*d))
+    return DirectPhaseFactors(k,T(dx),!iszero(d))
+end
+@inline function _propagation_phase(phase::DirectPhaseFactors{T},y,x,ny,nx) where {T}
+    xx=T(_ka_shifted_index_0based(x-1,nx))*phase.dx
+    yy=T(_ka_shifted_index_0based(y-1,ny))*phase.dx
+    return one(Complex{T})*cis(phase.k*(xx*xx+yy*yy))
+end
+_compact_propagation_phase(phase::DirectPhaseFactors) = phase
+_propagation_phase_storage(::DirectPhaseFactors) = nothing
+
+# Quadratic phase is even in each raw FFT coordinate separately. Retain the
+# nonnegative magnitudes, including the unique even-grid Nyquist coordinate.
+# This copies already evaluated factors; no trig, precision or grouping changes.
+_propagation_phase_storage(phase::AbstractMatrix) = phase
+
+function _compact_propagation_phase(phase)
+    isempty(phase) && return phase
+    ny,nx=size(phase)
+    return copy(view(phase,1:fld(ny,2)+1,1:fld(nx,2)+1))
+end
+
+# Dense factors are retained as the numerical/performance reference. Compact
+# quadratic factors use raw-coordinate magnitude; neither changes values.
+@inline function _propagation_phase(phase::AbstractMatrix,y,x,ny,nx)
+    iy = size(phase,1)==ny ? y : min(y,ny-y+2)
+    ix = size(phase,2)==nx ? x : min(x,nx-x+2)
+    @inbounds return phase[iy,ix]
+end
+
+@kernel function _propagation_transfer_kernel!(field,phase)
+    y,x=@index(Global,NTuple)
+    ny,nx=size(field)
+    if y<=ny && x<=nx
+        @inbounds field[y,x] *= _propagation_phase(phase,y,x,ny,nx)
+    end
+end
+
 @inline _propagation_input(value, ::Nothing, y, x) = value
 @inline _propagation_input(value, multiplier, y, x) = value * multiplier[y, x]
 
 # Checked equal one-based shapes and a single wrap bound every access. Phase
-# arrays are either empty or exactly the FFT shape, as constructed above.
+# arrays are empty or the reflected half-axis shape constructed above.
 @kernel function _propagation_pack_kernel!(field, input, multiplier, phase, shift)
     y, x = @index(Global, NTuple)
     ny, nx = size(field)
@@ -105,7 +166,7 @@ end
         sx > nx && (sx -= nx)
         @inbounds begin
             value = _propagation_input(input[sy, sx], multiplier, sy, sx)
-            field[y, x] = isempty(phase) ? value : value * phase[y, x]
+            field[y, x] = isempty(phase) ? value : value * _propagation_phase(phase,y,x,ny,nx)
         end
     end
 end
@@ -119,7 +180,7 @@ end
         sx > nx && (sx -= nx)
         @inbounds begin
             value = field[sy, sx] * scale
-            value = isempty(phase) ? value : value * phase[sy, sx]
+            value = isempty(phase) ? value : value * _propagation_phase(phase,sy,sx,ny,nx)
             out[y, x] = value * multiplier
         end
     end
@@ -173,10 +234,10 @@ end
         sx > nx && (sx -= nx)
         @inbounds begin
             value = field[y,x] * scale
-            value = isempty(after) ? value : value * after[y,x]
+            value = isempty(after) ? value : value * _propagation_phase(after,y,x,ny,nx)
             value *= output_multiplier
             value = _propagation_input(value, input_multiplier, sy, sx)
-            field[y,x] = isempty(before) ? value : value * before[y,x]
+            field[y,x] = isempty(before) ? value : value * _propagation_phase(before,y,x,ny,nx)
         end
     end
 end
@@ -225,7 +286,8 @@ end
 @inline function _propagation_fft!(p)
     if p.direction == 2
         p.forward * p.field
-        p.field .*= p.transfer
+        _propagation_transfer_kernel!(get_backend(p.field),(16,16))(
+            p.field,p.transfer;ndrange=size(p.field))
         p.backward * p.field
     elseif p.direction == 1
         p.forward * p.field

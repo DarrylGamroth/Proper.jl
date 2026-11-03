@@ -115,4 +115,13 @@ end
 @inline Proper.ka_separable_qphase_enabled(::Type{A}, ny::Integer, nx::Integer) where {A<:CUDA.CuArray} =
     real(eltype(A)) === Float64 && ny * nx >= Proper.KA_SEPARABLE_QPHASE_MIN_ELEMS
 
+# Qualified storage/compute tradeoff: other shapes, precisions and devices
+# retain the portable cached-factor implementation until separately measured.
+function Proper._direct_spatial_phase_enabled(field::CUDA.CuMatrix{ComplexF32})
+    size(field)==(512,512) || return false
+    device=CUDA.device(field)
+    return CUDA.capability(device)==v"8.6" &&
+        CUDA.attribute(device,CUDA.DEVICE_ATTRIBUTE_L2_CACHE_SIZE)==5*1024*1024
+end
+
 end

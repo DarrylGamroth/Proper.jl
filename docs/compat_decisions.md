@@ -1425,3 +1425,11 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   ordinary routines and captured replay remain separate correctness oracles.
   This is an additional explicit prepared API, not a compatibility mode or a
   change to the ordinary Python-parity execution path.
+- Storage continuation (2026-11-03): Retain quadratic factors by exact even-axis
+  reflection, including odd grids and the unique even-grid Nyquist coordinate.
+  A separately measured CUDA 512² ComplexF32 path on SM 8.6 with 5 MiB L2
+  evaluates spatial chirps using the original expression inside field kernels;
+  frequency factors remain cached. Other combinations retain compact caches.
+  This preparation-time policy changes neither model parameters nor precision.
+  Computing every factor regressed captured fitted propagation, so it is not
+  selected. The application investigation records the matched measurements.
