@@ -269,3 +269,15 @@ Notes:
   and closure reports:
   - `docs/PARITY_CLOSURE.md`
   - `docs/SEMANTIC_RECONCILIATION.md`
+
+### Fixed-geometry field propagation
+
+`PreparedPropagation`, `prepare_propagation` and `propagate!` provide reusable
+PTP/WTS/STW field arithmetic at a fixed wavelength, sampling and square grid.
+Preparation snapshots phase factors using the selected backend and retains the
+context's FFT scratch and plans. Execution does not advance wavefront geometry.
+The caller serializes all users of shared scratch and owns input/output arrays.
+Centered fields, an optional sampled input multiplier and a scalar output
+multiplier can be mapped in the same field passes. Two adjacent prepared
+transforms can share one intermediate raw-order pass. Ordinary `prop_*` routines
+remain the numerical oracle; roundoff equivalence does not imply bitwise equality.

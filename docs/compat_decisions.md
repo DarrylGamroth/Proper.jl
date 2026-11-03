@@ -1403,3 +1403,25 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
     gfx1030 with the pinned 2.9.2/0.10.1/0.5.11 cohort, including HIP replay,
     mask numerics, retained workspace identity and its warmed allocation gates.
     CUDA was not loaded or executed. No latency distribution was measured.
+
+## D-0080: Prepared Fixed-Geometry Field Propagation
+- Date: 2026-11-02
+- Status: Accepted
+- Context: Repeated fixed optical paths incurred separate field shifts, phase
+  evaluation, scaling and multiplication around each FFT, including adjacent
+  transformations using the same scratch.
+- Decision: Add `PreparedPropagation`, `prepare_propagation` and `propagate!`
+  for envelope-only PTP/WTS/STW field transforms. Snapshot phase factors with
+  the ordinary backend arithmetic, share the context's FFT plans/scratch, and
+  fuse centered mapping with neighboring multiplication and scaling. Support
+  a pair of adjacent transforms without an intermediate centered field pass.
+  Preserve signed distances, the STW zero-distance waist sentinel, odd/even
+  shifts, precision, FFT normalization and each multiplier's position. The
+  caller supplies the correct reference-surface transition; preparation does
+  not evolve a wavefront's geometric state. Carrier tracking is rejected.
+- Consequences: Geometry/backend changes require fresh preparation. Execution
+  requires external serialization of shared scratch and stable arrays during
+  capture. Backend fusion and cached phase evaluation can change roundoff;
+  ordinary routines and captured replay remain separate correctness oracles.
+  This is an additional explicit prepared API, not a compatibility mode or a
+  change to the ordinary Python-parity execution path.

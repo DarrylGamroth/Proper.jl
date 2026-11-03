@@ -92,6 +92,8 @@ include("prop_writemap.jl")
 include("prop_wts.jl")
 include("prop_zernikes.jl")
 include("switch_set.jl")
+include("core/propagation.jl")
+export PreparedPropagation, prepare_propagation, propagate!
 export BackendStyle, CPUBackend, CUDABackend, AMDGPUBackend, UnknownBackend, FFTStyle, FFTWStyle, CUFFTStyle, ROCFFTStyle, GenericFFTStyle
 export InterpStyle, GenericInterpStyle, CubicInterpStyle, RNGStyle, GenericRNGStyle
 export ShiftKernelStyle, ShiftLoopStyle, ShiftKAStyle
