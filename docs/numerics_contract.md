@@ -11,6 +11,7 @@ Freeze numerical conventions used by propagation, transforms, and coordinate sys
 - `D-0063` square propagation grid and independent transform oracle (accepted)
 - `D-0073` tilted-DM coordinates and public map orientation (accepted)
 - `D-0074` WFIRST comparisons are hard numerical gates (accepted)
+- `D-0081` bounded prepared Float32 runtime phase arithmetic
 
 ## Status
 - [x] Draft pre-filled from proposed defaults
@@ -31,6 +32,10 @@ Freeze numerical conventions used by propagation, transforms, and coordinate sys
 - GPU precision policy:
   - preserve input eltype/backend where practical
   - avoid implicit downcast unless explicitly requested
+  - the separately qualified prepared Float32 phase update retains the original
+    Float64 angle, uses FP32 trig/FMA correction within its bounded domain, and
+    otherwise retains the original promoted update (`D-0081`); public
+    `prop_add_phase` remains unchanged
 
 ## 2. FFT Convention
 - Backend primitive convention:

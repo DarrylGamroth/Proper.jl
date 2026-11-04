@@ -124,4 +124,14 @@ function Proper._direct_spatial_phase_enabled(field::CUDA.CuMatrix{ComplexF32})
         CUDA.attribute(device,CUDA.DEVICE_ATTRIBUTE_L2_CACHE_SIZE)==5*1024*1024
 end
 
+# Separate qualification from spatial-factor caching: new devices can tune
+# either policy without enabling an unrelated execution change.
+function Proper._phase_f32_enabled(field::CUDA.CuMatrix{ComplexF32})
+    size(field) == (1024,1024) || return false
+    device = CUDA.device(field)
+    return CUDA.capability(device) == v"8.6" &&
+        CUDA.attribute(device, CUDA.DEVICE_ATTRIBUTE_L2_CACHE_SIZE) == 5*1024*1024 &&
+        CUDA.math_mode() == CUDA.DEFAULT_MATH
+end
+
 end

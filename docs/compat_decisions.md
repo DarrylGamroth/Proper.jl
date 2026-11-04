@@ -1461,3 +1461,26 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   with zero shifts and ordered fixed multipliers. Public alias requirements and
   ordinary propagation remain unchanged. Callers retain serialization, stable
   bindings and responsibility for restoring the prepared scalar geometry.
+
+## D-0081: Prepared Float32 Runtime Phase Updates
+- Date: 2026-11-04
+- Status: Accepted for the separately qualified prepared executor
+- Context: Float32 OPD maps use a promoted Float64 angle, trigonometric
+  evaluation and complex product in ordinary `prop_add_phase`. The expensive
+  trigonometric path remains visible in captured fixed-train execution.
+- Decision: Keep ordinary `prop_add_phase` unchanged. A private prepared phase
+  update retains the original Float64 angle and splits it into Float32 high
+  and residual parts. Evaluate Float32 sine/cosine of the high part and apply
+  the residual using explicit FMA. Limit the fast domain to a finite rounded
+  high part of magnitude at most 1024, residual magnitude at most 2^-13, and
+  finite zero or normal-range field magnitudes bounded by `floatmax(Float32)/4`.
+  Outside this domain retain the complete original Float64 phasor and complex
+  product.
+- Consequences: First-order residual correction contributes at most about
+  2^-27 phasor truncation error; ordinary Float32 trig and product roundoff
+  remain separate validation obligations. This is bounded roundoff, not
+  bitwise equivalence. No model coefficient, storage precision, calibration,
+  normalization or public parity routine changes. A separate cold backend
+  qualification selects the policy; other devices retain ordinary arithmetic.
+  Future devices require numerical and captured performance qualification.
+  The application investigation records fitted-model and full-source evidence.
