@@ -215,52 +215,64 @@ end
 # exactly two square planes and tuple entries, precision/backend and disjoint outputs;
 # FFT plans must transform only axes (1,2). Common phase factors are evaluated
 # once per coordinate and reused across the independent planes.
-@kernel function _propagation_batch_pack_kernel!(field,inputs,masks,edge,before,shift)
- y,x=@index(Global,NTuple);n=size(field,1)
- if y<=n && x<=n
-  sy,sx=y+shift,x+shift;sy>n && (sy-=n);sx>n && (sx-=n)
-  phase=isempty(before) ? one(eltype(field)) : _propagation_phase(before,y,x,n,n)
-  @inbounds for z in 1:2
-   value=_propagation_input(inputs[z][sy,sx],masks[z],sy,sx)
-   value=_propagation_input(value,edge,sy,sx)
-   field[y,x,z]=isempty(before) ? value : value*phase
-  end
- end
+@kernel function _propagation_batch_pack_kernel!(field, inputs, masks, edge, before, shift)
+    y, x = @index(Global, NTuple)
+    n = size(field, 1)
+    if y <= n && x <= n
+        sy, sx = y + shift, x + shift
+        sy > n && (sy -= n)
+        sx > n && (sx -= n)
+        phase = isempty(before) ? one(eltype(field)) : _propagation_phase(before, y, x, n, n)
+        @inbounds for z in 1:2
+            value = _propagation_input(inputs[z][sy, sx], masks[z], sy, sx)
+            value = _propagation_input(value, edge, sy, sx)
+            field[y, x, z] = isempty(before) ? value : value * phase
+        end
+    end
 end
-@kernel function _propagation_batch_join_kernel!(field,after,scale,gain,masks,edge,before,shift)
- y,x=@index(Global,NTuple);n=size(field,1)
- if y<=n && x<=n
-  sy,sx=y+shift,x+shift;sy>n && (sy-=n);sx>n && (sx-=n)
-  post=isempty(after) ? one(eltype(field)) : _propagation_phase(after,y,x,n,n)
-  pre=isempty(before) ? one(eltype(field)) : _propagation_phase(before,y,x,n,n)
-  @inbounds for z in 1:2
-   value=field[y,x,z]*scale
-   value=isempty(after) ? value : value*post
-   value*=gain
-   value=_propagation_input(value,masks[z],sy,sx)
-   value=_propagation_input(value,edge,sy,sx)
-   field[y,x,z]=isempty(before) ? value : value*pre
-  end
- end
+@kernel function _propagation_batch_join_kernel!(field, after, scale, gain, masks, edge, before, shift)
+    y, x = @index(Global, NTuple)
+    n = size(field, 1)
+    if y <= n && x <= n
+        sy, sx = y + shift, x + shift
+        sy > n && (sy -= n)
+        sx > n && (sx -= n)
+        post = isempty(after) ? one(eltype(field)) : _propagation_phase(after, y, x, n, n)
+        pre = isempty(before) ? one(eltype(field)) : _propagation_phase(before, y, x, n, n)
+        @inbounds for z in 1:2
+            value = field[y, x, z] * scale
+            value = isempty(after) ? value : value * post
+            value *= gain
+            value = _propagation_input(value, masks[z], sy, sx)
+            value = _propagation_input(value, edge, sy, sx)
+            field[y, x, z] = isempty(before) ? value : value * pre
+        end
+    end
 end
-@kernel function _propagation_batch_transfer_kernel!(field,transfer)
- y,x=@index(Global,NTuple);n=size(field,1)
- if y<=n && x<=n
-  phase=_propagation_phase(transfer,y,x,n,n)
-  @inbounds for z in 1:2;field[y,x,z]*=phase;end
- end
+@kernel function _propagation_batch_transfer_kernel!(field, transfer)
+    y, x = @index(Global, NTuple)
+    n = size(field, 1)
+    if y <= n && x <= n
+        phase = _propagation_phase(transfer, y, x, n, n)
+        @inbounds for z in 1:2
+            field[y, x, z] *= phase
+        end
+    end
 end
-@kernel function _propagation_batch_unpack_kernel!(outputs,field,after,scale,gain,shift)
- y,x=@index(Global,NTuple);n=size(field,1)
- if y<=n && x<=n
-  sy,sx=y+shift,x+shift;sy>n && (sy-=n);sx>n && (sx-=n)
-  phase=isempty(after) ? one(eltype(field)) : _propagation_phase(after,sy,sx,n,n)
-  @inbounds for z in 1:2
-   value=field[sy,sx,z]*scale
-   value=isempty(after) ? value : value*phase
-   outputs[z][y,x]=value*gain
-  end
- end
+@kernel function _propagation_batch_unpack_kernel!(outputs, field, after, scale, gain, shift)
+    y, x = @index(Global, NTuple)
+    n = size(field, 1)
+    if y <= n && x <= n
+        sy, sx = y + shift, x + shift
+        sy > n && (sy -= n)
+        sx > n && (sx -= n)
+        phase = isempty(after) ? one(eltype(field)) : _propagation_phase(after, sy, sx, n, n)
+        @inbounds for z in 1:2
+            value = field[sy, sx, z] * scale
+            value = isempty(after) ? value : value * phase
+            outputs[z][y, x] = value * gain
+        end
+    end
 end
 
 """

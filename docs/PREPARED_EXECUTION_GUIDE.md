@@ -7,6 +7,7 @@ This guide explains the prepared execution layer in `Proper.jl`:
 - `PreparedBatch`
 - `PreparedAssetPool`
 - `PreparedModel`
+- `PreparedPropagation`
 
 These APIs are the recommended path when a prescription will be run more than
 once and you want explicit ownership of runtime state, context reuse, or cached
@@ -27,6 +28,41 @@ Move to the prepared layer when you need one or more of:
 - parallel repeated execution
 - cached static assets
 - a named execution object to hand around in application code
+
+## Fixed-Geometry Field Propagation
+
+Use `PreparedPropagation` when a complex field will be propagated repeatedly
+with the same wavelength, sampling, grid, precision and backend. Preparation
+retains fixed phase data and the context's FFT scratch and plans. A qualified
+backend may evaluate spatial factors from retained coefficients instead of
+caching every factor. Execution leaves wavefront geometry unchanged. Prepare
+again after changing geometry, backend or precision. Current support requires
+`EnvelopeOnly()` carrier phase.
+
+```julia
+using Proper
+
+context = RunContext(Matrix{ComplexF32})
+wf = prop_begin(0.01f0, 0.55f-6, 64;
+    context,
+    beam_diam_fraction=0.5f0,
+)
+transform = prepare_propagation(wf, 0.02f0, context; kind=:ptp)
+input = copy(wf.field)
+output = similar(input)
+propagate!(output, transform, input)
+```
+
+Inputs and outputs use raw FFT order by default; pass `centered=true` when
+both fields are centered. Keep input and output distinct from the context's
+FFT scratch. Serialize users of a shared context because its scratch and plans
+are shared. The original `prop_*` routines remain the numerical oracle. See
+the [fixed-geometry field propagation contract](api_contract.md#fixed-geometry-field-propagation)
+for the complete contract.
+
+The private in-place and two-field kernels require additional checkpoint-lifetime
+and scratch-ownership proofs from their scheduling caller. Use the public
+`propagate!` surface for a new prescription.
 
 ## Layering
 
