@@ -1,3 +1,7 @@
+# Cold preparation may observe each primitive while the ordinary routines keep
+# ownership of geometry transitions. Default execution remains direct/inlined.
+@inline _execute_propagation!(operation,wf,distance,context) = operation(wf,distance,context)
+
 struct PropagateOptions
     to_plane::Bool
 end
@@ -12,25 +16,26 @@ end
     dzv::Real,
     ctx::RunContext,
     pt::PropagatorType,
+    execute=_execute_propagation!,
 )
     if pt === INSIDE_TO_INSIDE
-        return prop_ptp(wf, dzv, ctx)
+        return execute(prop_ptp, wf, dzv, ctx)
     elseif pt === INSIDE_TO_OUTSIDE
-        prop_ptp(wf, wf.z_w0_m - z1, ctx)
-        return prop_wts(wf, z2 - wf.z_w0_m, ctx)
+        execute(prop_ptp, wf, wf.z_w0_m - z1, ctx)
+        return execute(prop_wts, wf, z2 - wf.z_w0_m, ctx)
     elseif pt === OUTSIDE_TO_INSIDE
-        prop_stw(wf, wf.z_w0_m - z1, ctx)
-        return prop_ptp(wf, z2 - wf.z_w0_m, ctx)
+        execute(prop_stw, wf, wf.z_w0_m - z1, ctx)
+        return execute(prop_ptp, wf, z2 - wf.z_w0_m, ctx)
     end
-    prop_stw(wf, wf.z_w0_m - z1, ctx)
-    return prop_wts(wf, z2 - wf.z_w0_m, ctx)
+    execute(prop_stw, wf, wf.z_w0_m - z1, ctx)
+    return execute(prop_wts, wf, z2 - wf.z_w0_m, ctx)
 end
 
 @inline function _prop_propagate!(wf::WaveFront, dz::Real, opts::PropagateOptions)
     return _prop_propagate!(wf, dz, opts, resolve_run_context(wf))
 end
 
-@inline function _prop_propagate!(wf::WaveFront, dz::Real, opts::PropagateOptions, ctx::RunContext)
+@inline function _prop_propagate!(wf::WaveFront, dz::Real, opts::PropagateOptions, ctx::RunContext, execute=_execute_propagation!)
     _require_square_propagation_grid(wf, :prop_propagate)
     prop_select_propagator(wf, dz)
 
@@ -42,7 +47,7 @@ end
         wf.propagator_type = to_plane_propagator(wf.propagator_type)
     end
 
-    _propagate_by_transition!(wf, z1, z2, dzv, ctx, wf.propagator_type)
+    _propagate_by_transition!(wf, z1, z2, dzv, ctx, wf.propagator_type, execute)
 
     return wf
 end

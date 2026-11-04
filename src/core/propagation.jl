@@ -378,3 +378,37 @@ end
     end
     return nothing
 end
+
+# Private raw-order train execution: the live wavefront is exactly the shared
+# FFT scratch. Zero shifts make every elementwise in-place access independent.
+# The public centered/input-output API deliberately keeps its stricter alias rule.
+function _propagate_inplace!(prepared::Tuple{P,Vararg{P}},inputs::Tuple,tail::Tuple,empty) where {P<:PreparedPropagation}
+    length(prepared)==length(inputs) || throw(ArgumentError("prepared train multiplier count differs"))
+    initial=first(prepared);field=initial.field
+    isempty(empty) || throw(ArgumentError("prepared train terminal before factors must be empty"))
+    all(p->p.field===field,prepared) || throw(ArgumentError("prepared train requires identical FFT storage"))
+    foreach(input->_check_propagation_multiplier(input,field,field),inputs)
+    _check_propagation_multiplier(tail,field,field)
+    if !isempty(first(inputs)) || !isempty(initial.before)
+        _propagation_pack_kernel!(get_backend(field),(16,16))(
+            field,field,first(inputs),initial.before,0;ndrange=size(field))
+    end
+    _propagation_fft!(initial)
+    _propagate_inplace_continue!(initial,Base.tail(prepared),Base.tail(inputs),tail,empty)
+    return field
+end
+@inline function _propagate_inplace_continue!(previous,remaining::Tuple,inputs,tail,empty)
+    next=first(remaining);field=previous.field
+    _propagation_join_kernel!(get_backend(field),(16,16))(
+        field,previous.after,previous.scale,one(eltype(field)),first(inputs),next.before,0;ndrange=size(field))
+    _propagation_fft!(next)
+    return _propagate_inplace_continue!(next,Base.tail(remaining),Base.tail(inputs),tail,empty)
+end
+@inline function _propagate_inplace_continue!(previous,::Tuple{},::Tuple{},tail,empty)
+    field=previous.field
+    # No next before phase follows the final ordered tail multipliers.
+    _propagation_join_kernel!(get_backend(field),(16,16))(
+        field,previous.after,previous.scale,one(eltype(field)),tail,empty,0;
+        ndrange=size(field))
+    return nothing
+end

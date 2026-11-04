@@ -1,5 +1,6 @@
 using Test, Proper, FFTW, LinearAlgebra, Random, KernelAbstractions
 include("test_propagation_batch.jl")
+include("test_train_propagation.jl")
 
 @kernel function expand_prepared_phase!(out,phase)
     y,x=@index(Global,NTuple)
@@ -36,6 +37,8 @@ end
 
 function check_prepared_propagation(array, synchronize; capture=nothing, replay=nothing)
     check_propagation_batch_kernels(array,synchronize;capture,replay)
+    check_inplace_propagation(array,synchronize;capture,replay)
+    array===Array && check_propagation_observer()
     @testset "Prepared field propagation $array" begin
         for T in (Float32,Float64), n in (1,2,7,8,512), kind in (:ptp,:wts,:stw), sign in (-1,0,1)
             rng = MersenneTwister(19)
@@ -212,6 +215,11 @@ if "--cuda" in ARGS
     CUDA.allowscalar(false)
     check_prepared_propagation(CuArray,CUDA.synchronize;
         capture=operation->Proper.prepare_cuda_graph(operation;warmup=1),replay=Proper.launch_cuda_graph!)
+elseif "--amdgpu" in ARGS
+    using AMDGPU
+    AMDGPU.allowscalar(false)
+    check_prepared_propagation(ROCArray,AMDGPU.synchronize;
+        capture=operation->Proper.prepare_hip_graph(operation;warmup=1),replay=Proper.launch_hip_graph!)
 else
     check_prepared_propagation(Array,()->nothing)
 end

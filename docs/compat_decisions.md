@@ -1455,3 +1455,9 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   dependency validation remain the caller's responsibility. Scalar routines and
   public APIs are unchanged. Focused tests compare against scalar kernels on
   odd/even grids in Float32/Float64, including captured CUDA replay.
+- Fixed-train continuation (2026-11-03): A private propagation visitor observes
+  primitive calls while ordinary routines advance nominal geometry. A private
+  raw-order executor permits the live field to be exactly the shared FFT scratch,
+  with zero shifts and ordered fixed multipliers. Public alias requirements and
+  ordinary propagation remain unchanged. Callers retain serialization, stable
+  bindings and responsibility for restoring the prepared scalar geometry.
