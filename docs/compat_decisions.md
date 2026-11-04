@@ -1462,6 +1462,15 @@ This log records decisions when Python 3.3.4, MATLAB 3.3.1, and manual intent di
   ordinary propagation remain unchanged. Callers retain serialization, stable
   bindings and responsibility for restoring the prepared scalar geometry.
 
+- Terminal transfer continuation (2026-11-04): A private transfer/unpack kernel
+  consumes a paired terminal PTP's raw forward-FFT field without storing the
+  transferred intermediate. Preserve transfer-product precision, then scale,
+  after-phase and gain in their existing order. Factor order is checked against
+  the retained paired executor because compiler FMA contraction can differ from
+  scalar transfer. The caller must establish disjoint output/raw storage and
+  terminal dependency ownership. Nonterminal FFTs, checkpoints and ordinary
+  public propagation remain unchanged; no additional field storage is required.
+
 ## D-0081: Prepared Float32 Runtime Phase Updates
 - Date: 2026-11-04
 - Status: Accepted for the separately qualified prepared executor

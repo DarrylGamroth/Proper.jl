@@ -190,6 +190,26 @@ end
     end
 end
 
+# Terminal PTP consumers can use the transferred field without materializing it.
+# Keep the intermediate field precision and the original transfer → scale →
+# after-phase → gain order. Output storage must be disjoint from the raw field.
+@kernel function _propagation_transfer_unpack_kernel!(out, field, transfer, phase, scale, multiplier, shift)
+    y, x = @index(Global, NTuple)
+    ny, nx = size(field)
+    if y <= ny && x <= nx
+        sy, sx = y + shift, x + shift
+        sy > ny && (sy -= ny)
+        sx > nx && (sx -= nx)
+        @inbounds begin
+            # Factor order is guarded by the paired-executor contraction tests.
+            value = convert(eltype(field), _propagation_phase(transfer, sy, sx, ny, nx) * field[sy, sx])
+            value *= scale
+            value = isempty(phase) ? value : value * _propagation_phase(phase, sy, sx, ny, nx)
+            out[y, x] = value * multiplier
+        end
+    end
+end
+
 # Independent field batches retain the scalar kernels' multiplication order.
 # The third axis labels fields, not a Fourier coordinate. Callers validate
 # exactly two square planes and tuple entries, precision/backend and disjoint outputs;
