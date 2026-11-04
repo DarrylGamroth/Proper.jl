@@ -1,4 +1,4 @@
-using Test, Proper, FFTW, LinearAlgebra, Random, KernelAbstractions
+using Test, Proper, FFTW, LinearAlgebra, Random, KernelAbstractions, SparseArrays
 include("test_propagation_batch.jl")
 include("test_train_propagation.jl")
 
@@ -98,6 +98,37 @@ function check_prepared_propagation(array, synchronize; capture=nothing, replay=
             @test_throws ArgumentError Proper.propagate!(p.field,p,input)
             @test_throws DimensionMismatch Proper.propagate!(similar(input,n-1,n),p,input)
             @test_throws DimensionMismatch Proper.propagate!(out,p,input;input_multiplier=similar(edge,n-1,n))
+        end
+        @testset "Writable output storage" begin
+            n=8
+            input=array(randn(MersenneTwister(57),ComplexF32,n,n))
+            wf=WaveFront(copy(input),1.6f-6,4f-5,0f0,1f0)
+            prepared=Proper.prepare_propagation(wf,.013f0,RunContext(wf))
+            expected=similar(input)
+            Proper.propagate!(expected,prepared,input)
+            synchronize()
+            backing=array(fill(ComplexF32(7,-2),2n,n))
+            for rows in (1:2:2n,2n-1:-2:1)
+                strided=view(backing,rows,:)
+                operation()=Proper.propagate!(strided,prepared,input)
+                operation();synchronize()
+                @test Array(strided)==Array(expected)
+                @test all(==(ComplexF32(7,-2)),Array(backing)[2:2:2n,:])
+                if capture!==nothing
+                    graph=capture(operation);replay(graph);synchronize()
+                    @test Array(strided)==Array(expected)
+                end
+            end
+            repeated=view(backing,fill(1,n),:)
+            zero_stride=view(backing,Base.StepRangeLen{Int}(1,0,n),:)
+            unsupported=array===Array ? (repeated,zero_stride,spzeros(ComplexF32,n,n)) : (repeated,zero_stride)
+            fill!(prepared.field,ComplexF32(13,-17));synchronize()
+            retained=Array(prepared.field)
+            for out in unsupported, transforms in (prepared,(prepared,prepared))
+                @test_throws ArgumentError Proper.propagate!(out,transforms,input)
+                synchronize()
+                @test Array(prepared.field)==retained
+            end
         end
         # Real multipliers at field precision, including noncontiguous and
         # indexed views, preserve the complex-multiplier result under capture.

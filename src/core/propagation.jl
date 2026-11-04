@@ -286,6 +286,8 @@ quadratic phase, FFT scaling and output multiplication is retained; backend
 fusion and cached phase evaluation can differ from ordinary execution by roundoff. Input/output may alias each other, but must not alias FFT scratch.
 All arrays must have the prepared shape, backend and one-based axes. Input
 multipliers may be real or complex at the field's component precision.
+Output storage must be a dense matrix or strided view, with independent writable
+elements. Structurally mutable storage and indexed output views are rejected.
 Synchronize at the caller's completion boundary; do not overlap shared scratch.
 """
 function propagate!(out, p::PreparedPropagation{T}, input;
@@ -385,11 +387,22 @@ end
         Base.tail(gains),centered,shift)
 end
 
+# Parallel writes require fixed storage with independent elements. Backend and
+# shape agreement alone also admit sparse storage and repeated-index views.
+function _check_propagation_output(out::StridedMatrix)
+    all(d -> size(out,d) <= 1 || !iszero(stride(out,d)), 1:2) ||
+        throw(ArgumentError("prepared propagation output requires independent writable elements"))
+    return nothing
+end
+_check_propagation_output(out) =
+    throw(ArgumentError("prepared propagation output requires dense or strided storage"))
+
 function _check_propagation_fields(out, input, p)
     size(out) == size(input) == size(p.field) || throw(DimensionMismatch("prepared propagation field shapes differ"))
     Base.require_one_based_indexing(out, input)
     eltype(out) === eltype(input) === eltype(p.field) ||
         throw(ArgumentError("prepared propagation field precisions differ"))
+    _check_propagation_output(out)
     typeof(get_backend(out)) === typeof(get_backend(input)) === typeof(get_backend(p.field)) ||
         throw(ArgumentError("prepared propagation field backends differ"))
     (Base.mightalias(out, p.field) || Base.mightalias(input, p.field)) &&

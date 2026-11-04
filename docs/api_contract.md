@@ -277,6 +277,9 @@ PTP/WTS/STW field arithmetic at a fixed wavelength, sampling and square grid.
 Preparation snapshots phase factors using the selected backend and retains the
 context's FFT scratch and plans. Execution does not advance wavefront geometry.
 The caller serializes all users of shared scratch and owns input/output arrays.
+Public outputs must be dense matrices or strided views with independent writable
+elements; sparse storage and indexed output views are rejected before execution.
+Read-only input multipliers may still use indexed views.
 Centered fields, an optional sampled input multiplier and a scalar output
 multiplier can be mapped in the same field passes. Two adjacent prepared
 transforms can share one intermediate raw-order pass. Nonempty homogeneous
