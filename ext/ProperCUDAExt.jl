@@ -83,6 +83,7 @@ function Proper.FFTWorkspace(::Type{<:CUDA.CuArray}, ::Type{T}=Float64) where {T
         false,
         false,
         false,
+        nothing,
     )
 end
 

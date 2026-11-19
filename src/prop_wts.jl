@@ -10,11 +10,12 @@
     ny, nx = size(wf.field)
     f = prepare_fft_field!(ws, wf.field, ny, nx)
     pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
+    padded = _padded_propagation_ffts!(ws, pfft, pbfft)
 
     if d >= zero(T)
-        LinearAlgebra.mul!(f, pfft, f)
+        _propagation_fft!(f, pfft, padded)
     else
-        LinearAlgebra.mul!(f, pbfft, f)
+        _propagation_fft!(f, pbfft, padded)
     end
 
     # Match legacy normalization: both branches scale by 1/n.

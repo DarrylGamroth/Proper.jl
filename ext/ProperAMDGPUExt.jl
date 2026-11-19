@@ -83,6 +83,7 @@ function Proper.FFTWorkspace(::Type{<:AMDGPU.ROCArray}, ::Type{T}=Float64) where
         false,
         false,
         false,
+        nothing,
     )
 end
 

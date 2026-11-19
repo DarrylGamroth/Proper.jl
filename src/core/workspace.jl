@@ -121,6 +121,14 @@ const FFTWBwdPlan2D{T} = FFTW.cFFTWPlan{Complex{T},1,true,2,Tuple{Int,Int}}
 const MaybeFFTWFwdPlan2D{T} = Union{Nothing,FFTWFwdPlan2D{T}}
 const MaybeFFTWBwdPlan2D{T} = Union{Nothing,FFTWBwdPlan2D{T}}
 
+# Only ordinary CPU propagation uses this alternate FFT layout. Both plans
+# share one private buffer and the public wavefront keeps its dense layout.
+struct PaddedPropagationFFTs
+    storage::Matrix{ComplexF32}
+    forward::FFTWFwdPlan2D{Float32}
+    backward::FFTWBwdPlan2D{Float32}
+end
+
 mutable struct FFTWorkspace{
     T<:AbstractFloat,
     RHO<:AbstractMatrix{T},
@@ -142,6 +150,8 @@ mutable struct FFTWorkspace{
     scratch_valid::Bool
     real_scratch_valid::Bool
     plans_valid::Bool
+    # missing marks an eligible pair awaiting its first ordinary propagation.
+    padded::Union{Missing,Nothing,PaddedPropagationFFTs}
 end
 
 function FFTWorkspace(::Type{T}=Float64) where {T<:AbstractFloat}
@@ -162,6 +172,7 @@ function FFTWorkspace(::Type{T}=Float64) where {T<:AbstractFloat}
         false,
         false,
         false,
+        nothing,
     )
 end
 
@@ -183,6 +194,7 @@ function FFTWorkspace(::Type{A}, ::Type{T}=Float64) where {A<:AbstractArray,T<:A
         false,
         false,
         false,
+        nothing,
     )
 end
 
@@ -250,8 +262,16 @@ struct FFTPlanUnavailableStyle <: FFTPlanExecStyle end
         # wavefront whenever `ws.scratch` already owns the field.
         planning_scratch = similar(ws.scratch)
         fill!(planning_scratch, zero(eltype(planning_scratch)))
-        forward_plan = FFTW.plan_fft!(planning_scratch; flags=flags)
-        backward_plan = FFTW.plan_bfft!(planning_scratch; flags=flags)
+        # Capture the FFT worker count when the dense plans are made. They
+        # retain it if another context later changes the FFTW configuration.
+        forward_plan, backward_plan, pending = FFTW.@exclusive begin
+            eligible = T === Float32 && Sys.ARCH === :x86_64 && FFTW.fftw_provider == "fftw" &&
+                (ny, nx) == (1024, 1024) && flags == FFTW.ESTIMATE && FFTW.get_num_threads() == 1
+            forward = FFTW.plan_fft!(planning_scratch; flags)
+            backward = FFTW.plan_bfft!(planning_scratch; flags)
+            (forward, backward, eligible ? missing : nothing)
+        end
+        ws.padded = pending
         ws.forward_plan = forward_plan
         ws.backward_plan = backward_plan
         ws.plan_flags = flags
@@ -262,6 +282,50 @@ end
 
 @inline function ensure_fft_plans!(ws::FFTWorkspace, ny::Integer, nx::Integer, planning::FFTPlanningStyle=FFTEstimateStyle())
     return _ensure_fft_plans!(fft_plan_exec_style(typeof(ws.scratch)), ws, ny, nx, planning)
+end
+
+# A dense 1024² ComplexF32 grid has an 8192-byte column stride. On x86
+# FFTW's single-thread estimate can spend most of its time on this stride.
+# Three extra cache lines separate adjacent columns in the execution buffer.
+function _plan_padded_propagation_ffts(field::Matrix{ComplexF32}, forward, backward)
+    ny, nx = size(field)
+    storage = Matrix{ComplexF32}(undef, ny + 24, nx)
+    scratch = view(storage, 1:ny, :)
+    # This scoped setting takes FFTW's planner lock for both plans and their
+    # printed decompositions, and restores the current process setting.
+    return FFTW.set_num_threads(1) do
+        pf = FFTW.plan_fft!(scratch; flags=FFTW.ESTIMATE)
+        pb = FFTW.plan_bfft!(scratch; flags=FFTW.ESTIMATE)
+        # Imported wisdom or different strides can change the arithmetic.
+        for (dense, padded) in ((forward, pf), (backward, pb))
+            signature = FFTW.sprint_plan(dense)
+            isempty(signature) && return nothing
+            signature == FFTW.sprint_plan(padded) || return nothing
+        end
+        return PaddedPropagationFFTs(storage, pf, pb)
+    end
+end
+
+_padded_propagation_ffts!(ws, forward, backward) = nothing
+
+function _padded_propagation_ffts!(ws::FFTWorkspace{Float32,<:Any,Matrix{ComplexF32}},
+        forward, backward)
+    if ismissing(ws.padded)
+        ws.padded = _plan_padded_propagation_ffts(ws.scratch, forward, backward)
+    end
+    return ws.padded::Union{Nothing,PaddedPropagationFFTs}
+end
+
+@inline _propagation_fft!(field, plan, ::Nothing) = LinearAlgebra.mul!(field, plan, field)
+@inline _padded_plan(p::PaddedPropagationFFTs, ::FFTWFwdPlan2D) = p.forward
+@inline _padded_plan(p::PaddedPropagationFFTs, ::FFTWBwdPlan2D) = p.backward
+
+function _propagation_fft!(field, plan, p::PaddedPropagationFFTs)
+    scratch = view(p.storage, 1:size(field, 1), :)
+    copyto!(scratch, field)
+    LinearAlgebra.mul!(scratch, _padded_plan(p, plan), scratch)
+    copyto!(field, scratch)
+    return field
 end
 
 @inline function _ensure_fft_plans!(
@@ -370,6 +434,7 @@ end
     ws.scratch_valid = false
     ws.real_scratch_valid = false
     ws.plans_valid = false
+    ws.padded = nothing
     ws.forward_plan = nothing
     ws.backward_plan = nothing
     ws.nx = 0

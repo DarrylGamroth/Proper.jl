@@ -31,6 +31,37 @@ end
 end
 
 @testset "RunContext numerical correctness" begin
+    @testset "CPU propagation FFT layout and plan lifetime" begin
+        # Check each direction independently against an ordinary dense plan.
+        # Other CPUs and FFTW builds can legitimately select dense execution.
+        FFTW.set_num_threads(1) do
+            n = 1024
+            initial = randn(MersenneTwister(761), ComplexF32, n, n)
+            ws = Proper.FFTWorkspace(Float32)
+            forward, backward = Proper.ensure_fft_plans!(ws, n, n)
+            padded = Proper._padded_propagation_ffts!(ws, forward, backward)
+            @test Proper._padded_propagation_ffts!(ws, forward, backward) === padded
+            for plan in (forward, backward)
+                expected = plan * copy(initial)
+                actual = copy(initial)
+                @test Proper._propagation_fft!(actual, plan, padded) === actual
+                @test reinterpret(UInt8, vec(actual)) == reinterpret(UInt8, vec(expected))
+            end
+            small = Proper.ensure_fft_plans!(ws, 32, 32)
+            @test Proper._padded_propagation_ffts!(ws, small...) === nothing
+            Proper.reset_workspace!(ws)
+            @test ws.padded === nothing
+            @test ws.forward_plan === ws.backward_plan === nothing
+
+            # A context keeps the policy of its cached plans when another
+            # instrument later changes the process's FFT worker count.
+            threaded = FFTW.set_num_threads(2) do
+                Proper.ensure_fft_plans!(ws, n, n)
+            end
+            @test Proper._padded_propagation_ffts!(ws, threaded...) === nothing
+        end
+    end
+
     @testset "FFTW planning policy preserves numerical results" begin
         rng = MersenneTwister(0xfeed)
         λ = 500e-9

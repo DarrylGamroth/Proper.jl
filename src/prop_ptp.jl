@@ -22,11 +22,12 @@ function _prop_ptp_fft!(
 )
     f = prepare_fft_field!(ws, wf.field, ny, nx)
     pfft, pbfft = ensure_fft_plans!(ws, ny, nx, fft_planning_style(ctx))
-    LinearAlgebra.mul!(f, pfft, f)
+    padded = _padded_propagation_ffts!(ws, pfft, pbfft)
+    _propagation_fft!(f, pfft, padded)
     T = typeof(float(dx))
     _apply_fft_quadratic_phase_strided!(f, T(kphase), T(dx), qphase_workspace(ctx), inv(T(n)))
 
-    LinearAlgebra.mul!(f, pbfft, f)
+    _propagation_fft!(f, pbfft, padded)
     rmul!(f, inv(T(n)))
     wf.field = f
     return wf
