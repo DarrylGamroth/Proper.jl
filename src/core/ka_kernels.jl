@@ -1069,15 +1069,32 @@ end
     end
 end
 
+@inline _ka_launch_function(f, backend, destination, source) = f
+
+@static if pkgversion(KernelAbstractions) >= v"0.10.6"
+    # KA 0.10.6 introduced the threaded POCL host launch. Julia can invalidate
+    # native callers at package-image restore through its per-specialization
+    # worker closure. Isolate dense launches, whose array arguments are already
+    # heap objects, so views retain direct dispatch.
+    @inline _ka_launch_function(f, ::KernelAbstractions.POCLBackend, ::Matrix, ::Matrix) =
+        Base.inferencebarrier(f)
+end
+
 @inline function ka_apply_shifted_mask!(
     field::AbstractMatrix{<:Complex},
     mask::AbstractMatrix{<:Real};
     invert::Bool=false,
 )
-    ny, nx = size(field)
     backend = AK.get_backend(field)
-    _ka_apply_shifted_mask_kernel!(backend, (16, 16))(field, mask, ny ÷ 2, nx ÷ 2, ny, nx, invert; ndrange=(ny, nx))
+    launch! = _ka_launch_function(_ka_launch_shifted_mask!, backend, field, mask)
+    launch!(backend, field, mask, invert)
     return field
+end
+
+@inline function _ka_launch_shifted_mask!(backend, field, mask, invert)
+    ny, nx = size(field)
+    _ka_apply_shifted_mask_kernel!(backend, (16, 16))(field, mask, ny ÷ 2, nx ÷ 2, ny, nx, invert; ndrange=(ny, nx))
+    return nothing
 end
 
 @inline function ka_apply_shifted_ellipse!(
@@ -1706,9 +1723,15 @@ end
     r0::Int,
     c0::Int,
 )
+    backend = AK.get_backend(out)
+    launch! = _ka_launch_function(_ka_launch_shifted_intensity!, backend, out, field)
+    launch!(backend, out, field, r0, c0)
+    return out
+end
+
+@inline function _ka_launch_shifted_intensity!(backend, out, field, r0, c0)
     ny, nx = size(field)
     oy, ox = size(out)
-    backend = AK.get_backend(out)
     _ka_copy_shifted_intensity_kernel!(backend, (16, 16))(out, field, r0, c0, ny ÷ 2, nx ÷ 2, ny, nx, oy, ox; ndrange=(oy, ox))
-    return out
+    return nothing
 end
