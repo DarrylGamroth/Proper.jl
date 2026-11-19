@@ -100,23 +100,36 @@ function _prop_ptp_fft!(
     return wf
 end
 
-"""Planar-to-planar Fresnel propagation while keeping planar reference."""
-function prop_ptp(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
+@inline function _prop_ptp!(wf::OpticalSurfaceState, dz::Real, ctx, ws)
     n = _require_square_propagation_grid(wf, :prop_ptp)
     abs(dz) < 1e-12 && return wf
     wf.reference_surface === PLANAR || throw(ArgumentError("PTP: input reference surface must be PLANAR"))
-
-    λ = wf.wavelength_m
-    dx = wf.sampling_m
-
     wf.z_m += float(dz)
+    _ptp_field!(wf, dz, ctx, ws, n)
+    return wf
+end
 
+@inline _ptp_phase_coefficient(wf, dz) = -pi * wf.wavelength_m * float(dz)
+
+@inline function _ptp_field!(wf::WaveFrontGeometry{T}, dz, ::Nothing, ::Nothing, n) where {T}
+    spacing = inv(T(n) * wf.sampling_m)
+    return _check_fft_order_axis_phase(n, spacing, T(_ptp_phase_coefficient(wf, dz)))
+end
+
+@inline function _ptp_field!(wf::WaveFront, dz, ctx::RunContext, ws::FFTWorkspace, n)
+    dx = wf.sampling_m
     ny, nx = size(wf.field)
-    kphase = -pi * λ * float(dz)
+    kphase = _ptp_phase_coefficient(wf, dz)
     sty = ptp_exec_style(array_layout_style(typeof(wf.field)), ctx.backend, fft_style(ctx))
     _prop_ptp_fft!(sty, wf, ctx, ws, n, ny, nx, dx, kphase)
     return apply_carrier_phase!(wf, dz, ctx)
 end
+
+"""Planar-to-planar Fresnel propagation while keeping planar reference."""
+@inline prop_ptp(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace) =
+    _prop_ptp!(wf, dz, ctx, ws)
+
+@inline prop_ptp(wf::WaveFrontGeometry, dz::Real) = _prop_ptp!(wf, dz, nothing, nothing)
 
 @inline function prop_ptp(wf::WaveFront, dz::Real, ctx::RunContext)
     return prop_ptp(wf, dz, ctx, fft_workspace(ctx))

@@ -87,22 +87,30 @@ end
     return wf
 end
 
-function prop_wts(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace)
+@inline function _prop_wts!(wf::OpticalSurfaceState, dz::Real, ctx, ws)
     n = _require_square_propagation_grid(wf, :prop_wts)
     wf.reference_surface = SPHERICAL
     iszero(dz) && return wf
 
     d = float(dz)
-
     wf.z_m += d
-    prop_qphase(wf, d, ctx)
-
-    _prop_wts_fft_step!(fft_style(ctx), wf, d, n, ctx, ws)
-    apply_carrier_phase!(wf, d, ctx)
-
+    _wts_field!(wf, d, ctx, ws, n)
     wf.sampling_m = wf.wavelength_m * abs(d) / (n * wf.sampling_m)
     return wf
 end
+
+@inline _wts_field!(wf::WaveFrontGeometry, d, ::Nothing, ::Nothing, n) = _check_spatial_phase(wf, d)
+
+@inline function _wts_field!(wf::WaveFront, d, ctx::RunContext, ws::FFTWorkspace, n)
+    prop_qphase(wf, d, ctx)
+    _prop_wts_fft_step!(fft_style(ctx), wf, d, n, ctx, ws)
+    return apply_carrier_phase!(wf, d, ctx)
+end
+
+@inline prop_wts(wf::WaveFront, dz::Real, ctx::RunContext, ws::FFTWorkspace) =
+    _prop_wts!(wf, dz, ctx, ws)
+
+@inline prop_wts(wf::WaveFrontGeometry, dz::Real) = _prop_wts!(wf, dz, nothing, nothing)
 
 """Propagate from a waist/planar regime to a spherical-reference regime."""
 @inline function prop_wts(wf::WaveFront, dz::Real, ctx::RunContext)

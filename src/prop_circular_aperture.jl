@@ -219,3 +219,9 @@ function prop_circular_aperture(
     opts = CircleOptions{T}(normv, darkv)
     return _apply_shifted_circle!(wf, radius, xc, yc, opts, false)
 end
+
+"""Validate a circular aperture on the prospective host wavefront grid."""
+function prop_circular_aperture(wf::WaveFrontGeometry{T}, radius::Real) where {T}
+    ellipse_geometry(T, wf, radius, radius, 0.0, 0.0, EllipseOptions(false, false, zero(T)))
+    return wf
+end

@@ -3,3 +3,6 @@ function prop_circular_obscuration(wf::WaveFront, radius::Real, xc::Real=0.0, yc
     opts = CircleOptions(real(eltype(wf.field)), kwargs)
     return _apply_shifted_circle!(wf, radius, xc, yc, opts, true)
 end
+
+"""Validate a circular obscuration on the prospective host wavefront grid."""
+prop_circular_obscuration(wf::WaveFrontGeometry, radius::Real) = prop_circular_aperture(wf, radius)

@@ -98,6 +98,7 @@ export BackendStyle, CPUBackend, CUDABackend, AMDGPUBackend, UnknownBackend, FFT
 export InterpStyle, GenericInterpStyle, CubicInterpStyle, RNGStyle, GenericRNGStyle
 export ShiftKernelStyle, ShiftLoopStyle, ShiftKAStyle
 export RunContext, FFTEstimateStyle, FFTMeasureStyle, EnvelopeOnly, TrackCarrierPhase, ProperConfig, ProperRuntime, WaveFront
+export WaveFrontGeometry
 export PreparedPrescription, PreparedBatch, PreparedAssetPool, PreparedModel
 export prepare_prescription, prepare_prescription_batch, prepare_asset_pool, prepare_model
 export prepare_run

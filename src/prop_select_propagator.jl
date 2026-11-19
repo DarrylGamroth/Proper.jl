@@ -2,11 +2,11 @@ struct SelectPropagatorOptions{T<:AbstractFloat}
     dz::T
 end
 
-@inline SelectPropagatorOptions(wf::WaveFront{T}, dz::Real) where {T<:AbstractFloat} =
+@inline SelectPropagatorOptions(wf::Union{WaveFront{T},WaveFrontGeometry{T}}, dz::Real) where {T<:AbstractFloat} =
     SelectPropagatorOptions{T}(T(dz))
 
 """Select propagation regime based on Rayleigh-distance boundary."""
-function prop_select_propagator(wf::WaveFront, opts::SelectPropagatorOptions)
+function prop_select_propagator(wf::OpticalSurfaceState, opts::SelectPropagatorOptions)
     dzw = wf.z_w0_m - wf.z_m
     newz = wf.z_m + opts.dz
 
@@ -16,6 +16,6 @@ function prop_select_propagator(wf::WaveFront, opts::SelectPropagatorOptions)
     return dzw
 end
 
-@inline function prop_select_propagator(wf::WaveFront, dz::Real)
+@inline function prop_select_propagator(wf::OpticalSurfaceState, dz::Real)
     return prop_select_propagator(wf, SelectPropagatorOptions(wf, dz))
 end

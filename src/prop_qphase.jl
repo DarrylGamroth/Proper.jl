@@ -23,12 +23,32 @@ end
     return phase
 end
 
+@inline function _check_fft_order_axis_phase(n::Int, spacing, k)
+    # The FFT-order grid includes this largest-magnitude coordinate. For a
+    # finite coefficient and spacing, overflow of k*x*x is monotone in abs(x).
+    # Nonfinite inputs either produce Inf here or produce no Inf across the
+    # axis. Keep cis(NaN) admissible, as in the ordinary phase fill.
+    x = -(n ÷ 2) * spacing
+    phase = k * x * x
+    isinf(phase) && cis(phase)
+    return nothing
+end
+
+@inline _spatial_phase_coefficient(wf, curvature) =
+    pi / (wf.wavelength_m * float(curvature))
+
+@inline function _check_spatial_phase(wf::WaveFrontGeometry, curvature)
+    iszero(curvature) && return nothing
+    return _check_fft_order_axis_phase(wf.gridsize, wf.sampling_m,
+        _spatial_phase_coefficient(wf, curvature))
+end
+
 @inline function _prop_qphase_strided!(wf::WaveFront, c::Real, ws::QPhaseWorkspace, scale::Real=1)
     T = float(real(eltype(wf.field)))
     c == 0 && return isone(scale) ? wf : (rmul!(wf.field, T(scale)); wf)
     ny, nx = size(wf.field)
     dx = wf.sampling_m
-    k = pi / (wf.wavelength_m * float(c))
+    k = _spatial_phase_coefficient(wf, c)
     xphase, yphase = ensure_qphase_vectors!(ws, nx, ny)
 
     _fill_fft_order_axis_phase!(xphase, nx, dx, k)

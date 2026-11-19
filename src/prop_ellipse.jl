@@ -32,7 +32,7 @@ end
 
 @inline function ellipse_geometry(
     ::Type{T},
-    wf::WaveFront,
+    wf::OpticalSurfaceState,
     xradius::Real,
     yradius::Real,
     xc::Real,

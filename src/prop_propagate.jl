@@ -1,6 +1,7 @@
 # Cold preparation may observe each primitive while the ordinary routines keep
 # ownership of geometry transitions. Default execution remains direct/inlined.
 @inline _execute_propagation!(operation,wf,distance,context) = operation(wf,distance,context)
+@inline _execute_propagation!(operation,wf::WaveFrontGeometry,distance,::Nothing) = operation(wf,distance)
 
 struct PropagateOptions
     to_plane::Bool
@@ -10,11 +11,11 @@ end
 @inline PropagateOptions(::Base.Pairs{Symbol,Union{},Nothing,@NamedTuple{}}) = PropagateOptions(false)
 
 @inline function _propagate_by_transition!(
-    wf::WaveFront,
+    wf::OpticalSurfaceState,
     z1::Real,
     z2::Real,
     dzv::Real,
-    ctx::RunContext,
+    ctx::Union{RunContext,Nothing},
     pt::PropagatorType,
     execute=_execute_propagation!,
 )
@@ -35,7 +36,8 @@ end
     return _prop_propagate!(wf, dz, opts, resolve_run_context(wf))
 end
 
-@inline function _prop_propagate!(wf::WaveFront, dz::Real, opts::PropagateOptions, ctx::RunContext, execute=_execute_propagation!)
+@inline function _prop_propagate!(wf::OpticalSurfaceState, dz::Real, opts::PropagateOptions,
+        ctx::Union{RunContext,Nothing}, execute=_execute_propagation!)
     _require_square_propagation_grid(wf, :prop_propagate)
     prop_select_propagator(wf, dz)
 
@@ -63,6 +65,11 @@ function prop_propagate(
     _ = surface_name
     opts = PropagateOptions(kwargs)
     return _prop_propagate!(wf, dz, opts, ctx)
+end
+
+"""Advance the scalar reference geometry over the signed distance `dz`."""
+function prop_propagate(wf::WaveFrontGeometry, dz::Real; kwargs...)
+    return _prop_propagate!(wf, dz, PropagateOptions(kwargs), nothing)
 end
 
 """Select and execute appropriate propagation regime for distance `dz`."""

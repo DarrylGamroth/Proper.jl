@@ -13,8 +13,7 @@ function prop_begin(
     WT = something(workspace_float_type(ws), float(typeof(wavelength_m)))
     λ = WT(wavelength_m)
     d = WT(diam)
-    ndiam = WT(n) * WT(beam_diam_fraction)
-    sampling = d / ndiam
+    sampling = _entrance_sampling(WT, d, n, beam_diam_fraction)
     field = unit_field(WT, n, ws)
     return ws === nothing ? WaveFront(field, λ, sampling, zero(λ), d) : WaveFront(field, λ, sampling, zero(λ), d, ws)
 end
@@ -42,8 +41,7 @@ function prop_begin!(
     WT = real(eltype(field))
     λ = WT(wavelength_m)
     d = WT(diam)
-    ndiam = WT(n) * WT(beam_diam_fraction)
-    sampling = d / ndiam
+    sampling = _entrance_sampling(WT, d, n, beam_diam_fraction)
     fill!(field, complex(one(WT), zero(WT)))
     return ws === nothing ? WaveFront(field, λ, sampling, zero(λ), d) : WaveFront(field, λ, sampling, zero(λ), d, ws)
 end
@@ -68,20 +66,11 @@ function prop_begin!(
     n > 0 && size(field, 2) == n || throw(ArgumentError("wavefront field must be a non-empty square matrix"))
     λ = T(wavelength_m)
     d = T(diam)
-    ndiam = T(n) * T(beam_diam_fraction)
-    sampling = d / ndiam
+    sampling = _entrance_sampling(T, d, n, beam_diam_fraction)
     fill!(field, complex(one(T), zero(T)))
-    wf.wavelength_m = λ
-    wf.sampling_m = sampling
-    wf.z_m = zero(T)
-    wf.beam_diameter_m = d
-    wf.z_w0_m = zero(T)
-    wf.w0_m = d / T(2)
-    wf.z_rayleigh_m = pi * wf.w0_m^2 / λ
-    wf.current_fratio = T(1e9)
-    wf.reference_surface = PLANAR
-    wf.beam_type_old = INSIDE
-    wf.propagator_type = INSIDE_TO_INSIDE
-    wf.rayleigh_factor = one(T)
+    (wf.wavelength_m, wf.sampling_m, wf.z_m, wf.beam_diameter_m,
+        wf.z_w0_m, wf.w0_m, wf.z_rayleigh_m, wf.current_fratio,
+        wf.reference_surface, wf.beam_type_old, wf.propagator_type, wf.rayleigh_factor) =
+        _entrance_geometry(λ, sampling, zero(T), d)
     return wf
 end

@@ -20,7 +20,8 @@ end
     return inv(lens_fl) - inv(r_beam_old) + inv(r_beam)
 end
 
-@inline function _prop_lens!(wf::WaveFront, lens_fl::Real, opts::LensOptions, ctx::RunContext)
+@inline function _prop_lens!(wf::OpticalSurfaceState, lens_fl::Real, opts::LensOptions,
+        ctx::Union{RunContext,Nothing})
     _ = opts
     iszero(lens_fl) && throw(ArgumentError("lens_fl must be non-zero"))
 
@@ -64,7 +65,7 @@ end
 
     if !iszero(lens_phase)
         # lens phase term is equivalent to quadratic phase with curvature c = -1/lens_phase.
-        prop_qphase(wf, -inv(lens_phase), ctx)
+        _lens_field!(wf, -inv(lens_phase), ctx)
     end
 
     wf.reference_surface = beam_type_new === INSIDE ? PLANAR : SPHERICAL
@@ -72,6 +73,14 @@ end
     wf.current_fratio = abs(wf.z_w0_m - z) / (2 * w_at_surface)
 
     return wf
+end
+
+@inline _lens_field!(wf::WaveFront, curvature, ctx::RunContext) = prop_qphase(wf, curvature, ctx)
+@inline _lens_field!(wf::WaveFrontGeometry, curvature, ::Nothing) = _check_spatial_phase(wf, curvature)
+
+"""Advance the scalar reference geometry through a thin lens."""
+function prop_lens(wf::WaveFrontGeometry, lens_fl::Real)
+    return _prop_lens!(wf, lens_fl, LensOptions(), nothing)
 end
 
 """Alter the current wavefront as a perfect thin lens would."""
