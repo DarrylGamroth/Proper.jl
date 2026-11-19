@@ -257,27 +257,31 @@ struct FFTPlanUnavailableStyle <: FFTPlanExecStyle end
     ensure_fft_scratch!(ws, ny, nx)
     flags = fftw_flags(planning)
     if !(ws.plans_valid && ws.forward_plan !== nothing && ws.backward_plan !== nothing && ws.plan_flags == flags)
-        # FFTW is allowed to overwrite its planning input for non-ESTIMATE
-        # planners. In particular, MEASURE would otherwise destroy a live
-        # wavefront whenever `ws.scratch` already owns the field.
-        planning_scratch = similar(ws.scratch)
-        fill!(planning_scratch, zero(eltype(planning_scratch)))
-        # Capture the FFT worker count when the dense plans are made. They
-        # retain it if another context later changes the FFTW configuration.
-        forward_plan, backward_plan, pending = FFTW.@exclusive begin
-            eligible = T === Float32 && Sys.ARCH === :x86_64 && FFTW.fftw_provider == "fftw" &&
-                (ny, nx) == (1024, 1024) && flags == FFTW.ESTIMATE && FFTW.get_num_threads() == 1
-            forward = FFTW.plan_fft!(planning_scratch; flags)
-            backward = FFTW.plan_bfft!(planning_scratch; flags)
-            (forward, backward, eligible ? missing : nothing)
-        end
-        ws.padded = pending
-        ws.forward_plan = forward_plan
-        ws.backward_plan = backward_plan
-        ws.plan_flags = flags
-        ws.plans_valid = true
+        _plan_dense_ffts!(ws, ny, nx, flags)
     end
     return ws.forward_plan::FFTWFwdPlan2D{T}, ws.backward_plan::FFTWBwdPlan2D{T}
+end
+
+# Keep planning out of the valid-plan path so its callers can inline the
+# two plan accesses without allocating the returned tuple.
+@noinline function _plan_dense_ffts!(ws::FFTWorkspace{T}, ny, nx, flags) where {T}
+    # MEASURE may overwrite its input, which could otherwise be the live field.
+    planning_scratch = similar(ws.scratch)
+    fill!(planning_scratch, zero(eltype(planning_scratch)))
+    # The dense plans retain the worker count selected while they are made.
+    forward_plan, backward_plan, pending = FFTW.@exclusive begin
+        eligible = T === Float32 && Sys.ARCH === :x86_64 && FFTW.fftw_provider == "fftw" &&
+            (ny, nx) == (1024, 1024) && flags == FFTW.ESTIMATE && FFTW.get_num_threads() == 1
+        forward = FFTW.plan_fft!(planning_scratch; flags)
+        backward = FFTW.plan_bfft!(planning_scratch; flags)
+        (forward, backward, eligible ? missing : nothing)
+    end
+    ws.padded = pending
+    ws.forward_plan = forward_plan
+    ws.backward_plan = backward_plan
+    ws.plan_flags = flags
+    ws.plans_valid = true
+    return nothing
 end
 
 @inline function ensure_fft_plans!(ws::FFTWorkspace, ny::Integer, nx::Integer, planning::FFTPlanningStyle=FFTEstimateStyle())
