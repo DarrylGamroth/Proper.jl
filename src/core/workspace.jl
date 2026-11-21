@@ -271,7 +271,7 @@ end
     # The dense plans retain the worker count selected while they are made.
     forward_plan, backward_plan, pending = FFTW.@exclusive begin
         eligible = T === Float32 && Sys.ARCH === :x86_64 && FFTW.fftw_provider == "fftw" &&
-            (ny, nx) == (1024, 1024) && flags == FFTW.ESTIMATE && FFTW.get_num_threads() == 1
+            ny == nx && ny in (1024, 3072, 4096) && flags == FFTW.ESTIMATE && FFTW.get_num_threads() == 1
         forward = FFTW.plan_fft!(planning_scratch; flags)
         backward = FFTW.plan_bfft!(planning_scratch; flags)
         (forward, backward, eligible ? missing : nothing)
@@ -288,8 +288,8 @@ end
     return _ensure_fft_plans!(fft_plan_exec_style(typeof(ws.scratch)), ws, ny, nx, planning)
 end
 
-# A dense 1024² ComplexF32 grid has an 8192-byte column stride. On x86
-# FFTW's single-thread estimate can spend most of its time on this stride.
+# On these dense ComplexF32 grids the column stride is a multiple of 8192
+# bytes. On x86 this stride can dominate single-threaded FFTW execution.
 # Three extra cache lines separate adjacent columns in the execution buffer.
 function _plan_padded_propagation_ffts(field::Matrix{ComplexF32}, forward, backward)
     ny, nx = size(field)

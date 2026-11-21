@@ -35,17 +35,23 @@ end
         # Check each direction independently against an ordinary dense plan.
         # Other CPUs and FFTW builds can legitimately select dense execution.
         FFTW.set_num_threads(1) do
-            n = 1024
-            initial = randn(MersenneTwister(761), ComplexF32, n, n)
             ws = Proper.FFTWorkspace(Float32)
-            forward, backward = Proper.ensure_fft_plans!(ws, n, n)
-            padded = Proper._padded_propagation_ffts!(ws, forward, backward)
-            @test Proper._padded_propagation_ffts!(ws, forward, backward) === padded
-            for plan in (forward, backward)
-                expected = plan * copy(initial)
-                actual = copy(initial)
-                @test Proper._propagation_fft!(actual, plan, padded) === actual
-                @test reinterpret(UInt8, vec(actual)) == reinterpret(UInt8, vec(expected))
+            # Full-size CAL2 qualification needs additional memory for the dense oracle.
+            sizes = get(ENV, "PROPER_TEST_CAL2_FFTS", "0") == "1" ? (1024, 3072, 4096) : (1024,)
+            for n in sizes
+                initial = randn(MersenneTwister(761), ComplexF32, n, n)
+                forward, backward = Proper.ensure_fft_plans!(ws, n, n)
+                if Sys.ARCH === :x86_64 && FFTW.fftw_provider == "fftw"
+                    @test ismissing(ws.padded) # Eligible plans still require matching decompositions.
+                end
+                padded = Proper._padded_propagation_ffts!(ws, forward, backward)
+                @test Proper._padded_propagation_ffts!(ws, forward, backward) === padded
+                for plan in (forward, backward)
+                    expected = plan * copy(initial)
+                    actual = copy(initial)
+                    @test Proper._propagation_fft!(actual, plan, padded) === actual
+                    @test reinterpret(UInt8, vec(actual)) == reinterpret(UInt8, vec(expected))
+                end
             end
             small = Proper.ensure_fft_plans!(ws, 32, 32)
             @test Proper._padded_propagation_ffts!(ws, small...) === nothing
@@ -56,7 +62,7 @@ end
             # A context keeps the policy of its cached plans when another
             # instrument later changes the process's FFT worker count.
             threaded = FFTW.set_num_threads(2) do
-                Proper.ensure_fft_plans!(ws, n, n)
+                Proper.ensure_fft_plans!(ws, 1024, 1024)
             end
             @test Proper._padded_propagation_ffts!(ws, threaded...) === nothing
         end

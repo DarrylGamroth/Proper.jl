@@ -383,11 +383,11 @@ Those topology commands write
 `bench/reports/julia_thread_topology_cpu_batch.json` by default. BLAS remains at
 one thread unless a measured workload demonstrates meaningful BLAS work.
 
-For ordinary CPU Fresnel propagation on a 1024 × 1024 `ComplexF32` grid,
+For ordinary CPU Fresnel propagation on square `ComplexF32` grids of side 1024, 3072 or 4096,
 single-worker x86-64 FFTW estimates can be sensitive to the column stride.
 PROPER uses a padded transform buffer when FFTW reports the same forward and
 backward decompositions as for the dense field. Each active workspace reuses
-8.19 MiB of additional memory. All pupil samples pass through the optical train.
+8.19, 72.56 or 128.75 MiB of additional memory, respectively. All pupil samples pass through the optical train.
 
 For correctness-gated prepared-call latency distributions and raw HdrHistogram
 logs:
